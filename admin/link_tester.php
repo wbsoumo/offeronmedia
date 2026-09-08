@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' || (isset($_GET['action']) && $_GET['a
     if (empty($url)) {
         $error = 'Please enter a valid tracking link URL to test.';
     } elseif (!filter_var($url, FILTER_VALIDATE_URL)) {
-        $error = 'Invalid URL format. Please provide a full URL (e.g., https://iconmedianetwork.in/click.php?offer_id=7&aff_id=4&sub1=azeem).';
+        $error = 'Invalid URL format. Please provide a full URL (e.g., https://offeronmedia.com/click.php?offer_id=7&aff_id=4&sub1=azeem).';
     } else {
         $testResults = trace_redirect_chain($url, $deviceOS, $country);
     }
@@ -350,7 +350,7 @@ function trace_redirect_chain($initialUrl, $os, $country) {
                             <form method="post" action="link_tester.php">
                                 <div class="form-group mb-3">
                                     <label class="font-weight-bold text-muted small">Tracking URL *</label>
-                                    <input type="url" name="url" class="form-control form-control-lg" placeholder="https://iconmedianetwork.in/click.php?offer_id=7&aff_id=4&sub1=azeem" value="<?php echo htmlspecialchars($url); ?>" required>
+                                    <input type="url" name="url" class="form-control form-control-lg" placeholder="https://offeronmedia.com/click.php?offer_id=7&aff_id=4&sub1=azeem" value="<?php echo htmlspecialchars($url); ?>" required>
                                 </div>
 
                                 <div class="row">
@@ -426,8 +426,8 @@ function trace_redirect_chain($initialUrl, $os, $country) {
                     <div class="mt-4">
                         <label class="font-weight-bold text-muted small"><i class="fas fa-share-alt mr-1"></i> Share Test Results Link</label>
                         <div class="share-box d-flex justify-content-between align-items-center">
-                            <span>https://iconmedianetwork.in/admin/link_tester.php?url=<?php echo urlencode($url); ?></span>
-                            <button class="btn btn-xs btn-outline-secondary font-weight-bold" onclick="navigator.clipboard.writeText('https://iconmedianetwork.in/admin/link_tester.php?url=<?php echo urlencode($url); ?>'); alert('Share link copied!');"><i class="fas fa-copy mr-1"></i> Copy</button>
+                            <span>https://offeronmedia.com/admin/link_tester.php?url=<?php echo urlencode($url); ?></span>
+                            <button class="btn btn-xs btn-outline-secondary font-weight-bold" onclick="navigator.clipboard.writeText('https://offeronmedia.com/admin/link_tester.php?url=<?php echo urlencode($url); ?>'); alert('Share link copied!');"><i class="fas fa-copy mr-1"></i> Copy</button>
                         </div>
                     </div>
                 </div>
@@ -439,7 +439,7 @@ function trace_redirect_chain($initialUrl, $os, $country) {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

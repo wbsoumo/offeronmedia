@@ -7,7 +7,7 @@ require_once __DIR__ . '/app/config/database.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terms of Service · IconMedia Network</title>
+    <title>Terms of Service · OfferOnMedia Network</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0b1120; color: #f8fafc; padding: 40px 20px; line-height: 1.6; max-width: 900px; margin: 0 auto; }
@@ -24,7 +24,7 @@ require_once __DIR__ . '/app/config/database.php';
     <p>Last updated: August 27, 2026</p>
 
     <h2>1. Partner Obligations</h2>
-    <p>All affiliates and advertisers participating in the IconMedia Network must adhere strictly to traffic rules, anti-fraud compliance, and ethical performance marketing standards.</p>
+    <p>All affiliates and advertisers participating in the OfferOnMedia Network must adhere strictly to traffic rules, anti-fraud compliance, and ethical performance marketing standards.</p>
 
     <h2>2. Fraud & Fraudulent Conversions</h2>
     <p>Bot traffic, automated click generation, misleading creatives, or unauthorized postback triggers will result in immediate account termination and forfeiture of pending balances.</p>
@@ -33,6 +33,6 @@ require_once __DIR__ . '/app/config/database.php';
     <p>Affiliate payouts are calculated based on verified approved conversions. Processing timelines depend on advertiser verification schedules.</p>
 
     <h2>4. Contact Us</h2>
-    <p>For legal inquiries, contact <a href="mailto:legal@iconmedia.in">legal@iconmedia.in</a>.</p>
+    <p>For legal inquiries, contact <a href="mailto:legal@offeronmedia.com">legal@offeronmedia.com</a>.</p>
 </body>
 </html>

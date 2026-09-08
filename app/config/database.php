@@ -8,7 +8,7 @@ if (!defined('APP_INIT')) {
 }
 
 $DB_HOST = 'localhost';
-$DB_NAME = 'zktddbzk_iconmedia';
+$DB_NAME = 'zktddbzk_offeronmedia';
 $DB_USER = 'zktddbzk_azhar';
 $DB_PASS = 'Soumojit1234@';
 

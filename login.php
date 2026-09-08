@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
-    <title>IconMedia Network · Secure Partner Login</title>
+    <title>OfferOnMedia Network · Secure Partner Login</title>
     
     <!-- Google Fonts: Inter (professional, clean) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -648,8 +648,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             <div class="brand-content">
                 <div class="brand-logo">
-                    <img src="favicon.png" alt="IconMedia Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: rgba(255,255,255,0.1); padding: 4px;">
-                    <span class="brand-name">IconMedia</span>
+                    <img src="favicon.png" alt="OfferOnMedia Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: rgba(255,255,255,0.1); padding: 4px;">
+                    <span class="brand-name">OfferOnMedia</span>
                 </div>
 
                 <h1 class="brand-tagline">
@@ -678,7 +678,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="testimonial">
                     <div class="testimonial-quote">
-                        "IconMedia is hands down the most reliable network we work with. 
+                        "OfferOnMedia is hands down the most reliable network we work with. 
                         Instant postback delivery, transparent reporting, and zero payout delays."
                     </div>
                     <div class="testimonial-author">
@@ -697,8 +697,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-container">
                 <!-- Mobile Logo (Visible only on mobile/tablet) -->
                 <div class="mobile-logo">
-                    <img src="favicon.png" alt="IconMedia Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;">
-                    <span>IconMedia Network</span>
+                    <img src="favicon.png" alt="OfferOnMedia Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;">
+                    <span>OfferOnMedia Network</span>
                 </div>
 
                 <div class="form-header">
@@ -802,7 +802,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <!-- Registration Link -->
                     <div class="register-link">
-                        <span>New to IconMedia Network? </span>
+                        <span>New to OfferOnMedia Network? </span>
                         <a href="/register.php">Create an account →</a>
                     </div>
 

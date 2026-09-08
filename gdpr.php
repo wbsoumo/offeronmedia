@@ -7,7 +7,7 @@ require_once __DIR__ . '/app/config/database.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GDPR & Compliance · IconMedia Network</title>
+    <title>GDPR & Compliance · OfferOnMedia Network</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0b1120; color: #f8fafc; padding: 40px 20px; line-height: 1.6; max-width: 900px; margin: 0 auto; }
@@ -30,6 +30,6 @@ require_once __DIR__ . '/app/config/database.php';
     <p>We process only data strictly necessary for attribution, click tracking, payout calculations, and fraud detection.</p>
 
     <h2>3. Request Processing</h2>
-    <p>To submit a data access or deletion request, please email <a href="mailto:dpo@iconmedia.in">dpo@iconmedia.in</a>.</p>
+    <p>To submit a data access or deletion request, please email <a href="mailto:dpo@offeronmedia.com">dpo@offeronmedia.com</a>.</p>
 </body>
 </html>

@@ -7,7 +7,7 @@ require_once __DIR__ . '/app/config/database.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy · IconMedia Network</title>
+    <title>Privacy Policy · OfferOnMedia Network</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0b1120; color: #f8fafc; padding: 40px 20px; line-height: 1.6; max-width: 900px; margin: 0 auto; }
@@ -24,7 +24,7 @@ require_once __DIR__ . '/app/config/database.php';
     <p>Last updated: August 27, 2026</p>
 
     <h2>1. Introduction</h2>
-    <p>IconMedia Network ("we", "our", "us") respects your privacy and is committed to protecting the personal data of our publishers, advertisers, and partners. This policy outlines how we collect, use, and safeguard your data.</p>
+    <p>OfferOnMedia Network ("we", "our", "us") respects your privacy and is committed to protecting the personal data of our publishers, advertisers, and partners. This policy outlines how we collect, use, and safeguard your data.</p>
 
     <h2>2. Data Collection & Usage</h2>
     <p>We collect essential account details (name, email address, payment details, IP addresses) required to provide performance tracking, payout settlement, fraud prevention, and network operations.</p>
@@ -36,6 +36,6 @@ require_once __DIR__ . '/app/config/database.php';
     <p>We implement industry-standard encryption, SSL protocols, and access controls to secure partner information against unauthorized access.</p>
 
     <h2>5. Contact Us</h2>
-    <p>For questions regarding our privacy practices, please contact us at <a href="mailto:privacy@iconmedia.in">privacy@iconmedia.in</a>.</p>
+    <p>For questions regarding our privacy practices, please contact us at <a href="mailto:privacy@offeronmedia.com">privacy@offeronmedia.com</a>.</p>
 </body>
 </html>

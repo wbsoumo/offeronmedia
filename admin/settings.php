@@ -344,19 +344,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <form method="post">
                                         <div class="form-group mb-3">
                                             <label class="font-weight-bold">Network Name</label>
-                                            <input type="text" name="site_name" class="form-control" value="GVS Icon Media Network">
+                                            <input type="text" name="site_name" class="form-control" value="GVS OfferOnMedia Network">
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <div class="form-group mb-3">
                                                     <label class="font-weight-bold">Support Email</label>
-                                                    <input type="email" name="site_email" class="form-control" value="support@iconmedianetwork.in">
+                                                    <input type="email" name="site_email" class="form-control" value="support@offeronmedia.com">
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="form-group mb-3">
                                                     <label class="font-weight-bold">Platform Domain</label>
-                                                    <input type="url" name="site_url" class="form-control" value="https://iconmedianetwork.in">
+                                                    <input type="url" name="site_url" class="form-control" value="https://offeronmedia.com">
                                                 </div>
                                             </div>
                                         </div>
@@ -410,7 +410,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <div class="col-md-8">
                                                 <div class="form-group mb-3">
                                                     <label class="font-weight-bold">SMTP Host</label>
-                                                    <input type="text" name="smtp_host" class="form-control" value="mail.iconmedianetwork.in">
+                                                    <input type="text" name="smtp_host" class="form-control" value="mail.offeronmedia.com">
                                                 </div>
                                             </div>
                                             <div class="col-md-4">
@@ -424,7 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <div class="col-md-6">
                                                 <div class="form-group mb-3">
                                                     <label class="font-weight-bold">SMTP Sender Email</label>
-                                                    <input type="email" name="smtp_user" class="form-control" value="support@iconmedianetwork.in">
+                                                    <input type="email" name="smtp_user" class="form-control" value="support@offeronmedia.com">
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
@@ -501,7 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

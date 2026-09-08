@@ -252,7 +252,7 @@ $underperforming = array_filter($offers, function($offer) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Campaign Optimization | Advertiser Panel | GVS Icon Media</title>
+    <title>Campaign Optimization | Advertiser Panel | GVS OfferOnMedia</title>
     
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -1410,7 +1410,7 @@ $underperforming = array_filter($offers, function($offer) {
         <div class="float-right d-none d-sm-inline">
             <strong>AI Optimization v2.0</strong>
         </div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> GVS Icon Media.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> GVS OfferOnMedia.</strong> All rights reserved.
     </footer>
 </div>
 

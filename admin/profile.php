@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Profile Settings | GVS Icon Media Console</title>
+    <title>Admin Profile Settings | GVS OfferOnMedia Console</title>
     
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,600,700&display=fallback">
@@ -413,7 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="col-md-6">
                                         <div class="form-group mb-3">
                                             <label class="font-weight-bold">Company / Organization</label>
-                                            <input type="text" name="company" class="form-control" placeholder="GVS Icon Media Network" value="<?php echo htmlspecialchars($profile['company'] ?? ''); ?>">
+                                            <input type="text" name="company" class="form-control" placeholder="GVS OfferOnMedia Network" value="<?php echo htmlspecialchars($profile['company'] ?? ''); ?>">
                                         </div>
                                     </div>
                                 </div>
@@ -470,7 +470,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Console v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

@@ -404,8 +404,8 @@ $recentConversions = $convStmt->fetchAll(PDO::FETCH_ASSOC);
                         <div class="card card-custom p-4">
                             <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-code mr-2"></i>Postback Integration URL</h4>
                             <p class="text-muted small mb-2">Send conversions back to our network using your offer token:</p>
-                            <code class="d-block p-3 bg-dark text-white rounded mb-3 text-break" style="font-size: 13px;">https://iconmedianetwork.in/postback.php?click_id={click_id}&token=<?php echo htmlspecialchars($offer['postback_token']); ?>&payout=<?php echo number_format($offer['payout'], 2); ?>&status=approved</code>
-                            <button class="btn btn-outline-primary btn-block font-weight-bold" onclick="navigator.clipboard.writeText('https://iconmedianetwork.in/postback.php?click_id={click_id}&token=<?php echo htmlspecialchars($offer['postback_token']); ?>&payout=<?php echo number_format($offer['payout'], 2); ?>&status=approved'); alert('Postback URL copied!');">
+                            <code class="d-block p-3 bg-dark text-white rounded mb-3 text-break" style="font-size: 13px;">https://offeronmedia.com/postback.php?click_id={click_id}&token=<?php echo htmlspecialchars($offer['postback_token']); ?>&payout=<?php echo number_format($offer['payout'], 2); ?>&status=approved</code>
+                            <button class="btn btn-outline-primary btn-block font-weight-bold" onclick="navigator.clipboard.writeText('https://offeronmedia.com/postback.php?click_id={click_id}&token=<?php echo htmlspecialchars($offer['postback_token']); ?>&payout=<?php echo number_format($offer['payout'], 2); ?>&status=approved'); alert('Postback URL copied!');">
                                 <i class="fas fa-copy mr-1"></i> Copy Postback URL
                             </button>
                         </div>
@@ -454,7 +454,7 @@ $recentConversions = $convStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Advertiser Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['fire_live_test'])) {
     if ($offerData) {
         $token = $offerData['postback_token'];
         $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
-        $host = $_SERVER['HTTP_HOST'] ?? 'iconmedianetwork.in';
+        $host = $_SERVER['HTTP_HOST'] ?? 'offeronmedia.com';
         $postbackUrl = "{$protocol}://{$host}/postback.php?click_id=" . urlencode($testClickId) . "&payout=" . urlencode($testPayout) . "&token=" . urlencode($token) . "&status=" . urlencode($testStatus) . "&transaction_id=" . urlencode($testTxnId);
 
         // Execute cURL request to simulate incoming postback
@@ -431,7 +431,7 @@ $postbackLogs = $logsStmt->fetchAll(PDO::FETCH_ASSOC);
 
                     <div class="bg-light p-3 rounded border mb-3">
                         <strong class="d-block text-dark mb-1"><i class="fas fa-globe mr-1"></i>Global S2S Server-to-Server Postback URL Structure:</strong>
-                        <code class="d-block p-2 bg-dark text-white rounded">https://iconmedianetwork.in/postback.php?click_id=<span class="text-warning">{click_id}</span>&token=<span class="text-info">{YOUR_POSTBACK_TOKEN}</span>&payout=<span class="text-success">{payout}</span>&status=<span class="text-danger">approved</span></code>
+                        <code class="d-block p-2 bg-dark text-white rounded">https://offeronmedia.com/postback.php?click_id=<span class="text-warning">{click_id}</span>&token=<span class="text-info">{YOUR_POSTBACK_TOKEN}</span>&payout=<span class="text-success">{payout}</span>&status=<span class="text-danger">approved</span></code>
                     </div>
 
                     <div>
@@ -462,11 +462,11 @@ $postbackLogs = $logsStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="code-box-wrapper">
                                 <button class="code-copy-btn" onclick="copyCode('code-php')"><i class="fas fa-copy mr-1"></i>Copy</button>
                                 <pre><code class="language-php" id="code-php">&lt;?php
-$clickId = $_GET['click_id']; // Passed from Icon Media tracking link
+$clickId = $_GET['click_id']; // Passed from OfferOnMedia tracking link
 $token = "YOUR_OFFER_POSTBACK_TOKEN"; 
 $payout = 35.00;
 
-$url = "https://iconmedianetwork.in/postback.php?" . http_build_query([
+$url = "https://offeronmedia.com/postback.php?" . http_build_query([
     'click_id' => $clickId,
     'token'    => $token,
     'payout'   => $payout,
@@ -489,7 +489,7 @@ curl_close($ch);
 
 async function sendPostback(clickId, payout, token) {
     try {
-        const response = await axios.get('https://iconmedianetwork.in/postback.php', {
+        const response = await axios.get('https://offeronmedia.com/postback.php', {
             params: {
                 click_id: clickId,
                 token: token,
@@ -518,7 +518,7 @@ def fire_postback(click_id, payout, token):
         'payout': payout,
         'status': 'approved'
     }
-    response = requests.get('https://iconmedianetwork.in/postback.php', params=params)
+    response = requests.get('https://offeronmedia.com/postback.php', params=params)
     print("Response Status:", response.status_code)
     print("Response Text:", response.text)</code></pre>
                             </div>
@@ -528,7 +528,7 @@ def fire_postback(click_id, payout, token):
                         <div class="tab-pane fade" id="tab-curl">
                             <div class="code-box-wrapper">
                                 <button class="code-copy-btn" onclick="copyCode('code-curl')"><i class="fas fa-copy mr-1"></i>Copy</button>
-                                <pre><code class="language-bash" id="code-curl">curl -X GET "https://iconmedianetwork.in/postback.php?click_id=CLICK_ID_12345&token=YOUR_OFFER_POSTBACK_TOKEN&payout=35.00&status=approved"</code></pre>
+                                <pre><code class="language-bash" id="code-curl">curl -X GET "https://offeronmedia.com/postback.php?click_id=CLICK_ID_12345&token=YOUR_OFFER_POSTBACK_TOKEN&payout=35.00&status=approved"</code></pre>
                             </div>
                         </div>
                     </div>
@@ -576,7 +576,7 @@ def fire_postback(click_id, payout, token):
                                         <code class="p-2 bg-light rounded text-primary font-weight-bold"><?php echo htmlspecialchars($offer['postback_token']); ?></code>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary font-weight-bold mr-1" onclick="copyText('https://iconmedianetwork.in/postback.php?click_id={click_id}&token=<?php echo $offer['postback_token']; ?>')">
+                                        <button class="btn btn-sm btn-outline-primary font-weight-bold mr-1" onclick="copyText('https://offeronmedia.com/postback.php?click_id={click_id}&token=<?php echo $offer['postback_token']; ?>')">
                                             <i class="fas fa-copy mr-1"></i>Copy URL
                                         </button>
                                         <button class="btn btn-sm btn-success font-weight-bold" onclick="openTestModal('<?php echo $offer['offer_id']; ?>', '<?php echo number_format($offer['payout'], 2); ?>')">
@@ -699,7 +699,7 @@ def fire_postback(click_id, payout, token):
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Advertiser Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

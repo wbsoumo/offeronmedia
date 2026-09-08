@@ -381,11 +381,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                     <div class="tab-content">
                         <div class="tab-pane active" id="curl">
-                            <code class="d-block p-3 bg-dark text-white rounded">curl -X GET "https://iconmedianetwork.in/api/v1/offers" -H "X-API-KEY: <?php echo htmlspecialchars($apiKey ?: 'YOUR_API_KEY'); ?>"</code>
+                            <code class="d-block p-3 bg-dark text-white rounded">curl -X GET "https://offeronmedia.com/api/v1/offers" -H "X-API-KEY: <?php echo htmlspecialchars($apiKey ?: 'YOUR_API_KEY'); ?>"</code>
                         </div>
                         <div class="tab-pane" id="php">
                             <pre class="p-3 bg-dark text-white rounded" style="font-size: 13px;">
-$ch = curl_init("https://iconmedianetwork.in/api/v1/offers");
+$ch = curl_init("https://offeronmedia.com/api/v1/offers");
 curl_setopt($ch, CURLOPT_HTTPHEADER, ["X-API-KEY: <?php echo htmlspecialchars($apiKey ?: 'YOUR_API_KEY'); ?>"]);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $response = curl_exec($ch);
@@ -395,7 +395,7 @@ $data = json_decode($response, true);</pre>
                         <div class="tab-pane" id="node">
                             <pre class="p-3 bg-dark text-white rounded" style="font-size: 13px;">
 const axios = require('axios');
-axios.get('https://iconmedianetwork.in/api/v1/offers', {
+axios.get('https://offeronmedia.com/api/v1/offers', {
   headers: { 'X-API-KEY': '<?php echo htmlspecialchars($apiKey ?: 'YOUR_API_KEY'); ?>' }
 }).then(res => console.log(res.data));</pre>
                         </div>
@@ -403,7 +403,7 @@ axios.get('https://iconmedianetwork.in/api/v1/offers', {
                             <pre class="p-3 bg-dark text-white rounded" style="font-size: 13px;">
 import requests
 headers = {'X-API-KEY': '<?php echo htmlspecialchars($apiKey ?: 'YOUR_API_KEY'); ?>'}
-res = requests.get('https://iconmedianetwork.in/api/v1/offers', headers=headers)
+res = requests.get('https://offeronmedia.com/api/v1/offers', headers=headers)
 print(res.json())</pre>
                         </div>
                     </div>
@@ -415,7 +415,7 @@ print(res.json())</pre>
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Advertiser Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
-    <title>IconMedia · Create Account</title>
+    <title>OfferOnMedia · Create Account</title>
     
     <!-- Google Fonts: Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -740,8 +740,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             <div class="brand-content">
                 <div class="brand-logo">
-                    <img src="favicon.png" alt="IconMedia Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: rgba(255,255,255,0.1); padding: 4px;">
-                    <span class="brand-name">IconMedia</span>
+                    <img src="favicon.png" alt="OfferOnMedia Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: rgba(255,255,255,0.1); padding: 4px;">
+                    <span class="brand-name">OfferOnMedia</span>
                 </div>
 
                 <h1 class="brand-tagline">
@@ -814,8 +814,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-container">
                 <!-- Mobile Logo -->
                 <div class="mobile-logo">
-                    <img src="favicon.png" alt="IconMedia Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;">
-                    <span>IconMedia</span>
+                    <img src="favicon.png" alt="OfferOnMedia Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;">
+                    <span>OfferOnMedia</span>
                 </div>
 
                 <div class="form-header">

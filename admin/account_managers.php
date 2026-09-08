@@ -399,7 +399,7 @@ foreach ($managers as $m) {
                                 </div>
                                 <div class="form-group mb-3">
                                     <label class="font-weight-bold">Manager Email <span class="text-danger">*</span></label>
-                                    <input type="email" name="email" class="form-control" placeholder="manager@iconmedia.com" required>
+                                    <input type="email" name="email" class="form-control" placeholder="manager@offeronmedia.com" required>
                                 </div>
                                 <div class="form-group mb-4">
                                     <label class="font-weight-bold">Initial Password <span class="text-danger">*</span></label>
@@ -497,7 +497,7 @@ foreach ($managers as $m) {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

@@ -18,14 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mode     = $_POST['dispatch_mode'] ?? 'html';
     
     if (filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
-        $subject = "GVS Icon Media - Mail Test [" . strtoupper($mode) . "] (" . date('H:i:s') . ")";
+        $subject = "GVS OfferOnMedia - Mail Test [" . strtoupper($mode) . "] (" . date('H:i:s') . ")";
         
-        $fromEmail = "support@iconmedianetwork.in";
-        $fromName  = "GVS Icon Media Support";
+        $fromEmail = "support@offeronmedia.com";
+        $fromName  = "GVS OfferOnMedia Support";
 
         if ($mode === 'plain') {
             // Test Mode: Plain Text (Minimal headers to test basic spam filters)
-            $body = "Hello " . $name . ",\n\nThis is a plain-text test email sent from GVS Icon Media Network.\n\nSender: " . $fromEmail . "\nTime: " . date('Y-m-d H:i:s') . "\n\nIf you received this message, basic email delivery is working!";
+            $body = "Hello " . $name . ",\n\nThis is a plain-text test email sent from GVS OfferOnMedia Network.\n\nSender: " . $fromEmail . "\nTime: " . date('Y-m-d H:i:s') . "\n\nIf you received this message, basic email delivery is working!";
             $headers  = "From: {$fromEmail}\r\n";
             $headers .= "Reply-To: {$fromEmail}\r\n";
             $headers .= "X-Mailer: PHP/" . phpversion();
@@ -40,15 +40,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <head><meta charset='utf-8'></head>
             <body style='font-family: Arial, sans-serif; background:#f1f5f9; padding:20px;'>
                 <div style='max-width:550px; margin:0 auto; background:#ffffff; border-radius:10px; padding:30px; border:1px solid #cbd5e1;'>
-                    <h2 style='color:#0284c7; margin-top:0;'>GVS Icon Media Network</h2>
+                    <h2 style='color:#0284c7; margin-top:0;'>GVS OfferOnMedia Network</h2>
                     <h3>Welcome, " . htmlspecialchars($name) . "!</h3>
                     <p style='background:#e0f2fe; color:#0369a1; padding:8px 14px; border-radius:20px; display:inline-block; font-weight:bold;'>
                         " . strtoupper($roleType) . " ACCOUNT REGISTERED
                     </p>
                     <p>Your partner account has been created on our performance marketing platform.</p>
-                    <p style='margin-top:25px;'><a href='https://iconmedianetwork.in/login.php' style='background:#0284c7; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:bold;'>Login to Partner Portal</a></p>
+                    <p style='margin-top:25px;'><a href='https://offeronmedia.com/login.php' style='background:#0284c7; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:bold;'>Login to Partner Portal</a></p>
                     <hr style='border:none; border-top:1px solid #e2e8f0; margin-top:30px;'>
-                    <small style='color:#94a3b8;'>Sender: support@iconmedianetwork.in | Time: " . date('Y-m-d H:i:s T') . "</small>
+                    <small style='color:#94a3b8;'>Sender: support@offeronmedia.com | Time: " . date('Y-m-d H:i:s T') . "</small>
                 </div>
             </body>
             </html>
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHP Mail & Template Tester <?php echo $version; ?> | GVS Icon Media</title>
+    <title>PHP Mail & Template Tester <?php echo $version; ?> | GVS OfferOnMedia</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p>Test and preview registration email templates live.</p>
 
         <div class="sender-badge">
-            <i class="fas fa-envelope-open-text text-info mr-1"></i> Sender Email: <strong>support@iconmedianetwork.in</strong>
+            <i class="fas fa-envelope-open-text text-info mr-1"></i> Sender Email: <strong>support@offeronmedia.com</strong>
         </div>
 
         <?php if ($status && $message): ?>

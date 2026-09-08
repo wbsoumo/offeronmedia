@@ -649,7 +649,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="bg-light p-3 rounded border">
                             <strong class="text-dark d-block mb-2"><i class="fas fa-key text-primary mr-1"></i>S2S Postback Integration Details:</strong>
                             <code class="d-block p-2 bg-white rounded text-break border">
-                                https://iconmedianetwork.in/postback?token=<?php echo htmlspecialchars($offer['postback_token']); ?>&click_id={click_id}&payout={payout}
+                                https://offeronmedia.com/postback?token=<?php echo htmlspecialchars($offer['postback_token']); ?>&click_id={click_id}&payout={payout}
                             </code>
                             <div class="custom-control custom-checkbox mt-2">
                                 <input type="checkbox" name="regenerate_token" value="1" class="custom-control-input" id="regenToken">
@@ -771,7 +771,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

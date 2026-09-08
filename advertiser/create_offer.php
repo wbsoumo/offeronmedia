@@ -504,7 +504,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if (isset($newPostbackToken)): ?>
                     <div class="bg-white p-3 rounded text-dark mt-2 border">
                         <strong class="d-block text-primary mb-1"><i class="fas fa-link mr-1"></i>S2S Postback Integration URL:</strong>
-                        <code class="d-block p-2 bg-light rounded text-break">https://iconmedianetwork.in/postback?token=<?php echo $newPostbackToken; ?>&click_id={click_id}&payout={payout}</code>
+                        <code class="d-block p-2 bg-light rounded text-break">https://offeronmedia.com/postback?token=<?php echo $newPostbackToken; ?>&click_id={click_id}&payout={payout}</code>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -821,7 +821,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Advertiser Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 

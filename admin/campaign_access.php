@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $uData = $uStmt->fetch(PDO::FETCH_ASSOC);
 
                     // Generate unique tracking URL for this publisher
-                    $trackingLink = "https://iconmedianetwork.in/click.php?aff_id={$pid}&offer_id={$offerId}";
+                    $trackingLink = "https://offeronmedia.com/click.php?aff_id={$pid}&offer_id={$offerId}";
 
                     $grantedLinks[] = [
                         'publisher_id'   => $pid,
@@ -592,7 +592,7 @@ foreach ($assignments as $as) {
                             </thead>
                             <tbody>
                                 <?php foreach ($assignments as $idx => $as): ?>
-                                <?php $tblLink = "https://iconmedianetwork.in/click.php?aff_id={$as['affiliate_id']}&offer_id={$as['offer_id']}"; ?>
+                                <?php $tblLink = "https://offeronmedia.com/click.php?aff_id={$as['affiliate_id']}&offer_id={$as['offer_id']}"; ?>
                                 <tr>
                                     <td><strong>#<?php echo $as['id']; ?></strong></td>
                                     <td>
@@ -648,7 +648,7 @@ foreach ($assignments as $as) {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Icon Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
     </footer>
 </div>
 
