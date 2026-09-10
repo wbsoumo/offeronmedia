@@ -52,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <link rel="icon" type="image/png" href="favicon.png">
     <title>Offer on Media · Partner Portal Login</title>
 
     <!-- Theme Auto-Detection Script -->
@@ -502,7 +503,7 @@ body {
         <!-- Left Brand Panel -->
         <div class="brand-panel">
             <a href="index.html" class="brand-logo">
-                <div class="brand-icon"><i class="fas fa-bolt"></i></div>
+                <img src="favicon.png" alt="Offer on Media" style="width: 42px; height: 42px; object-fit: contain; border-radius: 10px;">
                 <span>Offer on Media</span>
             </a>
 
@@ -543,7 +544,7 @@ body {
             <div class="auth-card">
                 <div class="header-top">
                     <a href="index.html" class="brand-logo" style="font-size: 1.25rem;">
-                        <div class="brand-icon" style="width:36px; height:36px; font-size:1rem;"><i class="fas fa-bolt"></i></div>
+                        <img src="favicon.png" alt="Offer on Media" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;">
                         <span>Offer on <span style="color: var(--primary-light);">Media</span></span>
                     </a>
 
