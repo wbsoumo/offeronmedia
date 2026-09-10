@@ -6,6 +6,12 @@ require_once __DIR__ . '/app/config/database.php';
 $error = null;
 $success = null;
 
+// Pre-select role if passed in query string (e.g., register.php?role=advertiser)
+$initialRole = $_GET['role'] ?? 'affiliate';
+if (!in_array($initialRole, ['affiliate', 'advertiser'], true)) {
+    $initialRole = 'affiliate';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $role       = $_POST['role'] ?? '';
     $name       = trim($_POST['name'] ?? '');
@@ -15,37 +21,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $telegramId = trim($_POST['telegram_id'] ?? '');
     $teamsId    = trim($_POST['teams_id'] ?? '');
 
-    // Basic validation
+    // Validation
     if (!in_array($role, ['affiliate', 'advertiser'], true)) {
         $error = 'Please select your account type';
     } elseif ($name === '' || $email === '' || $password === '' || $mobile === '') {
-        $error = 'Name, email, password and mobile are required';
+        $error = 'Name, email, password and mobile number are required';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address';
     } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters';
+        $error = 'Password must be at least 6 characters long';
     } else {
         // Check duplicate email
         $check = $pdo->prepare("SELECT user_id FROM users WHERE email = :email LIMIT 1");
         $check->execute(['email' => $email]);
 
         if ($check->fetch()) {
-            $error = 'This email is already registered';
+            $error = 'This email is already registered. Please sign in instead.';
         } else {
             // Get role_id
-            $roleStmt = $pdo->prepare("
-                SELECT role_id FROM roles WHERE role_name = :role LIMIT 1
-            ");
+            $roleStmt = $pdo->prepare("SELECT role_id FROM roles WHERE role_name = :role LIMIT 1");
             $roleStmt->execute(['role' => $role]);
             $roleRow = $roleStmt->fetch();
 
             if (!$roleRow) {
                 $error = 'Invalid role selected';
             } else {
-                // Hash password
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-                // Insert user
                 $stmt = $pdo->prepare("
                     INSERT INTO users (
                         name,
@@ -80,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'role_id'  => $roleRow['role_id']
                 ]);
 
-                $success = 'Registration successful! Your account is pending approval.';
+                $success = 'Registration submitted successfully! Your account is currently pending manager approval.';
             }
         }
     }
@@ -90,1103 +92,581 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
-    <title>Offer on Media · Create Account</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Offer on Media · Partner Registration</title>
+
+    <!-- Theme Auto-Detection Script -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Google Fonts: Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* ===== RESET & GLOBAL ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f8fafd;
-            color: #0a1e32;
-            line-height: 1.5;
-            min-height: 100vh;
-        }
-
-        a {
-            text-decoration: none;
-            color: #2563eb;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        a:hover {
-            color: #1d4ed8;
-        }
-
-        /* ===== MAIN LAYOUT ===== */
-        .register-wrapper {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* ===== LEFT SIDE - BRAND SHOWCASE ===== */
-        .brand-panel {
-            flex: 1;
-            background: linear-gradient(145deg, #0a1e3c 0%, #0e2a4a 100%);
-            display: none;
-            position: relative;
-            overflow: hidden;
-            padding: 60px 48px;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        @media (min-width: 1024px) {
-            .brand-panel {
-                display: flex;
-            }
-        }
-
-        .brand-content {
-            position: relative;
-            z-index: 10;
-            color: white;
-            max-width: 540px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .brand-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 60px;
-        }
-
-        .brand-icon {
-            width: 48px;
-            height: 48px;
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 24px;
-        }
-
-        .brand-name {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            background: linear-gradient(to right, #ffffff, #cbd5e1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .brand-tagline {
-            font-size: 42px;
-            font-weight: 800;
-            line-height: 1.1;
-            letter-spacing: -0.03em;
-            margin-bottom: 24px;
-        }
-
-        .brand-description {
-            font-size: 18px;
-            color: #b0c9e0;
-            margin-bottom: 40px;
-            line-height: 1.6;
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 24px;
-            margin-top: 40px;
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-
-        .feature-icon {
-            width: 40px;
-            height: 40px;
-            background: rgba(37, 99, 235, 0.15);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #60a5fa;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .feature-text h4 {
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .feature-text p {
-            color: #b0c9e0;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-
-        .floating-stats {
-            display: flex;
-            gap: 32px;
-            margin-top: 60px;
-        }
-
-        .stat {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .stat-number {
-            font-size: 28px;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 4px;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            color: #b0c9e0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        /* Animated background elements */
-        .gradient-sphere {
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle at 30% 30%, rgba(37,99,235,0.2) 0%, rgba(124,58,237,0.1) 70%);
-            border-radius: 50%;
-            top: -200px;
-            right: -100px;
-            filter: blur(60px);
-            animation: float 20s infinite alternate;
-        }
-
-        .gradient-sphere-2 {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle at 70% 70%, rgba(6,182,212,0.15) 0%, rgba(59,130,246,0.1) 80%);
-            border-radius: 50%;
-            bottom: -100px;
-            left: -50px;
-            filter: blur(60px);
-            animation: float 25s infinite alternate-reverse;
-        }
-
-        @keyframes float {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(30px, 30px) scale(1.1); }
-        }
-
-        /* ===== RIGHT SIDE - REGISTRATION FORM ===== */
-        .form-panel {
-            flex: 1;
-            display: flex;
-            align-items: flex-start;
-            justify-content: center;
-            padding: 40px 24px;
-            background-color: #ffffff;
-            overflow-y: auto;
-            min-height: 100vh;
-        }
-
-        .form-container {
-            width: 100%;
-            max-width: 560px;
-            margin: 0 auto;
-        }
-
-        .mobile-logo {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 32px;
-        }
-
-        .mobile-logo i {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(145deg, #2563eb, #7c3aed);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-        }
-
-        .mobile-logo span {
-            font-size: 22px;
-            font-weight: 700;
-            color: #0a1e32;
-            letter-spacing: -0.5px;
-        }
-
-        @media (min-width: 1024px) {
-            .mobile-logo {
-                display: none;
-            }
-        }
-
-        .form-header {
-            margin-bottom: 32px;
-            text-align: center;
-        }
-
-        .form-header h2 {
-            font-size: 32px;
-            font-weight: 700;
-            color: #0a1e32;
-            margin-bottom: 12px;
-            letter-spacing: -0.02em;
-        }
-
-        .form-header p {
-            color: #64748b;
-            font-size: 16px;
-        }
-
-        /* Messages */
-        .alert {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 20px;
-            border-radius: 14px;
-            margin-bottom: 28px;
-            font-size: 15px;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .alert-error {
-            background-color: #fef2f2;
-            border: 1px solid #fee2e2;
-            color: #b91c1c;
-        }
-
-        .alert-success {
-            background-color: #f0fdf4;
-            border: 1px solid #dcfce7;
-            color: #166534;
-        }
-
-        .alert i {
-            font-size: 18px;
-        }
-
-        /* Form Layout */
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 8px;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #0f172a;
-            margin-bottom: 6px;
-            letter-spacing: 0.3px;
-        }
-
-        .required::after {
-            content: " *";
-            color: #ef4444;
-        }
-
-        .input-wrapper {
-            position: relative;
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #64748b;
-            font-size: 16px;
-            transition: color 0.2s;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 14px 16px 14px 48px;
-            font-size: 15px;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            color: #0f172a;
-            transition: all 0.25s;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #2563eb;
-            background: white;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
-        }
-
-        .form-control::placeholder {
-            color: #94a3b8;
-        }
-
-        /* Role Cards */
-        .role-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 8px;
-        }
-
-        .role-card {
-            position: relative;
-        }
-
-        .role-card input[type="radio"] {
-            display: none;
-        }
-
-        .role-card label {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px 12px;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 14px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-        }
-
-        .role-card:hover label {
-            border-color: #94a3b8;
-            background: #f1f5f9;
-        }
-
-        .role-card input[type="radio"]:checked + label {
-            border-color: #2563eb;
-            background: #eff6ff;
-        }
-
-        .role-icon {
-            width: 44px;
-            height: 44px;
-            background: white;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 10px;
-            color: #2563eb;
-            font-size: 20px;
-            transition: all 0.25s;
-        }
-
-        .role-card input[type="radio"]:checked + label .role-icon {
-            background: #2563eb;
-            color: white;
-        }
-
-        .role-title {
-            font-weight: 600;
-            color: #0f172a;
-            margin-bottom: 2px;
-            font-size: 15px;
-        }
-
-        .role-desc {
-            font-size: 11px;
-            color: #64748b;
-            text-align: center;
-        }
-
-        /* Password Strength */
-        .password-strength {
-            margin-top: 8px;
-            height: 4px;
-            background: #e2e8f0;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .strength-bar {
-            height: 100%;
-            width: 0%;
-            border-radius: 2px;
-            transition: width 0.3s, background 0.3s;
-        }
-
-        .strength-weak { background: #ef4444; }
-        .strength-fair { background: #f59e0b; }
-        .strength-good { background: #10b981; }
-        .strength-strong { background: #059669; }
-
-        /* Hint Text */
-        .field-hint {
-            font-size: 12px;
-            color: #64748b;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .field-hint i {
-            font-size: 12px;
-        }
-
-        /* Submit Button */
-        .btn-register {
-            width: 100%;
-            padding: 16px 24px;
-            background: linear-gradient(145deg, #2563eb, #1d4ed8);
-            border: none;
-            border-radius: 14px;
-            color: white;
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            cursor: pointer;
-            transition: all 0.25s;
-            position: relative;
-            overflow: hidden;
-            margin-top: 16px;
-        }
-
-        .btn-register:hover {
-            background: linear-gradient(145deg, #1d4ed8, #1e40af);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
-        }
-
-        .btn-register:active {
-            transform: translateY(0);
-        }
-
-        .btn-register i {
-            font-size: 18px;
-        }
-
-        /* Footer Links */
-        .register-footer {
-            text-align: center;
-            margin-top: 32px;
-            padding-top: 24px;
-            border-top: 1px solid #e2e8f0;
-            color: #64748b;
-        }
-
-        .register-footer a {
-            color: #2563eb;
-            font-weight: 700;
-        }
-
-        .terms-links {
-            margin-top: 16px;
-            font-size: 13px;
-        }
-
-        /* Trust Badges */
-        .trust-badges {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 32px;
-            margin-top: 24px;
-            color: #94a3b8;
-            font-size: 13px;
-        }
-
-        .trust-badges i {
-            margin-right: 6px;
-            color: #2563eb;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .form-container {
-                max-width: 480px;
-            }
-            
-            .role-container {
-                gap: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .form-panel {
-                padding: 24px 16px;
-            }
-            
-            .role-card label {
-                padding: 16px 8px;
-            }
-            
-            .role-icon {
-                width: 36px;
-                height: 36px;
-                font-size: 16px;
-            }
-            
-            .btn-register {
-                padding: 14px 20px;
-            }
-            
-            .trust-badges {
-                flex-direction: column;
-                gap: 12px;
-            }
-        }
-
-        /* Loading state */
-        .btn-loading {
-            position: relative;
-            pointer-events: none;
-            opacity: 0.9;
-        }
-
-        .btn-loading i {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* Error state */
-        .form-control.error {
-            border-color: #ef4444;
-            background-color: #fef2f2;
-        }
-
-        .error-text {
-            color: #ef4444;
-            font-size: 12px;
-            margin-top: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        /* Mobile optimizations */
-        @media (max-width: 1024px) {
-            .register-wrapper {
-                background: white;
-            }
-            
-            .form-panel {
-                align-items: center;
-                padding: 40px 20px;
-            }
-        }
+/* ==========================================================================
+   DESIGN SYSTEM & THEME TOKENS
+   ========================================================================== */
+:root {
+    --primary: #6366f1;
+    --primary-light: #818cf8;
+    --primary-dark: #4f46e5;
+    --accent: #10b981;
+    --cyan: #06b6d4;
+
+    --bg-dark: #090d16;
+    --bg-card: rgba(15, 23, 42, 0.75);
+    --surface: #0f172a;
+    --surface-light: #1e293b;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-glow: rgba(99, 102, 241, 0.35);
+    --glass-bg: rgba(15, 23, 42, 0.8);
+    --glass-blur: blur(16px);
+    --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.4);
+
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 24px;
+    --radius-full: 9999px;
+    
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+
+    --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] {
+    --bg-dark: #f8fafc;
+    --bg-card: rgba(255, 255, 255, 0.88);
+    --surface: #ffffff;
+    --surface-light: #f1f5f9;
+
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+
+    --border-color: rgba(15, 23, 42, 0.1);
+    --border-glow: rgba(99, 102, 241, 0.35);
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --shadow-card: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 65%, rgba(16, 185, 129, 0.1) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.auth-wrapper {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+}
+
+/* Left Panel - Brand Showcase */
+.brand-panel {
+    flex: 1;
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 100%);
+    border-right: 1px solid var(--border-color);
+    padding: 3rem 4rem;
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+    .brand-panel {
+        display: flex;
+    }
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.brand-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--cyan) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.hero-text-area {
+    margin: auto 0;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    margin-bottom: 1.5rem;
+}
+
+.brand-headline {
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
+    font-weight: 800;
+    line-height: 1.15;
+    color: #ffffff;
+    margin-bottom: 1.25rem;
+}
+
+.benefit-list {
+    list-style: none;
+    margin: 2rem 0;
+}
+
+.benefit-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+    color: #cbd5e1;
+    font-size: 1.05rem;
+}
+
+.benefit-list li i {
+    color: #34d399;
+}
+
+/* Right Panel - Register Form */
+.form-panel {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2.5rem 1.5rem;
+    position: relative;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-card);
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.theme-toggle {
+    background: var(--surface-light);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1rem;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.08);
+}
+
+.sun-icon { display: none; color: #f59e0b; }
+.moon-icon { display: block; color: var(--primary-light); }
+
+[data-theme="light"] .sun-icon { display: block; }
+[data-theme="light"] .moon-icon { display: none; }
+
+.form-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+}
+
+.form-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Role Selector Pills */
+.role-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    background: var(--surface-light);
+    padding: 0.35rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+.role-tab {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.role-tab.active {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.role-tab.adv-active {
+    background: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 580px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: var(--text-primary);
+}
+
+.input-wrap {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.8rem 1rem 0.8rem 2.6rem;
+    font-family: var(--font-body);
+    font-size: 0.925rem;
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    outline: none;
+    transition: var(--transition);
+}
+
+.form-control:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 0.95rem;
+    font-size: 1rem;
+    border-radius: var(--radius-md);
+    margin-top: 0.5rem;
+}
+
+/* Alert Boxes */
+.alert {
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.auth-footer a {
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: none;
+}
     </style>
 </head>
 <body>
-    <div class="register-wrapper">
-        <!-- LEFT PANEL - Brand Showcase -->
-        <div class="brand-panel">
-            <div class="gradient-sphere"></div>
-            <div class="gradient-sphere-2"></div>
-            
-            <div class="brand-content">
-                <div class="brand-logo">
-                    <img src="favicon.png" alt="Offer on Media Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px; background: rgba(255,255,255,0.1); padding: 4px;">
-                    <span class="brand-name">Offer on Media</span>
-                </div>
 
-                <h1 class="brand-tagline">
-                    Join the leading performance network
+    <div class="bg-grid"></div>
+
+    <div class="auth-wrapper">
+        <!-- Left Brand Panel -->
+        <div class="brand-panel">
+            <a href="index.html" class="brand-logo">
+                <div class="brand-icon"><i class="fas fa-bolt"></i></div>
+                <span>Offer on Media</span>
+            </a>
+
+            <div class="hero-text-area">
+                <div class="badge">
+                    <i class="fas fa-rocket"></i> Fast Track Approval
+                </div>
+                <h1 class="brand-headline">
+                    Join India's Top Performance Network
                 </h1>
                 
-                <p class="brand-description">
-                    Start your journey with 100,000+ partners. Access premium offers, 
-                    real-time analytics, and industry-leading tools to scale your success.
-                </p>
+                <ul class="benefit-list">
+                    <li><i class="fas fa-check-circle"></i> Highest EPC rates & exclusive CPA/CPL campaigns</li>
+                    <li><i class="fas fa-check-circle"></i> Real-time server-to-server (S2S) postback tracking</li>
+                    <li><i class="fas fa-check-circle"></i> Weekly payouts via UPI, Bank Wire & Crypto</li>
+                    <li><i class="fas fa-check-circle"></i> 24/7 dedicated account manager support</li>
+                </ul>
+            </div>
 
-                <div class="feature-grid">
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="feature-text">
-                            <h4>Real-time Analytics</h4>
-                            <p>Live dashboards with actionable insights</p>
-                        </div>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-bolt"></i>
-                        </div>
-                        <div class="feature-text">
-                            <h4>Instant Payouts</h4>
-                            <p>Weekly payments, multiple methods</p>
-                        </div>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div class="feature-text">
-                            <h4>Enterprise Security</h4>
-                            <p>SOC2 Type II, GDPR compliant</p>
-                        </div>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">
-                            <i class="fas fa-headset"></i>
-                        </div>
-                        <div class="feature-text">
-                            <h4>24/7 Support</h4>
-                            <p>Dedicated account managers</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="floating-stats">
-                    <div class="stat">
-                        <span class="stat-number">100K+</span>
-                        <span class="stat-label">Active partners</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">$450M+</span>
-                        <span class="stat-label">Annual payouts</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">40+</span>
-                        <span class="stat-label">Countries</span>
-                    </div>
-                </div>
+            <div style="font-size: 0.85rem; color: #64748b;">
+                © 2026 offeronmedia.com. All rights reserved.
             </div>
         </div>
 
-        <!-- RIGHT PANEL - Registration Form -->
+        <!-- Right Form Panel -->
         <div class="form-panel">
-            <div class="form-container">
-                <!-- Mobile Logo -->
-                <div class="mobile-logo">
-                    <img src="favicon.png" alt="Offer on Media Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 8px;">
-                    <span>Offer on Media</span>
+            <div class="auth-card">
+                <div class="header-top">
+                    <a href="index.html" class="brand-logo" style="font-size: 1.25rem;">
+                        <div class="brand-icon" style="width:36px; height:36px; font-size:1rem;"><i class="fas fa-bolt"></i></div>
+                        <span>Offer on <span style="color: var(--primary-light);">Media</span></span>
+                    </a>
+
+                    <button class="theme-toggle" id="themeToggle" title="Toggle Theme" aria-label="Toggle Theme">
+                        <i class="fas fa-sun sun-icon"></i>
+                        <i class="fas fa-moon moon-icon"></i>
+                    </button>
                 </div>
 
-                <div class="form-header">
-                    <h2>Create your account</h2>
-                    <p>Join the network and start earning today</p>
-                </div>
+                <h2 class="form-title">Create Partner Account</h2>
+                <p class="form-subtitle">Choose your account type and fill in details below</p>
 
-                <!-- Alert Messages -->
                 <?php if ($error): ?>
-                    <div class="alert alert-error">
+                    <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle"></i>
-                        <span><?= htmlspecialchars($error) ?></span>
+                        <span><?php echo htmlspecialchars($error); ?></span>
                     </div>
                 <?php endif; ?>
 
                 <?php if ($success): ?>
                     <div class="alert alert-success">
                         <i class="fas fa-check-circle"></i>
-                        <span><?= htmlspecialchars($success) ?></span>
+                        <span><?php echo htmlspecialchars($success); ?></span>
                     </div>
                 <?php endif; ?>
 
-                <!-- Registration Form -->
-                <form method="post" id="registerForm" novalidate>
+                <form action="register.php" method="POST">
+                    <input type="hidden" name="role" id="selectedRole" value="<?php echo htmlspecialchars($initialRole); ?>">
+
+                    <div class="role-tabs">
+                        <button type="button" class="role-tab <?php echo $initialRole === 'affiliate' ? 'active' : ''; ?>" id="tabPub" onclick="setRole('affiliate')">
+                            <i class="fas fa-paper-plane"></i> Publisher / Affiliate
+                        </button>
+                        <button type="button" class="role-tab <?php echo $initialRole === 'advertiser' ? 'adv-active' : ''; ?>" id="tabAdv" onclick="setRole('advertiser')">
+                            <i class="fas fa-bullhorn"></i> Advertiser / Brand
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="name">Full Name / Company Name</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" id="name" name="name" class="form-control" placeholder="John Doe" required value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>">
+                        </div>
+                    </div>
+
                     <div class="form-grid">
-                        <!-- Role Selection -->
-                        <div class="form-group full-width">
-                            <label class="form-label required">I am registering as</label>
-                            <div class="role-container">
-                                <div class="role-card">
-                                    <input type="radio" id="role_affiliate" name="role" value="affiliate" <?= (isset($_POST['role']) && $_POST['role'] === 'affiliate') ? 'checked' : '' ?>>
-                                    <label for="role_affiliate">
-                                        <div class="role-icon">
-                                            <i class="fas fa-users"></i>
-                                        </div>
-                                        <span class="role-title">Affiliate</span>
-                                        <span class="role-desc">Publisher / Partner</span>
-                                    </label>
-                                </div>
-                                <div class="role-card">
-                                    <input type="radio" id="role_advertiser" name="role" value="advertiser" <?= (isset($_POST['role']) && $_POST['role'] === 'advertiser') ? 'checked' : '' ?>>
-                                    <label for="role_advertiser">
-                                        <div class="role-icon">
-                                            <i class="fas fa-bullhorn"></i>
-                                        </div>
-                                        <span class="role-title">Advertiser</span>
-                                        <span class="role-desc">Brand / Merchant</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Full Name -->
                         <div class="form-group">
-                            <label class="form-label required" for="name">Full name</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-user input-icon"></i>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="name" 
-                                    name="name" 
-                                    placeholder="John Smith"
-                                    value="<?= htmlspecialchars($_POST['name'] ?? '') ?>"
-                                >
-                            </div>
-                        </div>
-
-                        <!-- Email -->
-                        <div class="form-group">
-                            <label class="form-label required" for="email">Email address</label>
-                            <div class="input-wrapper">
+                            <label class="form-label" for="email">Work Email</label>
+                            <div class="input-wrap">
                                 <i class="fas fa-envelope input-icon"></i>
-                                <input 
-                                    type="email" 
-                                    class="form-control" 
-                                    id="email" 
-                                    name="email" 
-                                    placeholder="partner@company.com"
-                                    value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"
-                                >
+                                <input type="email" id="email" name="email" class="form-control" placeholder="name@domain.com" required value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
                             </div>
                         </div>
 
-                        <!-- Password -->
                         <div class="form-group">
-                            <label class="form-label required" for="password">Password</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-lock input-icon"></i>
-                                <input 
-                                    type="password" 
-                                    class="form-control" 
-                                    id="password" 
-                                    name="password" 
-                                    placeholder="Create a password"
-                                >
-                            </div>
-                            <div class="password-strength">
-                                <div class="strength-bar" id="strengthBar"></div>
-                            </div>
-                            <div class="field-hint">
-                                <i class="fas fa-info-circle"></i>
-                                <span>Minimum 6 characters with uppercase & numbers</span>
-                            </div>
-                        </div>
-
-                        <!-- Mobile -->
-                        <div class="form-group">
-                            <label class="form-label required" for="mobile">Mobile number</label>
-                            <div class="input-wrapper">
+                            <label class="form-label" for="mobile">Mobile / WhatsApp</label>
+                            <div class="input-wrap">
                                 <i class="fas fa-phone input-icon"></i>
-                                <input 
-                                    type="tel" 
-                                    class="form-control" 
-                                    id="mobile" 
-                                    name="mobile" 
-                                    placeholder="+1 (234) 567-8900"
-                                    value="<?= htmlspecialchars($_POST['mobile'] ?? '') ?>"
-                                >
+                                <input type="tel" id="mobile" name="mobile" class="form-control" placeholder="+91 98765 43210" required value="<?php echo htmlspecialchars($_POST['mobile'] ?? ''); ?>">
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Telegram ID -->
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <div class="input-wrap">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="password" name="password" class="form-control" placeholder="At least 6 characters" required>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
                         <div class="form-group">
-                            <label class="form-label" for="telegram_id">Telegram ID</label>
-                            <div class="input-wrapper">
+                            <label class="form-label" for="telegram_id">Telegram Username (Optional)</label>
+                            <div class="input-wrap">
                                 <i class="fab fa-telegram input-icon"></i>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="telegram_id" 
-                                    name="telegram_id" 
-                                    placeholder="@username"
-                                    value="<?= htmlspecialchars($_POST['telegram_id'] ?? '') ?>"
-                                >
-                            </div>
-                            <div class="field-hint">
-                                <i class="fas fa-info-circle"></i>
-                                <span>For instant notifications</span>
+                                <input type="text" id="telegram_id" name="telegram_id" class="form-control" placeholder="@username" value="<?php echo htmlspecialchars($_POST['telegram_id'] ?? ''); ?>">
                             </div>
                         </div>
 
-                        <!-- Teams ID -->
                         <div class="form-group">
-                            <label class="form-label" for="teams_id">Microsoft Teams ID</label>
-                            <div class="input-wrapper">
-                                <i class="fas fa-video input-icon"></i>
-                                <input 
-                                    type="text" 
-                                    class="form-control" 
-                                    id="teams_id" 
-                                    name="teams_id" 
-                                    placeholder="username@domain.com"
-                                    value="<?= htmlspecialchars($_POST['teams_id'] ?? '') ?>"
-                                >
+                            <label class="form-label" for="teams_id">Skype / Teams (Optional)</label>
+                            <div class="input-wrap">
+                                <i class="fas fa-comments input-icon"></i>
+                                <input type="text" id="teams_id" name="teams_id" class="form-control" placeholder="skype.id" value="<?php echo htmlspecialchars($_POST['teams_id'] ?? ''); ?>">
                             </div>
                         </div>
-
-                        <!-- Submit Button -->
-                        <div class="form-group full-width">
-                            <button type="submit" class="btn-register" id="submitBtn">
-                                <span>Create account</span>
-                                <i class="fas fa-arrow-right"></i>
-                            </button>
-                        </div>
                     </div>
 
-                    <!-- Footer Links -->
-                    <div class="register-footer">
-                        <p>Already have an account? <a href="login.php">Sign in to your dashboard →</a></p>
-                        <div class="terms-links">
-                            By creating an account, you agree to our 
-                            <a href="#">Terms of Service</a> and 
-                            <a href="#">Privacy Policy</a>
-                        </div>
+                    <div style="margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--text-secondary);">
+                        By submitting, you agree to our <a href="terms.php" style="color: var(--primary-light);">Terms of Service</a> and <a href="privacy.php" style="color: var(--primary-light);">Privacy Policy</a>.
                     </div>
 
-                    <!-- Trust Badges -->
-                    <div class="trust-badges">
-                        <span><i class="fas fa-shield-alt"></i> SSL Encrypted</span>
-                        <span><i class="fas fa-lock"></i> SOC2 Type II</span>
-                        <span><i class="fas fa-check-circle"></i> GDPR Compliant</span>
-                    </div>
+                    <button type="submit" class="btn btn-accent btn-submit" id="btnSubmit">
+                        <i class="fas fa-user-plus"></i> Complete Application
+                    </button>
                 </form>
+
+                <div class="auth-footer">
+                    Already registered? <a href="login.php">Sign In Here →</a>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        (function() {
-            'use strict';
+        function setRole(role) {
+            document.getElementById('selectedRole').value = role;
+            const tabPub = document.getElementById('tabPub');
+            const tabAdv = document.getElementById('tabAdv');
+            const btnSubmit = document.getElementById('btnSubmit');
 
-            // Password strength indicator
-            const passwordInput = document.getElementById('password');
-            const strengthBar = document.getElementById('strengthBar');
-
-            if (passwordInput && strengthBar) {
-                passwordInput.addEventListener('input', function() {
-                    const password = this.value;
-                    let strength = 0;
-                    
-                    // Length check
-                    if (password.length >= 6) strength += 20;
-                    if (password.length >= 8) strength += 10;
-                    
-                    // Complexity checks
-                    if (/[A-Z]/.test(password)) strength += 25;
-                    if (/[0-9]/.test(password)) strength += 25;
-                    if (/[^A-Za-z0-9]/.test(password)) strength += 20;
-                    
-                    // Cap at 100
-                    strength = Math.min(strength, 100);
-                    
-                    // Update bar width
-                    strengthBar.style.width = `${strength}%`;
-                    
-                    // Update color class
-                    strengthBar.className = 'strength-bar';
-                    if (strength < 30) {
-                        strengthBar.classList.add('strength-weak');
-                    } else if (strength < 50) {
-                        strengthBar.classList.add('strength-fair');
-                    } else if (strength < 75) {
-                        strengthBar.classList.add('strength-good');
-                    } else {
-                        strengthBar.classList.add('strength-strong');
-                    }
-                });
+            if (role === 'affiliate') {
+                tabPub.className = 'role-tab active';
+                tabAdv.className = 'role-tab';
+                btnSubmit.className = 'btn btn-accent btn-submit';
+            } else {
+                tabPub.className = 'role-tab';
+                tabAdv.className = 'role-tab adv-active';
+                btnSubmit.className = 'btn btn-primary btn-submit';
             }
+        }
 
-            // Form validation
-            const form = document.getElementById('registerForm');
-            const submitBtn = document.getElementById('submitBtn');
-
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    let isValid = true;
-                    
-                    // Validate role selection
-                    const roleSelected = document.querySelector('input[name="role"]:checked');
-                    if (!roleSelected) {
-                        e.preventDefault();
-                        isValid = false;
-                        
-                        const roleContainer = document.querySelector('.role-container');
-                        roleContainer.style.animation = 'shake 0.5s ease';
-                        
-                        let roleError = document.querySelector('.role-error');
-                        if (!roleError) {
-                            roleError = document.createElement('div');
-                            roleError.className = 'error-text role-error';
-                            roleError.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please select your account type';
-                            roleContainer.parentElement.appendChild(roleError);
-                        }
-                        
-                        setTimeout(() => {
-                            roleContainer.style.animation = '';
-                        }, 500);
-                    }
-
-                    // Validate name
-                    const nameInput = document.getElementById('name');
-                    if (!nameInput.value.trim()) {
-                        markError(nameInput, 'Full name is required');
-                        isValid = false;
-                    }
-
-                    // Validate email
-                    const emailInput = document.getElementById('email');
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailInput.value.trim()) {
-                        markError(emailInput, 'Email address is required');
-                        isValid = false;
-                    } else if (!emailRegex.test(emailInput.value)) {
-                        markError(emailInput, 'Please enter a valid email address');
-                        isValid = false;
-                    }
-
-                    // Validate password
-                    if (!passwordInput.value) {
-                        markError(passwordInput, 'Password is required');
-                        isValid = false;
-                    } else if (passwordInput.value.length < 6) {
-                        markError(passwordInput, 'Password must be at least 6 characters');
-                        isValid = false;
-                    }
-
-                    // Validate mobile
-                    const mobileInput = document.getElementById('mobile');
-                    if (!mobileInput.value.trim()) {
-                        markError(mobileInput, 'Mobile number is required');
-                        isValid = false;
-                    }
-
-                    if (!isValid) {
-                        e.preventDefault();
-                        return false;
-                    }
-
-                    // Add loading state
-                    submitBtn.classList.add('btn-loading');
-                    submitBtn.innerHTML = `
-                        <span>Creating account...</span>
-                        <i class="fas fa-spinner"></i>
-                    `;
-                });
-            }
-
-            // Helper function to mark input errors
-            function markError(input, message) {
-                input.classList.add('error');
-                
-                // Remove existing error message
-                const existingError = input.parentElement.nextElementSibling;
-                if (existingError && existingError.classList.contains('error-text')) {
-                    existingError.remove();
-                }
-                
-                // Add new error message
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error-text';
-                errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-                input.parentElement.parentElement.appendChild(errorDiv);
-                
-                // Remove error on input
-                input.addEventListener('input', function() {
-                    this.classList.remove('error');
-                    const error = this.parentElement.nextElementSibling;
-                    if (error && error.classList.contains('error-text')) {
-                        error.remove();
-                    }
-                }, { once: true });
-            }
-
-            // Remove role error when selection is made
-            document.querySelectorAll('input[name="role"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    document.querySelector('.role-error')?.remove();
-                    document.querySelector('.role-container').style.animation = '';
-                });
-            });
-
-            // Auto-dismiss alerts after 5 seconds
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    alert.style.transition = 'opacity 0.5s ease';
-                    alert.style.opacity = '0';
-                    setTimeout(() => alert.remove(), 500);
-                }, 5000);
-            });
-
-            // Mobile optimizations
-            if (window.innerWidth <= 768) {
-                const formControls = document.querySelectorAll('.form-control');
-                formControls.forEach(input => {
-                    input.style.fontSize = '16px'; // Prevent zoom on mobile
-                });
-            }
-
-            // Shake animation keyframe (add if not exists)
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes shake {
-                    0%, 100% { transform: translateX(0); }
-                    25% { transform: translateX(-5px); }
-                    75% { transform: translateX(5px); }
-                }
-            `;
-            document.head.appendChild(style);
-        })();
+        // Theme Toggle Switcher
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
     </script>
 </body>
 </html>
