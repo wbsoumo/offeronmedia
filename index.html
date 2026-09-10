@@ -3,109 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>Offer on Media · India's Premier Performance Network</title>
-    <!-- Google Fonts: Inter & Space Grotesk -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Offer on Media · Next-Gen Performance & Affiliate Marketing Network</title>
+    <meta name="description" content="Offer on Media is India's premier performance marketing network connecting top advertisers with premium publishers. Real-time postbacks, high CPA rates, and instant payouts.">
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-
-/* ==============================
-   DESIGN SYSTEM — PREMIUM EDITION
-================================ */
+/* ==========================================================================
+   OFFER ON MEDIA — MODERN ADVANCED DESIGN SYSTEM
+   ========================================================================== */
 :root {
-    /* Color palette — refined */
-    --primary-50: #eef2ff;
-    --primary-100: #e0e7ff;
-    --primary-200: #c7d2fe;
-    --primary-300: #a5b4fc;
-    --primary-400: #818cf8;
-    --primary-500: #6366f1;
-    --primary-600: #4f46e5;
-    --primary-700: #4338ca;
-    --primary-800: #3730a3;
-    --primary-900: #312e81;
+    /* Primary Colors */
+    --primary: #6366f1;
+    --primary-light: #818cf8;
+    --primary-dark: #4f46e5;
+    --accent: #10b981;
+    --accent-glow: rgba(16, 185, 129, 0.25);
+    --pink: #ec4899;
+    --cyan: #06b6d4;
     
-    /* Neutral palette — high contrast */
-    --neutral-50: #fafafa;
-    --neutral-100: #f5f5f5;
-    --neutral-200: #e5e5e5;
-    --neutral-300: #d4d4d4;
-    --neutral-400: #737373;
-    --neutral-500: #525252;
-    --neutral-600: #404040;
-    --neutral-700: #262626;
-    --neutral-800: #171717;
-    --neutral-900: #0a0a0a;
-    
-    /* Semantic */
-    --background: #ffffff;
-    --foreground: #0f172a;
-    --muted: #475569;
-    --border: #cbd5e1;
-    --card-bg: #ffffff;
-    
-    /* Gradients — subtle & elegant */
-    --gradient-primary: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
-    --gradient-soft: linear-gradient(135deg, var(--primary-50) 0%, #ffffff 100%);
-    
-    /* Shadows — layered depth */
-    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-    
-    /* Border radius — consistent */
-    --radius-sm: 0.375rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 1rem;
-    --radius-xl: 1.5rem;
-    --radius-2xl: 2rem;
+    /* Dark Palette */
+    --bg-dark: #090d16;
+    --bg-card: rgba(15, 23, 42, 0.7);
+    --bg-card-hover: rgba(30, 41, 59, 0.8);
+    --surface: #0f172a;
+    --surface-light: #1e293b;
+
+    /* Text Colors */
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    /* Border & Effects */
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-glow: rgba(99, 102, 241, 0.3);
+    --glass-bg: rgba(15, 23, 42, 0.75);
+    --glass-blur: blur(16px);
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 24px;
     --radius-full: 9999px;
     
-    /* Spacing — 4px base */
-    --space-1: 0.25rem;
-    --space-2: 0.5rem;
-    --space-3: 0.75rem;
-    --space-4: 1rem;
-    --space-5: 1.25rem;
-    --space-6: 1.5rem;
-    --space-8: 2rem;
-    --space-10: 2.5rem;
-    --space-12: 3rem;
-    --space-16: 4rem;
-    --space-20: 5rem;
-    --space-24: 6rem;
-    
     /* Typography */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    --font-display: 'Space Grotesk', var(--font-sans);
-    
-    /* Transitions */
-    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+
+    --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Dark mode considerations — optional refinement */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background: #ffffff;
-        --foreground: #0f172a;
-        --muted: #475569;
-        --border: #cbd5e1;
-        --card-bg: #ffffff;
-    }
-}
-
-/* ==============================
-   RESET — modern, clean
-================================ */
-*,
-*::before,
-*::after {
+/* Reset */
+*, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -113,1663 +66,1294 @@
 
 html {
     scroll-behavior: smooth;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
+    font-size: 16px;
 }
 
 body {
-    font-family: var(--font-sans);
-    background: var(--background);
-    color: var(--foreground);
-    line-height: 1.5;
+    font-family: var(--font-body);
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    line-height: 1.6;
     overflow-x: hidden;
 }
 
-/* ==============================
-   TYPOGRAPHY — premium scale
-================================ */
-h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    font-weight: 600;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+/* Glowing Background Lights */
+.bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 65%, rgba(6, 182, 212, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 50% 90%, rgba(236, 72, 153, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
 }
 
-/* ==============================
-   CONTAINER — elegant constraints
-================================ */
+.bg-pattern {
+    position: fixed;
+    inset: 0;
+    background-size: 40px 40px;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    pointer-events: none;
+    z-index: 0;
+}
+
 .container {
-    width: 100%;
     max-width: 1280px;
     margin: 0 auto;
-    padding-inline: var(--space-6);
-}
-
-@media (min-width: 640px) {
-    .container {
-        padding-inline: var(--space-8);
-    }
-}
-
-/* ==============================
-   NAVIGATION — refined
-================================ */
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-block: var(--space-5);
+    padding: 0 1.5rem;
     position: relative;
+    z-index: 1;
 }
 
-.logo {
-    font-size: 1.5rem;
-    font-weight: 700;
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
     letter-spacing: -0.02em;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
 }
 
-.logo-mark {
-    background: var(--gradient-primary);
-    color: white;
-    width: 2rem;
-    height: 2rem;
-    border-radius: var(--radius-md);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    margin-right: var(--space-2);
-}
-
-.logo span {
-    background: var(--gradient-primary);
+.gradient-text {
+    background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 50%, #818cf8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
-.logo-domain {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--primary-500);
-    margin-left: var(--space-1);
+.accent-text {
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-/* Desktop nav */
-.nav-links {
-    display: flex;
-    gap: var(--space-8);
-    font-weight: 500;
-}
-
-.nav-links a {
-    text-decoration: none;
-    color: var(--neutral-600);
-    font-size: 0.9375rem;
-    position: relative;
-    transition: color var(--transition-fast);
-    padding-block: var(--space-2);
-}
-
-.nav-links a:hover {
-    color: var(--primary-600);
-}
-
-.nav-links a::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 2px;
-    background: var(--gradient-primary);
-    transition: width var(--transition-base);
-}
-
-.nav-links a:hover::after {
-    width: 100%;
-}
-
-.nav-cta {
-    display: flex;
-    gap: var(--space-3);
-    z-index: 100;
-}
-
-/* ==============================
-   MOBILE NAV — elevated experience
-================================ */
-.hamburger {
-    display: none;
-    flex-direction: column;
-    cursor: pointer;
-    gap: 6px;
-    z-index: 100;
-    padding: var(--space-2);
-}
-
-.hamburger span {
-    width: 24px;
-    height: 2px;
-    background: var(--primary-600);
-    border-radius: var(--radius-full);
-    transition: var(--transition-base);
-}
-
-.hamburger.active span:nth-child(1) {
-    transform: rotate(45deg) translate(6px, 6px);
-}
-
-.hamburger.active span:nth-child(2) {
-    opacity: 0;
-    transform: translateX(-10px);
-}
-
-.hamburger.active span:nth-child(3) {
-    transform: rotate(-45deg) translate(6px, -6px);
-}
-
-@media (max-width: 1024px) {
-    .nav-links {
-        position: fixed;
-        inset: 0 0 0 auto;
-        width: min(400px, 100%);
-        height: 100vh;
-        background: var(--background);
-        backdrop-filter: blur(20px);
-        background: rgba(255, 255, 255, 0.98);
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: var(--space-8);
-        transform: translateX(100%);
-        transition: transform var(--transition-base);
-        box-shadow: var(--shadow-2xl);
-        padding: var(--space-8);
-        z-index: 90;
-    }
-    
-    .dark .nav-links {
-        background: rgba(23, 23, 23, 0.98);
-    }
-
-    .nav-links.active {
-        transform: translateX(0);
-    }
-
-    .nav-cta.desktop {
-        display: none;
-    }
-
-    .nav-cta.mobile {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        gap: var(--space-3);
-        margin-top: var(--space-8);
-    }
-
-    .hamburger {
-        display: flex;
-    }
-}
-
-.nav-cta.mobile {
-    display: none;
-}
-
-/* ==============================
-   BUTTONS — sophisticated & intentional
-================================ */
+/* Buttons */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
-    border-radius: var(--radius-full);
+    gap: 0.75rem;
+    padding: 0.875rem 1.75rem;
+    font-family: var(--font-heading);
     font-weight: 600;
-    font-size: 0.9375rem;
-    padding: 0.625rem 1.5rem;
+    font-size: 1rem;
+    border-radius: var(--radius-full);
     text-decoration: none;
-    transition: all var(--transition-base);
+    transition: var(--transition);
     cursor: pointer;
-    border: 1.5px solid transparent;
-    white-space: nowrap;
-}
-
-.btn-outline {
-    background: transparent;
-    border-color: var(--primary-500);
-    color: var(--primary-600);
-}
-
-.btn-outline:hover {
-    background: var(--primary-50);
-    border-color: var(--primary-600);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    border: 1px solid transparent;
 }
 
 .btn-primary {
-    background: var(--gradient-primary);
-    color: white;
-    border: none;
-    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #ffffff;
+    box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-lg), 0 0 0 2px var(--primary-200);
+    box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.6);
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
 }
 
-.btn-lg {
-    padding: 0.875rem 2.5rem;
-    font-size: 1rem;
+.btn-accent {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
 }
 
-/* ==============================
-   BADGES — subtle indicators
-================================ */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    background: var(--primary-50);
-    color: var(--primary-700);
-    padding: 0.375rem 1rem;
-    border-radius: var(--radius-full);
-    font-weight: 500;
-    font-size: 0.875rem;
-    margin-bottom: var(--space-4);
-    border: 1px solid var(--primary-100);
+.btn-accent:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.6);
 }
 
-.badge i {
-    font-size: 0.875rem;
-}
-
-/* ==============================
-   HERO SECTION — bold & premium
-================================ */
-.hero {
-    padding-block: clamp(3rem, 8vw, 6rem);
-    background: var(--gradient-soft);
-}
-
-.hero-grid {
-    display: grid;
-    gap: var(--space-16);
-}
-
-@media (min-width: 1024px) {
-    .hero-grid {
-        grid-template-columns: 1fr 1fr;
-        align-items: center;
-    }
-}
-
-.hero-title {
-    font-size: clamp(2.5rem, 5vw, 4rem);
-    font-weight: 700;
-    line-height: 1.1;
-    margin-bottom: var(--space-6);
-    letter-spacing: -0.03em;
-}
-
-.hero-gradient-text {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.hero-desc {
-    font-size: 1.125rem;
-    color: var(--neutral-600);
-    margin-bottom: var(--space-8);
-    max-width: 36rem;
-}
-
-/* Stats mini */
-.stats-mini {
-    display: flex;
-    gap: var(--space-8);
-    margin-top: var(--space-10);
-    flex-wrap: wrap;
-}
-
-.stat-item-mini h3 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--foreground);
-    line-height: 1;
-}
-
-.stat-item-mini p {
-    color: var(--neutral-500);
-    font-size: 0.875rem;
-    margin-top: var(--space-1);
-}
-
-/* Hero card */
-.hero-card {
-    background: var(--card-bg);
-    border-radius: var(--radius-2xl);
-    padding: var(--space-8);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-xl);
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border-color: var(--border-color);
     backdrop-filter: blur(10px);
 }
 
-.flex-row {
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Badge */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary-light);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    backdrop-filter: blur(10px);
+}
+
+.badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* ==========================================================================
+   NAVBAR
+   ========================================================================== */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 1.25rem 0;
+    transition: var(--transition);
+}
+
+.navbar.scrolled {
+    padding: 0.85rem 0;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.nav-container {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-4);
 }
 
-.live-badge {
-    background: #10b98110;
-    color: #10b981;
-    padding: 0.375rem 1rem;
-    border-radius: var(--radius-full);
-    font-weight: 500;
-    font-size: 0.875rem;
-    border: 1px solid #10b98120;
-}
-
-.offer-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
-    margin: var(--space-6) 0;
-}
-
-.offer-item {
-    background: var(--neutral-50);
-    padding: var(--space-4);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
-}
-
-.leaderboard-mini {
-    background: var(--primary-50);
-    border-radius: var(--radius-xl);
-    padding: var(--space-6);
-    border: 1px solid var(--primary-100);
-}
-
-.leaderboard-item {
+.brand-logo {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
-    color: var(--neutral-700);
-}
+    gap: 0.75rem;
+    text-decoration: none;
+    font-family: var(--font-heading);
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #ffffff;
 
-.leaderboard-item i {
-    font-size: 0.5rem;
-    color: var(--primary-500);
-}
-
-/* ==============================
-   TRUSTED SECTION — seamless
-================================ */
-.trusted-section {
-    padding: var(--space-12) 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    background: white;
-}
-
-.trusted-title {
-    text-align: center;
-    font-size: 1rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--neutral-400);
-    margin-bottom: var(--space-6);
-}
-
-.trusted-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
-}
-
-.trusted-scroll::-webkit-scrollbar {
-    display: none;
-}
-
-.trusted-track {
-    display: flex;
-    gap: var(--space-12);
-    min-width: max-content;
-    padding: var(--space-2) 0;
-}
-
-.trusted-track span {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--neutral-400);
-    transition: color var(--transition-fast);
-    white-space: nowrap;
-}
-
-.trusted-track span:hover {
-    color: var(--primary-500);
-}
-
-/* ==============================
-   GRID UTILITIES — systematic
-================================ */
-.grid {
-    display: grid;
-    gap: var(--space-6);
-}
-
-.grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
-.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
-.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
-.grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
-
-@media (max-width: 768px) {
-    .grid-cols-2, .grid-cols-3, .grid-cols-4 {
-        grid-template-columns: repeat(1, 1fr);
+    .brand-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--cyan) 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
     }
 }
 
-/* ==============================
-   CARDS — elevated surfaces
-================================ */
-.card {
-    background: var(--card-bg);
-    border-radius: var(--radius-xl);
-    padding: var(--space-8);
-    border: 1px solid var(--border);
-    transition: all var(--transition-base);
-    box-shadow: var(--shadow-sm);
+.nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    list-style: none;
 }
 
-.card:hover {
-    transform: translateY(-4px);
-    border-color: var(--primary-200);
-    box-shadow: var(--shadow-xl);
+.nav-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: var(--transition);
 }
 
-.card-icon {
-    width: 3rem;
-    height: 3rem;
-    background: var(--primary-50);
-    border-radius: var(--radius-lg);
+.nav-link:hover {
+    color: #ffffff;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* Mobile Nav Drawer */
+.mobile-menu {
+    display: none;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--surface);
+    padding: 2rem;
+    flex-direction: column;
+    gap: 1.5rem;
+    z-index: 99;
+}
+
+.mobile-menu.active {
+    display: flex;
+}
+
+.mobile-link {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 1.25rem;
+    font-family: var(--font-heading);
+    font-weight: 600;
+}
+
+/* ==========================================================================
+   HERO SECTION
+   ========================================================================== */
+.hero {
+    padding-top: 10rem;
+    padding-bottom: 6rem;
+    text-align: center;
+    position: relative;
+}
+
+.hero-title {
+    font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 1.5rem 0;
+    max-width: 950px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.hero-subtitle {
+    font-size: clamp(1.1rem, 2vw, 1.35rem);
+    color: var(--text-secondary);
+    max-width: 750px;
+    margin: 0 auto 2.5rem;
+    font-weight: 400;
+}
+
+.hero-actions {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary-600);
-    font-size: 1.5rem;
-    margin-bottom: var(--space-4);
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin-bottom: 4rem;
 }
 
-/* Product grid */
-.product-grid {
+/* Hero Live Stats Bar */
+.hero-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--space-6);
-    margin: var(--space-12) 0;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    max-width: 1000px;
+    margin: 0 auto;
 }
 
-.product-card {
-    background: var(--card-bg);
-    border-radius: var(--radius-xl);
-    padding: var(--space-8);
-    border: 1px solid var(--border);
-    transition: var(--transition-base);
-    box-shadow: var(--shadow-sm);
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    backdrop-filter: var(--glass-blur);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    text-align: center;
+    transition: var(--transition);
 }
 
-.product-card:hover {
+.stat-card:hover {
+    border-color: var(--border-glow);
     transform: translateY(-4px);
-    border-color: var(--primary-300);
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
-.link-arrow {
-    color: var(--primary-600);
+.stat-num {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
     font-weight: 500;
-    display: inline-flex;
+}
+
+/* ==========================================================================
+   INTERACTIVE DASHBOARD MOCKUP
+   ========================================================================== */
+.dashboard-preview {
+    margin-top: 2rem;
+    margin-bottom: 8rem;
+}
+
+.mockup-window {
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+    backdrop-filter: var(--glass-blur);
+}
+
+.mockup-header {
+    background: rgba(15, 23, 42, 0.9);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
     align-items: center;
-    gap: var(--space-2);
-    margin-top: var(--space-4);
-    text-decoration: none;
+    justify-content: space-between;
 }
 
-.link-arrow i {
-    transition: transform var(--transition-fast);
+.dots {
+    display: flex;
+    gap: 8px;
 }
 
-.link-arrow:hover i {
-    transform: translateX(4px);
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.dot-red { background-color: #ef4444; }
+.dot-yellow { background-color: #f59e0b; }
+.dot-green { background-color: #10b981; }
+
+.mockup-body {
+    padding: 2rem;
 }
 
-/* ==============================
-   GLOBAL PRESENCE — immersive
-================================ */
-.global-presence {
-    background: var(--neutral-900);
-    color: white;
-    border-radius: var(--radius-2xl);
-    padding: var(--space-16);
-    margin: var(--space-16) 0;
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-box {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid var(--border-color);
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+}
+
+.kpi-title {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.kpi-val {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.kpi-change {
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Mockup Splits */
+.mockup-split {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+    .mockup-split {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chart-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+}
+
+.chart-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 180px;
+    padding-top: 2rem;
+    gap: 12px;
+}
+
+.chart-col {
+    flex: 1;
+    background: linear-gradient(180deg, var(--primary) 0%, rgba(99, 102, 241, 0.2) 100%);
+    border-radius: 6px 6px 0 0;
+    position: relative;
+    transition: var(--transition);
+}
+
+.chart-col:hover {
+    background: linear-gradient(180deg, var(--cyan) 0%, rgba(6, 182, 212, 0.3) 100%);
+}
+
+.chart-col::after {
+    content: attr(data-val);
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.offers-card {
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+}
+
+.offer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.offer-item:last-child {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   FEATURES / SOLUTIONS
+   ========================================================================== */
+.section {
+    padding: 6rem 0;
+}
+
+.section-header {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto 4rem;
+}
+
+.section-title {
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
+    font-weight: 800;
+    margin-top: 1rem;
+}
+
+.section-desc {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-top: 0.75rem;
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    backdrop-filter: var(--glass-blur);
+    padding: 2.5rem 2rem;
+    border-radius: var(--radius-lg);
+    transition: var(--transition);
     position: relative;
     overflow: hidden;
 }
 
-.global-presence::before {
+.feature-card::before {
     content: '';
     position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 30% 50%, var(--primary-800) 0%, transparent 50%);
-    opacity: 0.3;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0;
+    transition: var(--transition);
 }
 
-.global-content {
-    position: relative;
-    z-index: 2;
+.feature-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
-.office-tag {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-full);
-    font-size: 0.875rem;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+.feature-card:hover::before {
+    opacity: 1;
 }
 
-.stats-card {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: var(--radius-xl);
-    padding: var(--space-8);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-/* ==============================
-   KPI GRID — data-rich
-================================ */
-.kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: var(--space-4);
-    margin: var(--space-6) 0 var(--space-8);
-}
-
-.kpi-card {
-    background: var(--neutral-50);
-    padding: var(--space-5);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
-}
-
-.kpi-value {
-    font-size: 2rem;
-    font-weight: 700;
-    line-height: 1.2;
-    margin: var(--space-1) 0;
-}
-
-.trend-up {
-    color: #10b981;
-    font-size: 0.875rem;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-}
-
-/* Chart */
-.static-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--space-2);
-    height: 200px;
-    margin-top: var(--space-6);
-}
-
-.chart-bar {
-    flex: 1;
-    background: linear-gradient(to top, var(--primary-400), var(--primary-600));
-    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-    position: relative;
-    min-width: 2rem;
-    animation: barRise 0.8s ease-out;
-    transform-origin: bottom;
-}
-
-@keyframes barRise {
-    from { transform: scaleY(0); }
-    to { transform: scaleY(1); }
-}
-
-.chart-bar::after {
-    content: attr(data-value);
-    position: absolute;
-    top: -1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--neutral-600);
-}
-
-/* Offers */
-.offer-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-3) 0;
-    border-bottom: 1px dashed var(--border);
-}
-
-.offer-row:last-child {
-    border-bottom: none;
-}
-
-.highlight {
-    color: var(--primary-600);
-    font-weight: 600;
-}
-
-/* Referral */
-.referral-box {
-    background: var(--primary-50);
-    border-radius: var(--radius-lg);
-    padding: var(--space-5);
-    margin-top: var(--space-8);
-    border: 1px solid var(--primary-100);
-}
-
-.referral-link {
-    font-family: monospace;
-    background: white;
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-full);
-    border: 1px solid var(--border);
-    font-size: 0.875rem;
-    width: 100%;
-}
-
-/* ==============================
-   LEADERSHIP — human touch
-================================ */
-.leadership-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: var(--space-6);
-    margin: var(--space-8) 0;
-}
-
-.leader-card {
-    text-align: center;
-    padding: var(--space-6);
-    background: var(--card-bg);
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--border);
-    transition: var(--transition-base);
-}
-
-.leader-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-}
-
-.leader-avatar {
-    width: 5rem;
-    height: 5rem;
-    background: var(--gradient-primary);
-    color: white;
-    font-weight: 600;
-    font-size: 1.5rem;
-    border-radius: var(--radius-full);
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary-light);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto var(--space-4);
-    box-shadow: var(--shadow-md);
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
-/* ==============================
-   FOOTER — distinguished
-================================ */
+.feature-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: #ffffff;
+}
+
+.feature-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* ==========================================================================
+   PUBLISHER VS ADVERTISER TABS / CARDS
+   ========================================================================== */
+.dual-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2.5rem;
+}
+
+@media (max-width: 900px) {
+    .dual-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.role-box {
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 3rem 2.5rem;
+    position: relative;
+}
+
+.role-box.pub {
+    border-top: 3px solid var(--accent);
+}
+
+.role-box.adv {
+    border-top: 3px solid var(--primary);
+}
+
+.role-list {
+    list-style: none;
+    margin: 2rem 0;
+}
+
+.role-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1.2rem;
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+}
+
+.role-list li i {
+    color: var(--accent);
+    font-size: 1.1rem;
+}
+
+.role-box.adv .role-list li i {
+    color: var(--primary-light);
+}
+
+/* ==========================================================================
+   HOW IT WORKS STEPS
+   ========================================================================== */
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.step-item {
+    text-align: center;
+    position: relative;
+    padding: 2rem 1.5rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.step-number {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--cyan) 100%);
+    color: #ffffff;
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+/* ==========================================================================
+   FAQ ACCORDION
+   ========================================================================== */
+.faq-grid {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.faq-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.faq-question {
+    padding: 1.25rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: var(--transition);
+}
+
+.faq-question:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.faq-answer {
+    padding: 0 1.5rem 1.25rem;
+    color: var(--text-secondary);
+    font-size: 0.98rem;
+    display: none;
+    line-height: 1.6;
+}
+
+.faq-card.active .faq-answer {
+    display: block;
+}
+
+.faq-card.active .faq-icon {
+    transform: rotate(180deg);
+    color: var(--primary-light);
+}
+
+.faq-icon {
+    transition: var(--transition);
+    color: var(--text-muted);
+}
+
+/* ==========================================================================
+   CTA BANNER
+   ========================================================================== */
+.cta-section {
+    padding: 6rem 0;
+}
+
+.cta-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(6, 182, 212, 0.15) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-lg);
+    padding: 4rem 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+}
+
+/* ==========================================================================
+   FOOTER
+   ========================================================================== */
 .footer {
-    background: var(--neutral-900);
-    color: white;
-    padding: var(--space-16) 0 var(--space-8);
-    margin-top: var(--space-20);
-    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+    background: #050811;
+    border-top: 1px solid var(--border-color);
+    padding-top: 5rem;
+    padding-bottom: 3rem;
 }
 
 .footer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-10);
-    margin-bottom: var(--space-12);
-}
-
-.footer p {
-    color: var(--neutral-400);
-    line-height: 1.6;
-}
-
-.footer h4 {
-    color: white;
-    margin-bottom: var(--space-4);
-    font-weight: 600;
-}
-
-.footer-links p {
-    margin-bottom: var(--space-2);
-    transition: color var(--transition-fast);
-    cursor: default;
-}
-
-.footer-links p:hover {
-    color: white;
-}
-
-.social-links {
-    display: flex;
-    gap: var(--space-4);
-    margin-top: var(--space-6);
-}
-
-.social-links i {
-    width: 2.5rem;
-    height: 2.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: var(--radius-full);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    transition: all var(--transition-fast);
-    cursor: pointer;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.social-links i:hover {
-    background: var(--primary-600);
-    transform: translateY(-2px);
-    border-color: transparent;
-}
-
-.cta-box {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    margin-top: var(--space-4);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.cta-box button {
-    background: white;
-    color: var(--neutral-900);
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-full);
-    font-weight: 600;
-    margin-top: var(--space-3);
-    width: 100%;
-    cursor: pointer;
-    transition: var(--transition-base);
-}
-
-.cta-box button:hover {
-    background: var(--primary-500);
-    color: white;
-}
-
-.footer-bottom {
-    margin-top: var(--space-8);
-    padding-top: var(--space-8);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    justify-content: space-between;
-    color: var(--neutral-500);
-    font-size: 0.875rem;
-}
-
-/* ==============================
-   UTILITIES — precise
-================================ */
-.text-center { text-align: center; }
-.text-gradient { background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.mt-4 { margin-top: var(--space-4); }
-.mt-8 { margin-top: var(--space-8); }
-.mt-12 { margin-top: var(--space-12); }
-.mb-4 { margin-bottom: var(--space-4); }
-.gap-4 { gap: var(--space-4); }
-.flex { display: flex; align-items: center; flex-wrap: wrap; }
-
-/* ==============================
-   RESPONSIVE — meticulous
-================================ */
-@media (max-width: 640px) {
-    .hero-title {
-        font-size: 2.25rem;
-    }
-    
-    .stats-mini {
-        gap: var(--space-4);
-    }
-    
-    .stat-item-mini h3 {
-        font-size: 1.5rem;
-    }
-    
-    .global-presence {
-        padding: var(--space-8);
-    }
-    
-    .footer-bottom {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .btn {
-        width: 100%;
-        text-align: center;
-    }
-    
-    .static-chart {
-        height: 150px;
-    }
-}
-
-/* Indian Rupee symbol */
-.rupee {
-    font-family: inherit;
-}
-
-/* Prevent horizontal overflow globally */
-html, body {
-    max-width: 100%;
-    overflow-x: hidden !important;
-}
-
-/* Fix dashboard grid responsiveness */
-.dashboard-split {
-    display: grid;
-    grid-template-columns: 1.4fr 0.6fr;
-    gap: var(--space-6);
-}
-
-@media (max-width: 1024px) {
-    .dashboard-split {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-
-/* Improve offer card background contrast */
-.top-offers-card {
-    background: #ffffff !important;
-    border: 1px solid var(--neutral-200) !important;
-    box-shadow: var(--shadow-sm) !important;
-}
-
-/* Improve heading contrast */
-.top-offers-card > span {
-    color: var(--neutral-900) !important;
-    font-weight: 700 !important;
-    font-size: 1rem !important;
-}
-
-/* Improve offer rows */
-.offer-row {
-    color: var(--neutral-800) !important;
-}
-
-.offer-row span:last-child {
-    color: var(--primary-700) !important;
-    font-weight: 700 !important;
-}
-
-/* Strong highlight for top offer */
-.offer-row.highlight {
-    background: var(--primary-50) !important;
-    padding: var(--space-3) var(--space-4) !important;
-    border-radius: var(--radius-md) !important;
-    border: 1px solid var(--primary-200) !important;
-}
-
-/* =====================================
-   CONTRAST CORRECTION LAYER
-===================================== */
-
-/* High-contrast nav links for top bar & mobile menu drawer */
-.nav-links a {
-    color: #0f172a !important;
-    font-weight: 600 !important;
-}
-
-.nav-links a:hover {
-    color: #2563eb !important;
-}
-
-/* High-contrast solid text for headers and gradient text */
-.hero-gradient-text {
-    background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%) !important;
-    -webkit-background-clip: text !important;
-    -webkit-text-fill-color: transparent !important;
-    background-clip: text !important;
-}
-
-.logo span {
-    color: #4f46e5 !important;
-    background: none !important;
-    -webkit-text-fill-color: #4f46e5 !important;
-}
-
-.logo-domain {
-    color: #2563eb !important;
-}
-
-/* Stronger body contrast */
-body {
-    color: #0f172a !important;
-    background-color: #ffffff !important;
-}
-
-h1, h2, h3, h4, h5, h6 {
-    color: #0f172a !important;
-}
-
-/* Fix light muted text */
-.hero-desc,
-.stat-item-mini p,
-.kpi-card span,
-.trusted-title {
-    color: #1e293b !important;
-    font-weight: 500 !important;
-}
-
-/* Fix dashboard small labels */
-.kpi-card span:first-child,
-.chart-bar::after {
-    color: #1e293b !important;
-}
-
-/* Improve neutral card backgrounds */
-.kpi-card,
-.offer-item,
-.static-chart,
-.top-offers-card {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-}
-
-/* Product cards contrast fix */
-.product-card {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05) !important;
-}
-.product-card h3 {
-    color: #0f172a !important;
-    font-weight: 700 !important;
-}
-.product-card p {
-    color: #334155 !important;
-}
-
-/* Leader card contrast fix */
-.leader-card {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-}
-.leader-card h4 {
-    color: #0f172a !important;
-}
-.leader-card p {
-    color: #475569 !important;
-}
-
-/* Hero card contrast fix */
-.hero-card {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-}
-.hero-card .flex-row span:first-child {
-    color: #0f172a !important;
-}
-
-/* Improve trusted brands visibility */
-.trusted-track span {
-    color: #1e293b !important;
-}
-
-/* Improve referral muted text */
-.referral-box span {
-    color: #0f172a !important;
-}
-/* Fix dashboard header alignment */
-.card > .flex-row {
-    align-items: center !important;
-}
-
-.card > .flex-row > div:first-child {
-    text-align: left;
-}
-
-@media (max-width: 768px) {
-    .card > .flex-row {
-        flex-direction: column;
-        align-items: flex-start !important;
-        gap: var(--space-4);
-    }
-}
-/* Referral proper center alignment */
-.referral-box .flex-row {
-    align-items: center !important;
-}
-
-@media (max-width: 768px) {
-    .referral-box .flex-row {
-        flex-direction: column;
-        align-items: flex-start !important;
-    }
-}
-/* Global presence alignment fix */
-.global-content > div {
-    align-items: center !important;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    gap: 3rem;
+    margin-bottom: 4rem;
 }
 
 @media (max-width: 900px) {
-    .global-content > div {
-        flex-direction: column;
-        align-items: flex-start !important;
-    }
-
-    .stats-card {
-        width: 100%;
-        max-width: 320px;
+    .footer-grid {
+        grid-template-columns: 1fr 1fr;
     }
 }
-.kpi-card {
-    text-align: left;
+
+@media (max-width: 600px) {
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-.kpi-value {
-    color: var(--neutral-900) !important;
+.footer-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 1.5rem;
 }
 
-.trend-up {
-    font-weight: 500;
-}
-.text-center h2 {
-    margin-left: auto !important;
-    margin-right: auto !important;
+.footer-links {
+    list-style: none;
 }
 
-.footer .logo {
-    color: #ffffff !important;
+.footer-links li {
+    margin-bottom: 0.85rem;
 }
 
-.footer .logo span {
-    background: none !important;
-    -webkit-text-fill-color: #ffffff !important;
-    color: #ffffff !important;
+.footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+    font-size: 0.95rem;
 }
 
-.navbar .logo {
+.footer-links a:hover {
     color: #ffffff;
 }
 
-/* ===============================
-   AUTO SCROLLING TRUSTED SECTION
-================================ */
-
-.trusted-section {
-    padding: var(--space-12) 0;
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    background: #ffffff;
-    overflow: hidden;
-}
-
-.trusted-title {
-    text-align: center;
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    color: var(--neutral-700);
-    margin-bottom: var(--space-6);
-}
-
-/* Slider container */
-.trusted-slider {
-    overflow: hidden;
-    position: relative;
-}
-
-/* Track */
-.trusted-track {
+.footer-bottom {
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
     display: flex;
-    gap: 80px;
-    width: max-content;
-    animation: scrollLoop 25s linear infinite;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
-/* Brand items */
-.trusted-track img {
-    height: 42px;
-    max-width: 140px;
-    object-fit: contain;
-    transition: all 0.3s ease;
-}
-
-.trusted-track img:hover {
-    transform: scale(1.08);
-}
-
-/* Infinite animation */
-@keyframes scrollLoop {
-    0% {
-        transform: translateX(0);
+@media (max-width: 768px) {
+    .nav-menu, .nav-actions {
+        display: none;
     }
-    100% {
-        transform: translateX(-50%);
+    .hamburger {
+        display: block;
+    }
+    .hero {
+        padding-top: 8rem;
     }
 }
-.referral-link {
-    display: block;
-    max-width: 100%;
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    white-space: normal;
-}
-
-
     </style>
 </head>
 <body>
 
-<!-- Navigation -->
-<div class="container">
-    <nav class="navbar">
-        <div class="logo" style="color: #0f172a;">
-            <img src="favicon.png" alt="Offer on Media Logo" style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px; border-radius: 6px;">
-            <span>Icon</span>Media<span style="color: #0f172a;">Network</span>
-            <span class="logo-domain">.in</span>
-        </div>
-        
-        <!-- Desktop Navigation -->
-        <div class="nav-links" id="navLinks">
-            <a href="register.php?role=advertiser">Advertisers</a>
-            <a href="register.php?role=affiliate">Publishers</a>
-            <a href="#solutions">Solutions</a>
-            <a href="#leadership">Leadership</a>
-            <a href="login.php">Partner Portal</a>
-            <!-- Mobile CTAs -->
-            <div class="nav-cta mobile">
-                <button class="btn btn-outline" onclick="openLogin()">Sign In</button>
-                <button class="btn btn-primary" onclick="openRegister()">Join Now</button>
+    <!-- Background FX -->
+    <div class="bg-grid"></div>
+    <div class="bg-pattern"></div>
+
+    <!-- ==========================================================================
+       NAVBAR
+       ========================================================================== -->
+    <nav class="navbar" id="navbar">
+        <div class="container nav-container">
+            <a href="index.html" class="brand-logo">
+                <div class="brand-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <span>Offer on <span style="color: var(--primary-light);">Media</span></span>
+            </a>
+
+            <ul class="nav-menu">
+                <li><a href="#features" class="nav-link">Features</a></li>
+                <li><a href="#publishers" class="nav-link">Publishers</a></li>
+                <li><a href="#advertisers" class="nav-link">Advertisers</a></li>
+                <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+                <li><a href="#faq" class="nav-link">FAQ</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="login.php" class="btn btn-secondary"><i class="fas fa-lock"></i> Sign In</a>
+                <a href="register.php" class="btn btn-primary"><i class="fas fa-rocket"></i> Get Started</a>
             </div>
-        </div>
-        
-        <!-- Desktop CTAs -->
-        <div class="nav-cta desktop">
-            <button class="btn btn-outline" onclick="openLogin()">Sign In</button>
-            <button class="btn btn-primary" onclick="openRegister()">Join Now</button>
-        </div>
-        
-        <!-- Hamburger Menu -->
-        <div class="hamburger" id="hamburger" onclick="toggleMenu()">
-            <span></span>
-            <span></span>
-            <span></span>
+
+            <button class="hamburger" id="hamburger" aria-label="Toggle Menu">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
     </nav>
-</div>
 
-<!-- Hero Section -->
-<section class="hero">
-    <div class="container">
-        <div class="hero-grid">
-            <div>
-                <div class="badge">
-                    <i class="fas fa-globe"></i> 
-                    India's Fastest Growing Network
+    <!-- Mobile Drawer -->
+    <div class="mobile-menu" id="mobileMenu">
+        <a href="#features" class="mobile-link" onclick="toggleMobileMenu()">Features</a>
+        <a href="#publishers" class="mobile-link" onclick="toggleMobileMenu()">Publishers</a>
+        <a href="#advertisers" class="mobile-link" onclick="toggleMobileMenu()">Advertisers</a>
+        <a href="#how-it-works" class="mobile-link" onclick="toggleMobileMenu()">How It Works</a>
+        <a href="#faq" class="mobile-link" onclick="toggleMobileMenu()">FAQ</a>
+        <hr style="border-color: var(--border-color); margin: 1rem 0;">
+        <a href="login.php" class="btn btn-secondary" style="width: 100%;"><i class="fas fa-lock"></i> Sign In</a>
+        <a href="register.php" class="btn btn-primary" style="width: 100%;"><i class="fas fa-rocket"></i> Join Network</a>
+    </div>
+
+    <!-- ==========================================================================
+       HERO SECTION
+       ========================================================================== -->
+    <section class="hero">
+        <div class="container">
+            <div class="badge">
+                <span class="badge-dot"></span>
+                <span>India's #1 Performance & CPA Network</span>
+            </div>
+
+            <h1 class="hero-title">
+                Monetize Traffic & Scale Campaigns with <span class="gradient-text">Precision Intelligence</span>
+            </h1>
+
+            <p class="hero-subtitle">
+                Connecting 50,000+ top publishers with global advertisers. Powered by instant postback tracking, fraud prevention, and industry-leading CPA/CPL payouts.
+            </p>
+
+            <div class="hero-actions">
+                <a href="register.php?role=affiliate" class="btn btn-accent"><i class="fas fa-user-plus"></i> Join as Publisher</a>
+                <a href="register.php?role=advertiser" class="btn btn-primary"><i class="fas fa-bullhorn"></i> Launch Advertiser Campaign</a>
+                <a href="login.php" class="btn btn-secondary"><i class="fas fa-arrow-right"></i> Partner Portal</a>
+            </div>
+
+            <!-- Hero Live Stats -->
+            <div class="hero-stats">
+                <div class="stat-card">
+                    <div class="stat-num accent-text">₹15.8M+</div>
+                    <div class="stat-label">Monthly Publisher Payouts</div>
                 </div>
-                <h1 class="hero-title">
-                    Performance <span class="hero-gradient-text">Beyond Borders</span><br>
-                    Web & Mobile
-                </h1>
-                <p class="hero-desc">
-                    Join 50,000+ Indian publishers and advertisers. Drive measurable ROI with AI-powered matching, real-time analytics, and dedicated account management.
+                <div class="stat-card">
+                    <div class="stat-num gradient-text">50,000+</div>
+                    <div class="stat-label">Active Global Affiliates</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" style="color: var(--cyan);">99.99%</div>
+                    <div class="stat-label">Postback Delivery Uptime</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" style="color: var(--pink);">2,500+</div>
+                    <div class="stat-label">Exclusive CPA & CPL Campaigns</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================================
+       LIVE DASHBOARD DEMO MOCKUP
+       ========================================================================== -->
+    <section class="container dashboard-preview">
+        <div class="mockup-window">
+            <div class="mockup-header">
+                <div class="dots">
+                    <span class="dot dot-red"></span>
+                    <span class="dot dot-yellow"></span>
+                    <span class="dot dot-green"></span>
+                </div>
+                <span style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fas fa-lock" style="color: var(--accent); margin-right: 6px;"></i> offeronmedia.com/publisher/dashboard</span>
+                <span class="badge" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;"><i class="fas fa-signal"></i> LIVE REAL-TIME</span>
+            </div>
+
+            <div class="mockup-body">
+                <div class="kpi-grid">
+                    <div class="kpi-box">
+                        <div class="kpi-title"><span>Total Clicks Today</span> <span class="kpi-change">+14.2% ↑</span></div>
+                        <div class="kpi-val">148,920</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-title"><span>Conversions</span> <span class="kpi-change">+9.8% ↑</span></div>
+                        <div class="kpi-val">9,412</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-title"><span>Revenue (INR)</span> <span class="kpi-change">₹</span></div>
+                        <div class="kpi-val accent-text">₹54,820.00</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-title"><span>EPC Rate</span> <span class="kpi-change">Avg</span></div>
+                        <div class="kpi-val" style="color: var(--cyan);">₹36.80</div>
+                    </div>
+                </div>
+
+                <div class="mockup-split">
+                    <div class="chart-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                            <span style="font-weight: 700; color: #fff;">Weekly Revenue Trend</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fas fa-calendar"></i> Past 7 Days</span>
+                        </div>
+                        <div class="chart-bars">
+                            <div class="chart-col" style="height: 55%;" data-val="₹42K"></div>
+                            <div class="chart-col" style="height: 65%;" data-val="₹49K"></div>
+                            <div class="chart-col" style="height: 70%;" data-val="₹52K"></div>
+                            <div class="chart-col" style="height: 60%;" data-val="₹46K"></div>
+                            <div class="chart-col" style="height: 85%;" data-val="₹61K"></div>
+                            <div class="chart-col" style="height: 90%;" data-val="₹68K"></div>
+                            <div class="chart-col" style="height: 100%;" data-val="₹74K"></div>
+                        </div>
+                    </div>
+
+                    <div class="offers-card">
+                        <span style="font-weight: 700; color: #fff; display:block; margin-bottom:1rem;">Top Converting Offers</span>
+                        <div class="offer-item">
+                            <span><i class="fas fa-fire" style="color: var(--pink); margin-right: 6px;"></i> Flipkart Festive CPA</span>
+                            <span style="font-weight:700; color: var(--accent);">₹850.00</span>
+                        </div>
+                        <div class="offer-item">
+                            <span><i class="fas fa-shopping-bag" style="color: var(--cyan); margin-right: 6px;"></i> Amazon India Sale</span>
+                            <span style="font-weight:700; color: var(--accent);">₹650.00</span>
+                        </div>
+                        <div class="offer-item">
+                            <span><i class="fas fa-tags" style="color: var(--primary-light); margin-right: 6px;"></i> Meesho Affiliate</span>
+                            <span style="font-weight:700; color: var(--accent);">₹420.00</span>
+                        </div>
+                        <div class="offer-item">
+                            <span><i class="fas fa-mobile-alt" style="color: var(--pink); margin-right: 6px;"></i> Tata Neu Install</span>
+                            <span style="font-weight:700; color: var(--accent);">₹380.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================================
+       FEATURES / ADVANCED ENGINE
+       ========================================================================== -->
+    <section class="section" id="features">
+        <div class="container">
+            <div class="section-header">
+                <div class="badge">POWERFUL INFRASTRUCTURE</div>
+                <h2 class="section-title">Built for Speed, Accuracy & Maximum Profit</h2>
+                <p class="section-desc">Our high-throughput performance engine delivers sub-millisecond postback tracking with zero conversion loss.</p>
+            </div>
+
+            <div class="cards-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                    <h3 class="feature-title">Real-Time Postback Engine</h3>
+                    <p class="feature-text">Server-to-server (S2S) instant tracking ensures every conversion is logged within milliseconds. Support for custom subIDs and macros.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: var(--accent); border-color: rgba(16,185,129,0.2);"><i class="fas fa-shield-alt"></i></div>
+                    <h3 class="feature-title">Fraud Shield 3.0 Protection</h3>
+                    <p class="feature-text">Advanced AI algorithms automatically detect and block bot traffic, proxy IP spoofing, and duplicate click fraud in real time.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(6,182,212,0.1); color: var(--cyan); border-color: rgba(6,182,212,0.2);"><i class="fas fa-hand-holding-usd"></i></div>
+                    <h3 class="feature-title">Fast & Flexible Payouts</h3>
+                    <p class="feature-text">Choose between Weekly, Bi-weekly, or Monthly payouts via UPI, Direct Bank Transfer, PayPal, or Crypto. Low payout thresholds.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(236,72,153,0.1); color: var(--pink); border-color: rgba(236,72,153,0.2);"><i class="fas fa-chart-pie"></i></div>
+                    <h3 class="feature-title">Granular Analytics</h3>
+                    <p class="feature-text">Filter data by GEO, device, OS, sub1-sub5 parameters, campaign ID, and publisher channel with visual interactive reports.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-link"></i></div>
+                    <h3 class="feature-title">Smart Link Generator</h3>
+                    <p class="feature-text">Dynamic deep-linking tools let publishers generate trackable direct landing page links with single-click copy features.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: rgba(16,185,129,0.1); color: var(--accent); border-color: rgba(16,185,129,0.2);"><i class="fas fa-headset"></i></div>
+                    <h3 class="feature-title">Dedicated Account Managers</h3>
+                    <p class="feature-text">Get 24/7 dedicated support from experienced performance marketing specialists to optimize campaigns and bump payouts.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================================
+       PUBLISHERS VS ADVERTISERS
+       ========================================================================== -->
+    <section class="section" id="publishers">
+        <div class="container">
+            <div class="dual-section">
+                <!-- Publisher Box -->
+                <div class="role-box pub">
+                    <div class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--accent); border-color: rgba(16, 185, 129, 0.2);">
+                        <i class="fas fa-paper-plane"></i> FOR PUBLISHERS & AFFILIATES
+                    </div>
+                    <h2 style="font-size: 2.2rem; margin-top: 1rem; color: #fff;">Turn Traffic Into Recurring Revenue</h2>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Access top-converting campaigns from top global brands with premium payouts.</p>
+
+                    <ul class="role-list">
+                        <li><i class="fas fa-check-circle"></i> Exclusive e-Commerce, Finance, Gaming & Utility Offers</li>
+                        <li><i class="fas fa-check-circle"></i> High CPA, CPL, CPS & CPI Payout Structures</li>
+                        <li><i class="fas fa-check-circle"></i> Reliable On-Time Payouts via UPI & Bank Wire</li>
+                        <li><i class="fas fa-check-circle"></i> Sub-ID Tracking & Real-Time Postback Webhooks</li>
+                    </ul>
+
+                    <a href="register.php?role=affiliate" class="btn btn-accent" style="width: 100%;"><i class="fas fa-user-plus"></i> Join as Publisher Now</a>
+                </div>
+
+                <!-- Advertiser Box -->
+                <div class="role-box adv" id="advertisers">
+                    <div class="badge">
+                        <i class="fas fa-bullhorn"></i> FOR ADVERTISERS & BRANDS
+                    </div>
+                    <h2 style="font-size: 2.2rem; margin-top: 1rem; color: #fff;">Acquire Verified Customers at Scale</h2>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">Pay only for verified leads, sales, and app installs with 100% ROI guarantee.</p>
+
+                    <ul class="role-list">
+                        <li><i class="fas fa-check-circle"></i> Risk-Free Performance Pricing (CPA / CPL Model)</li>
+                        <li><i class="fas fa-check-circle"></i> Direct Access to 50,000+ Vetted Publishers</li>
+                        <li><i class="fas fa-check-circle"></i> Advanced Fraud Prevention & Quality Control</li>
+                        <li><i class="fas fa-check-circle"></i> Instant REST API Integration & Tracking</li>
+                    </ul>
+
+                    <a href="register.php?role=advertiser" class="btn btn-primary" style="width: 100%;"><i class="fas fa-rocket"></i> Launch Advertiser Campaign</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================================
+       HOW IT WORKS
+       ========================================================================== -->
+    <section class="section" id="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <div class="badge">SIMPLE PROCESS</div>
+                <h2 class="section-title">Start Earning in 3 Easy Steps</h2>
+                <p class="section-desc">Our onboarding process is fast, seamless, and hassle-free.</p>
+            </div>
+
+            <div class="steps-grid">
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <h3 style="color:#fff; margin-bottom: 0.5rem; font-size:1.25rem;">Create Your Account</h3>
+                    <p style="color: var(--text-secondary); font-size:0.95rem;">Register in under 60 seconds as a publisher or advertiser to access the network portal.</p>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <h3 style="color:#fff; margin-bottom: 0.5rem; font-size:1.25rem;">Select Top Offers</h3>
+                    <p style="color: var(--text-secondary); font-size:0.95rem;">Browse thousands of vetted CPA/CPL campaigns across diverse niches and generate smart links.</p>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <h3 style="color:#fff; margin-bottom: 0.5rem; font-size:1.25rem;">Scale & Get Paid</h3>
+                    <p style="color: var(--text-secondary); font-size:0.95rem;">Drive targeted traffic, monitor real-time conversions, and collect timely payouts directly.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================================
+       FAQ ACCORDION
+       ========================================================================== -->
+    <section class="section" id="faq">
+        <div class="container">
+            <div class="section-header">
+                <div class="badge">HAVE QUESTIONS?</div>
+                <h2 class="section-title">Frequently Asked Questions</h2>
+                <p class="section-desc">Everything you need to know about Offer on Media.</p>
+            </div>
+
+            <div class="faq-grid">
+                <div class="faq-card">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>How fast are publisher accounts approved?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Publisher applications are reviewed and approved within 2 to 24 hours. Once approved, you instantly get access to your dashboard and tracking links.
+                    </div>
+                </div>
+
+                <div class="faq-card">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>What payment methods and schedules do you support?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </div>
+                    <div class="faq-answer">
+                        We support Weekly and Monthly payout schedules via UPI, Direct Bank Transfer (NEFT/IMPS/RTGS), PayPal, and Crypto.
+                    </div>
+                </div>
+
+                <div class="faq-card">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>How does S2S Postback integration work for advertisers?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </div>
+                    <div class="faq-answer">
+                        We provide unique postback URL tokens per campaign. When a conversion occurs on your site or app, simply trigger our postback URL with the click_id and payout details.
+                    </div>
+                </div>
+
+                <div class="faq-card">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Is there any minimum payout threshold?</span>
+                        <i class="fas fa-chevron-down faq-icon"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, our minimum payout threshold is very publisher-friendly (starting at ₹1,000 / $25).
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==========================================================================
+       CTA BANNER
+       ========================================================================== -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-box">
+                <div class="badge" style="margin-bottom: 1.5rem;">READY TO SCALE?</div>
+                <h2 style="font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; color: #fff; margin-bottom: 1rem;">
+                    Join Offer on Media Performance Network Today
+                </h2>
+                <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto 2.5rem; font-size: 1.1rem;">
+                    Experience the highest EPC rates, sub-second postback tracking, and dedicated partner support.
                 </p>
-                
-                <button class="btn btn-primary btn-lg" onclick="openRegister()">
-                    Become a Partner <i class="fas fa-arrow-right"></i>
-                </button>
-                
-                <div class="stats-mini">
-                    <div class="stat-item-mini">
-                        <h3>50K+</h3>
-                        <p>Indian Publishers</p>
-                    </div>
-                    <div class="stat-item-mini">
-                        <h3>1.2B</h3>
-                        <p>Monthly Impressions</p>
-                    </div>
-                    <div class="stat-item-mini">
-                        <h3><span class="rupee">₹</span>250Cr+</h3>
-                        <p>Annual Payouts</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div>
-                <div class="hero-card">
-                    <div class="flex-row">
-                        <span style="font-weight: 700; color:white; font-size: 1.25rem;">Real-time Network</span>
-                        <span class="live-badge"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> LIVE</span>
-                    </div>
-                    
-                    <div class="offer-grid">
-                        <div class="offer-item">
-                            <div style="font-size: 0.75rem; color: var(--neutral-500);">TOP OFFER</div>
-                            <div style="font-weight: 700;">Flipkart Big Billion</div>
-                            <div style="color: var(--primary-600); font-weight: 700;"><span class="rupee">₹</span>850 CPA</div>
-                        </div>
-                        <div class="offer-item">
-                            <div style="font-size: 0.75rem; color: var(--neutral-500);">TODAY</div>
-                            <div style="font-weight: 700;">12,435 Conv.</div>
-                            <div style="color: #10b981;">↑ 18.2%</div>
-                        </div>
-                    </div>
-                    
-                    <div class="leaderboard-mini">
-                        <div class="flex-row">
-                            <span style="font-weight: 600;">Top Indian Affiliates</span>
-                            <span style="color: var(--primary-600); font-size: 0.875rem;">See all <i class="fas fa-chevron-right" style="font-size: 0.625rem;"></i></span>
-                        </div>
-                        <div style="display: flex; margin-top: var(--space-4); gap: var(--space-5); flex-wrap: wrap;">
-                            <div class="leaderboard-item"><i class="fas fa-circle"></i> DigitalDost <span style="font-weight: 600;"><span class="rupee">₹</span>28.4L</span></div>
-                            <div class="leaderboard-item"><i class="fas fa-circle" style="color: #8b5cf6;"></i> TechTadka <span style="font-weight: 600;"><span class="rupee">₹</span>22.1L</span></div>
-                            <div class="leaderboard-item"><i class="fas fa-circle" style="color: #ec4899;"></i> GadgetGuru <span style="font-weight: 600;"><span class="rupee">₹</span>19.7L</span></div>
-                        </div>
-                    </div>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <a href="register.php?role=affiliate" class="btn btn-accent"><i class="fas fa-user-plus"></i> Join as Publisher</a>
+                    <a href="register.php?role=advertiser" class="btn btn-primary"><i class="fas fa-bullhorn"></i> Launch Advertiser Campaign</a>
                 </div>
             </div>
         </div>
-    </div>
-</section>
+    </section>
 
-<section class="trusted-section">
-    <div class="container">
-        <h3 class="trusted-title">Trusted by India's leading brands</h3>
-
-        <div class="trusted-slider">
-            <div class="trusted-track">
-                <img src="https://cdn.worldvectorlogo.com/logos/flipkart.svg" alt="Flipkart">
-                <img src="https://cdn.iconscout.com/icon/free/png-256/free-myntra-logo-icon-download-in-svg-png-gif-file-formats--shopping-brand-social-media-pack-company-icons-3030132.png?f=webp&w=256" alt="Myntra">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/MakeMyTrip_Logo.svg" alt="MakeMyTrip">
-                <img src="https://cdn.worldvectorlogo.com/logos/paytm-1.svg" alt="Paytm">
-                <img src="https://cdn.worldvectorlogo.com/logos/amazon-icon.svg" alt="Amazon">
-                <img src="https://cdn.worldvectorlogo.com/logos/zomato-1.svg" alt="Zomato">
-                <img src="https://cdn.worldvectorlogo.com/logos/swiggy-1.svg" alt="Swiggy">
-                <img src="https://cdn.worldvectorlogo.com/logos/jio-1.svg" alt="Jio">
-
-                <!-- Duplicate for seamless loop -->
-                <img src="https://cdn.worldvectorlogo.com/logos/flipkart.svg" alt="Flipkart">
-                <img src="https://cdn.iconscout.com/icon/free/png-256/free-myntra-logo-icon-download-in-svg-png-gif-file-formats--shopping-brand-social-media-pack-company-icons-3030132.png?f=webp&w=256" alt="Myntra">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/MakeMyTrip_Logo.svg" alt="MakeMyTrip">
-                <img src="https://cdn.worldvectorlogo.com/logos/paytm-1.svg" alt="Paytm">
-                <img src="https://cdn.worldvectorlogo.com/logos/amazon-icon.svg" alt="Amazon">
-                <img src="https://cdn.worldvectorlogo.com/logos/zomato-1.svg" alt="Zomato">
-                <img src="https://cdn.worldvectorlogo.com/logos/swiggy-1.svg" alt="Swiggy">
-                <img src="https://cdn.worldvectorlogo.com/logos/jio-1.svg" alt="Jio">
-            </div>
-        </div>
-    </div>
-</section>
-
-
-<!-- Products / Solutions -->
-<div class="container" id="solutions">
-    <div class="text-center" style="margin: var(--space-16) 0 var(--space-8);">
-        <div class="badge" style="margin: 0 auto var(--space-4); width: fit-content;">INTELLIGENT AD TECH</div>
-        <h2 style="font-size: clamp(2rem, 4vw, 3rem); max-width: 700px; margin: 0 auto; color: #0f172a;">
-            The full-stack affiliate<br>
-            <span class="hero-gradient-text">performance engine</span>
-        </h2>
-    </div>
-    
-    <div class="product-grid">
-        <div class="product-card">
-            <div class="card-icon"><i class="fas fa-chart-pie"></i></div>
-            <h3 style="font-size: 1.5rem; margin-bottom: var(--space-3); color: #0f172a;">Data Management</h3>
-            <p style="color: #334155;">AI/ML audience discovery, lookalike modeling, connected TV cohorts, and predictive budget planner.</p>
-            <a href="register.php?role=advertiser" class="link-arrow">Discover audiences <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="product-card">
-            <div class="card-icon"><i class="fas fa-bolt"></i></div>
-            <h3 style="font-size: 1.5rem; margin-bottom: var(--space-3); color: #0f172a;">Demand Side</h3>
-            <p style="color: #334155;">Real-time ad serving, anti-fraud, predictive bidding, full-funnel reporting, CTV targeting.</p>
-            <a href="register.php?role=advertiser" class="link-arrow">Launch campaigns <i class="fas fa-arrow-right"></i></a>
-        </div>
-        <div class="product-card">
-            <div class="card-icon"><i class="fas fa-star"></i></div>
-            <h3 style="font-size: 1.5rem; margin-bottom: var(--space-3); color: #0f172a;">Influencer Suite</h3>
-            <p style="color: #334155;">End-to-end creator collaboration, media kit builder, automated invoicing, real-time trend insights.</p>
-            <a href="register.php?role=affiliate" class="link-arrow">For brands & creators <i class="fas fa-arrow-right"></i></a>
-        </div>
-    </div>
-</div>
-
-<!-- Global Presence -->
-<div class="container">
-    <div class="global-presence">
-        <div class="global-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-8);">
+    <!-- ==========================================================================
+       FOOTER
+       ========================================================================== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
                 <div>
-                    <div class="badge" style="background: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.1);">GLOBAL NETWORK</div>
-                    <h2 style="font-size: 2.5rem; margin-top: var(--space-4);">8 Strategic Hubs</h2>
-                    <p style="color: var(--neutral-400); margin: var(--space-4) 0;">Delivering performance across 4 continents</p>
-                    <div class="flex" style="gap: var(--space-2);">
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> Gurgaon HQ</span>
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> Mumbai</span>
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> Bengaluru</span>
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> Delhi NCR</span>
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> Dubai</span>
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> Singapore</span>
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> London</span>
-                        <span class="office-tag"><i class="fas fa-map-marker-alt"></i> New York</span>
+                    <a href="index.html" class="brand-logo" style="margin-bottom: 1.25rem;">
+                        <div class="brand-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <span>Offer on <span style="color: var(--primary-light);">Media</span></span>
+                    </a>
+                    <p style="color: var(--text-secondary); font-size: 0.95rem; max-width: 320px; line-height: 1.6;">
+                        India's premier performance marketing network connecting top advertisers with high-yield publishers.
+                    </p>
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; color: var(--text-secondary); font-size: 1.2rem;">
+                        <a href="#" style="color: inherit;"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" style="color: inherit;"><i class="fab fa-twitter"></i></a>
+                        <a href="#" style="color: inherit;"><i class="fab fa-instagram"></i></a>
+                        <a href="#" style="color: inherit;"><i class="fab fa-telegram"></i></a>
                     </div>
                 </div>
-                <div class="stats-card" style="min-width: 200px;">
-                    <div style="font-size: 3rem; font-weight: 700;">50K+</div>
-                    <div style="color: var(--neutral-400);">Global affiliates</div>
-                    <hr style="border-color: rgba(255,255,255,0.1); margin: var(--space-4) 0;">
-                    <div style="font-size: 2rem; font-weight: 700;">40+</div>
-                    <div style="color: var(--neutral-400);">Countries served</div>
+
+                <div>
+                    <h4 class="footer-title">Platform</h4>
+                    <ul class="footer-links">
+                        <li><a href="register.php?role=affiliate">Publishers & Affiliates</a></li>
+                        <li><a href="register.php?role=advertiser">Advertisers & Brands</a></li>
+                        <li><a href="login.php">Partner Portal Login</a></li>
+                        <li><a href="#features">Smart Postbacks</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="footer-title">Legal & Compliance</h4>
+                    <ul class="footer-links">
+                        <li><a href="privacy.php">Privacy Policy</a></li>
+                        <li><a href="terms.php">Terms of Service</a></li>
+                        <li><a href="gdpr.php">GDPR & Compliance</a></li>
+                        <li><a href="help.php">Help & Support</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="footer-title">Contact Us</h4>
+                    <ul class="footer-links" style="color: var(--text-secondary);">
+                        <li style="margin-bottom: 0.75rem;"><i class="fas fa-envelope" style="color: var(--primary-light); margin-right: 8px;"></i> support@offeronmedia.com</li>
+                        <li style="margin-bottom: 0.75rem;"><i class="fas fa-globe" style="color: var(--cyan); margin-right: 8px;"></i> offeronmedia.com</li>
+                        <li style="margin-bottom: 0.75rem;"><i class="fas fa-headset" style="color: var(--accent); margin-right: 8px;"></i> 24/7 Account Support</li>
+                    </ul>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Dashboard Preview -->
-<div class="container">
-    <div class="card" style="padding: var(--space-10);">
-        <div class="flex-row" style="margin-bottom: var(--space-8);">
-            <div>
-                <div class="badge" style="background: var(--primary-50); color: var(--primary-700);">
-                    <i class="fas fa-chart-line"></i> PUBLISHER DASHBOARD
-                </div>
-                <h2 style="font-size: 2rem; margin-top: var(--space-3); color: #0f172a;">Your performance,<br>in real time</h2>
-            </div>
-            <div style="background: var(--neutral-100); padding: 0.5rem 1.5rem; border-radius: var(--radius-full); font-size: 0.875rem; border: 1px solid var(--border); color: #0f172a;">
-                <i class="far fa-calendar-alt"></i> March 1 – 15, 2026
+            <div class="footer-bottom">
+                <span>© 2026 offeronmedia.com · Offer on Media Network. All rights reserved.</span>
+                <span>Designed for high performance & accuracy.</span>
             </div>
         </div>
-        
-        <!-- KPI Cards -->
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="flex-row">
-                    <span style="color: #475569;">Clicks</span>
-                    <span style="background: var(--primary-100); padding: 0.25rem 0.75rem; border-radius: var(--radius-full); font-size: 0.75rem; color: var(--primary-700);">+12.4%</span>
-                </div>
-                <div class="kpi-value">1,28,435</div>
-                <span class="trend-up"><i class="fas fa-arrow-up"></i> 8.2% vs last period</span>
-            </div>
-            <div class="kpi-card">
-                <span style="color: #475569;">Conversions</span>
-                <div class="kpi-value">8,435</div>
-                <span class="trend-up">↑ 1,213 (6.8%)</span>
-            </div>
-            <div class="kpi-card">
-                <span style="color: #475569;">Revenue (INR)</span>
-                <div class="kpi-value"><span class="rupee">₹</span>42.58L</div>
-                <span class="trend-up">↑ 12.3%</span>
-            </div>
-            <div class="kpi-card">
-                <span style="color: #475569;">EPC (INR)</span>
-                <div class="kpi-value"><span class="rupee">₹</span>33.17</div>
-                <span style="color: #d97706; font-weight: 600;">↗︎ +₹4.20</span>
-            </div>
-        </div>
+    </footer>
 
-        <!-- Chart + Offers -->
-        <div class="dashboard-split">
-            <div class="top-offers-card" style="border-radius: var(--radius-xl); padding: var(--space-6);">
-                <div class="flex-row">
-                    <span style="font-weight: 700; color: #0f172a;">Daily Revenue (7 days)</span>
-                    <span style="color: var(--primary-600); font-size: 0.875rem;"><i class="fas fa-calendar-week"></i> This week</span>
-                </div>
-                <!-- Static Chart Bars -->
-                <div class="static-chart">
-                    <div class="chart-bar" style="height: 40px;" data-value="52.5K"></div>
-                    <div class="chart-bar" style="height: 45px;" data-value="58.0K"></div>
-                    <div class="chart-bar" style="height: 48px;" data-value="61.2K"></div>
-                    <div class="chart-bar" style="height: 47px;" data-value="59.8K"></div>
-                    <div class="chart-bar" style="height: 50px;" data-value="63.5K"></div>
-                    <div class="chart-bar" style="height: 54px;" data-value="68.9K"></div>
-                    <div class="chart-bar" style="height: 57px;" data-value="72.4K"></div>
-                </div>
-                <div class="flex-row" style="justify-content: space-between; margin-top: var(--space-2); color: #475569; font-size: 0.75rem;">
-                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                </div>
-            </div>
-            
-            <div class="top-offers-card" style="border-radius: var(--radius-xl); padding: var(--space-6);">
-                <span style="font-weight: 700; color: #0f172a;">Top Converting Offers</span>
-                <div style="margin-top: var(--space-4);">
-                    <div class="offer-row highlight">
-                        <span><i class="fas fa-crown" style="color: #f59e0b;"></i> Flipkart Big Billion</span>
-                        <span style="font-weight: 700;"><span class="rupee">₹</span>850 CPA</span>
-                    </div>
-                    <div class="offer-row">
-                        <span>Amazon Great Indian</span>
-                        <span style="font-weight: 700;"><span class="rupee">₹</span>675 CPA</span>
-                    </div>
-                    <div class="offer-row">
-                        <span>Meesho Sponsored</span>
-                        <span style="font-weight: 700;"><span class="rupee">₹</span>425 CPA</span>
-                    </div>
-                    <div class="offer-row">
-                        <span>Tata Neu</span>
-                        <span style="font-weight: 700;"><span class="rupee">₹</span>380 CPA</span>
-                    </div>
-                    <div class="offer-row">
-                        <span>Reliance Digital</span>
-                        <span style="font-weight: 700;"><span class="rupee">₹</span>520 CPA</span>
-                    </div>
-                </div>
-                <button class="btn btn-outline" onclick="openRegister()" style="width:100%; margin-top: var(--space-6);">Explore all offers →</button>
-            </div>
-        </div>
-
-        <!-- Referral -->
-        <div class="referral-box">
-            <div class="flex-row" style="justify-content: space-between; flex-wrap: wrap; gap: var(--space-4);">
-                <div class="flex" style="gap: var(--space-4);">
-                    <span style="font-weight: 600; color: #0f172a;">Your Referral Link</span>
-                    <span class="referral-link">https://offeronmedia.com/register.php?ref=partner</span>
-                </div>
-                <div class="flex" style="gap: var(--space-4);">
-                    <span><i class="fas fa-check-circle" style="color: #10b981;"></i> Pending: <span class="rupee">₹</span>12,400</span>
-                    <span><i class="fas fa-clock" style="color: #475569;"></i> Approx. 3h</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Leadership -->
-<div class="container" id="leadership">
-    <div class="text-center" style="margin: var(--space-20) 0 var(--space-8);">
-        <div class="badge" style="margin: 0 auto var(--space-4); width: fit-content;">LEADERSHIP</div>
-        <h2 style="font-size: clamp(2rem, 4vw, 3rem); max-width: 600px; margin: 0 auto; color: #0f172a;">
-            Driven by industry pioneers
-        </h2>
-    </div>
-    
-    <div class="leadership-grid">
-        <div class="leader-card">
-            <div class="leader-avatar">RA</div>
-            <h4 style="font-weight: 700; color: #0f172a;">Rajesh Agarwal</h4>
-            <p style="color: #475569;">Co-Founder & CEO</p>
-        </div>
-        <div class="leader-card">
-            <div class="leader-avatar">PM</div>
-            <h4 style="font-weight: 700; color: #0f172a;">Priya Mehra</h4>
-            <p style="color: #475569;">Founder & CTO</p>
-        </div>
-        <div class="leader-card">
-            <div class="leader-avatar">VK</div>
-            <h4 style="font-weight: 700; color: #0f172a;">Vikram Kapoor</h4>
-            <p style="color: #475569;">Director, Growth</p>
-        </div>
-        <div class="leader-card">
-            <div class="leader-avatar">AJ</div>
-            <h4 style="font-weight: 700; color: #0f172a;">Anjali Jain</h4>
-            <p style="color: #475569;">Head of Publisher Growth</p>
-        </div>
-        <div class="leader-card">
-            <div class="leader-avatar">SK</div>
-            <h4 style="font-weight: 700; color: #0f172a;">Suresh Kumar</h4>
-            <p style="color: #475569;">Head of Advertiser Sales</p>
-        </div>
-    </div>
-</div>
-
-<!-- Footer -->
-<footer class="footer">
-    <div class="container">
-        <div class="footer-grid">
-            <div>
-                <div class="logo" style="color: white; margin-bottom: var(--space-4);">
-                    <img src="favicon.png" alt="Offer on Media Logo" style="width: 32px; height: 32px; object-fit: contain; margin-right: 8px; border-radius: 6px;">
-                    <span>Icon</span>Media<span style="color: white;">Network</span>
-                </div>
-                <p style="line-height: 1.7;">The intelligent performance network. Connecting global advertisers with premium publishers.</p>
-                <div class="social-links">
-                    <i class="fab fa-linkedin-in"></i>
-                    <i class="fab fa-x-twitter"></i>
-                    <i class="fab fa-instagram"></i>
-                </div>
-            </div>
-            
-            <div class="footer-links">
-                <h4>Platform</h4>
-                <p><a href="register.php?role=advertiser" style="color: var(--neutral-400); text-decoration: none;">Advertisers</a></p>
-                <p><a href="register.php?role=affiliate" style="color: var(--neutral-400); text-decoration: none;">Publishers</a></p>
-                <p><a href="#solutions" style="color: var(--neutral-400); text-decoration: none;">Agency Partners</a></p>
-            </div>
-            
-            <div class="footer-links">
-                <h4>Legal & Info</h4>
-                <p><a href="privacy.php" style="color: var(--neutral-400); text-decoration: none;">Privacy Policy</a></p>
-                <p><a href="terms.php" style="color: var(--neutral-400); text-decoration: none;">Terms of Service</a></p>
-                <p><a href="gdpr.php" style="color: var(--neutral-400); text-decoration: none;">GDPR Compliance</a></p>
-            </div>
-            
-            <div class="footer-links">
-                <h4>Get in touch</h4>
-                <p><i class="fas fa-envelope"></i> partner@offeronmedia.com</p>
-                <p><i class="fas fa-phone-alt"></i> +91 82371 39130</p>
-                <div class="cta-box">
-                    <span style="color: white; font-weight: 600;">50K+ affiliates</span>
-                    <span style="color: var(--neutral-400); display: block;">are already earning</span>
-                    <button onclick="openRegister()">Join the network →</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="footer-bottom">
-            <span>© 2026 offeronmedia.com. All rights reserved.</span>
-            <span><a href="privacy.php" style="color: inherit; text-decoration: none;">Privacy</a> · <a href="terms.php" style="color: inherit; text-decoration: none;">Terms</a> · <a href="gdpr.php" style="color: inherit; text-decoration: none;">GDPR</a></span>
-        </div>
-    </div>
-</footer>
-
-<!-- Spacing -->
-<div style="height: var(--space-4);"></div>
-
-<script>
-    // Hamburger Menu Toggle
-    function toggleMenu() {
-        const hamburger = document.getElementById('hamburger');
-        const navLinks = document.getElementById('navLinks');
-        hamburger.classList.toggle('active');
-        navLinks.classList.toggle('active');
-        
-        // Prevent scrolling when menu is open
-        if (navLinks.classList.contains('active')) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'auto';
-        }
-    }
-
-    // Close menu when clicking on a link
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.addEventListener('click', () => {
-            const hamburger = document.getElementById('hamburger');
-            const navLinks = document.getElementById('navLinks');
-            hamburger.classList.remove('active');
-            navLinks.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        });
-    });
-
-    // Close menu on window resize (if screen becomes larger)
-    window.addEventListener('resize', () => {
-        if (window.innerWidth > 1024) {
-            const hamburger = document.getElementById('hamburger');
-            const navLinks = document.getElementById('navLinks');
-            hamburger.classList.remove('active');
-            navLinks.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-    });
-
-    function openLogin() {
-        window.location.href = "login.php";
-    }
-
-    function openRegister() {
-        window.location.href = "register.php";
-    }
-
-    // Animate chart bars on scroll
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.animation = 'barRise 1s ease-out';
+    <!-- JavaScript -->
+    <script>
+        // Navbar Scrolled Glass FX
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 40) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
             }
         });
-    });
 
-    document.querySelectorAll('.chart-bar').forEach(bar => {
-        observer.observe(bar);
-    });
-</script>
+        // Mobile Menu Drawer Toggle
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            mobileMenu.classList.toggle('active');
+            if (mobileMenu.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = 'auto';
+            }
+        }
 
+        document.getElementById('hamburger').addEventListener('click', toggleMobileMenu);
+
+        // FAQ Toggle Logic
+        function toggleFaq(element) {
+            const card = element.parentElement;
+            const isActive = card.classList.contains('active');
+            
+            // Close all open cards
+            document.querySelectorAll('.faq-card').forEach(c => c.classList.remove('active'));
+            
+            if (!isActive) {
+                card.classList.add('active');
+            }
+        }
+    </script>
 </body>
 </html>
