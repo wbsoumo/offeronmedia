@@ -47,9 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("
                     INSERT INTO users 
-                        (role_id, name, email, password_hash, mobile, company, telegram_id, status, kyc_status, account_manager_id, payment_method, payment_details, balance, created_at, updated_at)
+                        (role_id, name, email, password_hash, mobile, company, telegram_id, status, kyc_status, account_manager_id, balance, created_at, updated_at)
                     VALUES
-                        (3, :name, :email, :password, :mobile, :company, :telegram_id, :status, :kyc_status, :account_manager_id, :payment_method, :payment_details, 0.00, NOW(), NOW())
+                        (3, :name, :email, :password, :mobile, :company, :telegram_id, :status, :kyc_status, :account_manager_id, 0.00, NOW(), NOW())
                 ");
 
                 $stmt->execute([
@@ -61,9 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'telegram_id'         => $telegram_id,
                     'status'              => $status,
                     'kyc_status'          => $kyc_status,
-                    'account_manager_id'  => $manager_id,
-                    'payment_method'      => $payment_method,
-                    'payment_details'     => $payment_details
+                    'account_manager_id'  => $manager_id
                 ]);
 
                 $newPubId = $pdo->lastInsertId();
