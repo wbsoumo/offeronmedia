@@ -344,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <form method="post">
                                         <div class="form-group mb-3">
                                             <label class="font-weight-bold">Network Name</label>
-                                            <input type="text" name="site_name" class="form-control" value="GVS OfferOnMedia Network">
+                                            <input type="text" name="site_name" class="form-control" value="GVS Offer on Media Network">
                                         </div>
                                         <div class="row">
                                             <div class="col-md-6">
@@ -501,7 +501,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

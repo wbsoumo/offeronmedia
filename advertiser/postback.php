@@ -462,7 +462,7 @@ $postbackLogs = $logsStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="code-box-wrapper">
                                 <button class="code-copy-btn" onclick="copyCode('code-php')"><i class="fas fa-copy mr-1"></i>Copy</button>
                                 <pre><code class="language-php" id="code-php">&lt;?php
-$clickId = $_GET['click_id']; // Passed from OfferOnMedia tracking link
+$clickId = $_GET['click_id']; // Passed from Offer on Media tracking link
 $token = "YOUR_OFFER_POSTBACK_TOKEN"; 
 $payout = 35.00;
 
@@ -699,7 +699,7 @@ def fire_postback(click_id, payout, token):
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Advertiser Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

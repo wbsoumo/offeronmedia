@@ -139,7 +139,7 @@ $summary = $pdo->query("
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>All System Users | Admin Console | GVS OfferOnMedia</title>
+    <title>All System Users | Admin Console | GVS Offer on Media</title>
     
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,600,700&display=fallback">
@@ -712,7 +712,7 @@ $summary = $pdo->query("
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Console v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

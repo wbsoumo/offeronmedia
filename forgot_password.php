@@ -94,15 +94,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             // Send Mail using SMTP credentials
             $to = $user['email'];
-            $subject = "Password Reset Request - OfferOnMedia Network";
+            $subject = "Password Reset Request - Offer on Media Network";
             $message = "Hello " . htmlspecialchars($user['name']) . ",\n\n";
-            $message .= "We received a request to reset your password for your OfferOnMedia Network account.\n\n";
+            $message .= "We received a request to reset your password for your Offer on Media Network account.\n\n";
             $message .= "Click the link below to set a new password (valid for 2 hours):\n";
             $message .= $resetUrl . "\n\n";
             $message .= "If you did not request this, please ignore this email.\n\n";
-            $message .= "Best regards,\nOfferOnMedia Network Support\nsupport@offeronmedia.com";
+            $message .= "Best regards,\nOffer on Media Network Support\nsupport@offeronmedia.com";
 
-            $headers = "From: OfferOnMedia Network Support <support@offeronmedia.com>\r\n";
+            $headers = "From: Offer on Media Network Support <support@offeronmedia.com>\r\n";
             $headers .= "Reply-To: support@offeronmedia.com\r\n";
             $headers .= "X-Mailer: PHP/" . phpversion();
 
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password · OfferOnMedia Network</title>
+    <title>Reset Password · Offer on Media Network</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=fallback" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -263,8 +263,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <body>
     <div class="card-panel">
         <div class="brand-logo">
-            <img src="favicon.png" alt="OfferOnMedia Logo">
-            <span>OfferOnMedia</span>
+            <img src="favicon.png" alt="Offer on Media Logo">
+            <span>Offer on Media</span>
         </div>
 
         <?php if ($error): ?>

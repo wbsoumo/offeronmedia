@@ -11,7 +11,7 @@ require_once __DIR__ . '/app/core/auth.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us | GVS OfferOnMedia Network</title>
+    <title>About Us | GVS Offer on Media Network</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -31,7 +31,7 @@ require_once __DIR__ . '/app/core/auth.php';
 <body>
     <div class="hero">
         <h1>Driven by Industry Pioneers</h1>
-        <p>GVS OfferOnMedia is a premier global affiliate & performance marketing network delivering real-time S2S postback tracking, direct advertiser budgets, and ultra-fast publisher payouts.</p>
+        <p>GVS Offer on Media is a premier global affiliate & performance marketing network delivering real-time S2S postback tracking, direct advertiser budgets, and ultra-fast publisher payouts.</p>
         <a href="/login.php" class="btn-home"><i class="fas fa-sign-in-alt mr-2"></i> Partner Portal Login</a>
     </div>
     <div class="container">

@@ -142,7 +142,7 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Manager Portal v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

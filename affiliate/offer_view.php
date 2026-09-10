@@ -166,7 +166,7 @@ $trackingUrl = "https://offeronmedia.com/click.php?offer_id={$offerId}&aff_id={$
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
         <a href="dashboard.php" class="brand-link text-center">
             <span class="brand-text font-weight-light" style="font-size: 1.4rem;">
-                <i class="fas fa-rocket mr-2"></i><strong>OfferOnMedia</strong>
+                <i class="fas fa-rocket mr-2"></i><strong>Offer on Media</strong>
             </span>
         </a>
 
@@ -370,7 +370,7 @@ $trackingUrl = "https://offeronmedia.com/click.php?offer_id={$offerId}&aff_id={$
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Affiliate Portal v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

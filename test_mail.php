@@ -18,14 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $mode     = $_POST['dispatch_mode'] ?? 'html';
     
     if (filter_var($toEmail, FILTER_VALIDATE_EMAIL)) {
-        $subject = "GVS OfferOnMedia - Mail Test [" . strtoupper($mode) . "] (" . date('H:i:s') . ")";
+        $subject = "GVS Offer on Media - Mail Test [" . strtoupper($mode) . "] (" . date('H:i:s') . ")";
         
         $fromEmail = "support@offeronmedia.com";
-        $fromName  = "GVS OfferOnMedia Support";
+        $fromName  = "GVS Offer on Media Support";
 
         if ($mode === 'plain') {
             // Test Mode: Plain Text (Minimal headers to test basic spam filters)
-            $body = "Hello " . $name . ",\n\nThis is a plain-text test email sent from GVS OfferOnMedia Network.\n\nSender: " . $fromEmail . "\nTime: " . date('Y-m-d H:i:s') . "\n\nIf you received this message, basic email delivery is working!";
+            $body = "Hello " . $name . ",\n\nThis is a plain-text test email sent from GVS Offer on Media Network.\n\nSender: " . $fromEmail . "\nTime: " . date('Y-m-d H:i:s') . "\n\nIf you received this message, basic email delivery is working!";
             $headers  = "From: {$fromEmail}\r\n";
             $headers .= "Reply-To: {$fromEmail}\r\n";
             $headers .= "X-Mailer: PHP/" . phpversion();
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <head><meta charset='utf-8'></head>
             <body style='font-family: Arial, sans-serif; background:#f1f5f9; padding:20px;'>
                 <div style='max-width:550px; margin:0 auto; background:#ffffff; border-radius:10px; padding:30px; border:1px solid #cbd5e1;'>
-                    <h2 style='color:#0284c7; margin-top:0;'>GVS OfferOnMedia Network</h2>
+                    <h2 style='color:#0284c7; margin-top:0;'>GVS Offer on Media Network</h2>
                     <h3>Welcome, " . htmlspecialchars($name) . "!</h3>
                     <p style='background:#e0f2fe; color:#0369a1; padding:8px 14px; border-radius:20px; display:inline-block; font-weight:bold;'>
                         " . strtoupper($roleType) . " ACCOUNT REGISTERED
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHP Mail & Template Tester <?php echo $version; ?> | GVS OfferOnMedia</title>
+    <title>PHP Mail & Template Tester <?php echo $version; ?> | GVS Offer on Media</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>

@@ -837,7 +837,7 @@ if (isset($_GET['kyc_action'], $_GET['publisher_id'])) {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Console v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

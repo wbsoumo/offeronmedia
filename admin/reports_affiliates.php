@@ -362,7 +362,7 @@ if (isset($_GET['export'])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Publisher Performance Report | Admin Panel | GVS OfferOnMedia</title>
+    <title>Publisher Performance Report | Admin Panel | GVS Offer on Media</title>
     
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -1334,7 +1334,7 @@ if (isset($_GET['export'])) {
         <div class="float-right d-none d-sm-inline">
             <strong>Admin Panel v3.0</strong>
         </div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS OfferOnMedia</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 
@@ -1449,7 +1449,7 @@ $(document).ready(function() {
     window.printReport = function() {
         const originalTitle = document.title;
         document.title = 'Publisher Performance Report - ' + 
-                         $('#from').val() + ' to ' + $('#to').val() + ' - GVS OfferOnMedia';
+                         $('#from').val() + ' to ' + $('#to').val() + ' - GVS Offer on Media';
         
         // Hide elements that shouldn't print
         $('.main-header, .main-sidebar, .content-header, .dashboard-header .action-buttons-group, .footer').hide();

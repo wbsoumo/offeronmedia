@@ -7,7 +7,7 @@ require_once __DIR__ . '/app/config/database.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GDPR & Compliance · OfferOnMedia Network</title>
+    <title>GDPR & Compliance · Offer on Media Network</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #0b1120; color: #f8fafc; padding: 40px 20px; line-height: 1.6; max-width: 900px; margin: 0 auto; }

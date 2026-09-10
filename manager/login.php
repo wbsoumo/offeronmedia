@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Manager Login | OfferOnMedia Network</title>
+    <title>Account Manager Login | Offer on Media Network</title>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=fallback" rel="stylesheet">
@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <i class="fas fa-user-tie"></i>
         </div>
         <h1 class="brand-title">Account Manager Portal</h1>
-        <p class="brand-subtitle">OfferOnMedia Network Internal Access</p>
+        <p class="brand-subtitle">Offer on Media Network Internal Access</p>
     </div>
 
     <?php if ($error): ?>
