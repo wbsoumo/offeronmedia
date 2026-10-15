@@ -15,7 +15,7 @@ require_once __DIR__ . '/app/config/database.php';
    1. Validate required params
 -------------------------------------------------- */
 $offerId     = isset($_GET['offer_id']) ? (int)$_GET['offer_id'] : (isset($_GET['offer']) ? (int)$_GET['offer'] : 0);
-$affiliateId = isset($_GET['aff_id'])   ? (int)$_GET['aff_id']   : (isset($_GET['aff'])   ? (int)$_GET['aff']   : 0);
+$affiliateId = isset($_GET['aff_id'])   ? (int)$_GET['aff_id']   : (isset($_GET['aff'])   ? (int)$_GET['aff']   : (isset($_GET['affiliate_id']) ? (int)$_GET['affiliate_id'] : 0));
 
 if ($offerId <= 0 || $affiliateId <= 0) {
     http_response_code(400);
@@ -27,15 +27,19 @@ if ($offerId <= 0 || $affiliateId <= 0) {
 -------------------------------------------------- */
 $incomingParams = $_GET;
 
-/* Remove internal params (we don’t forward these) */
-unset($incomingParams['offer'], $incomingParams['aff']);
+/* Extract sub params safely for DB (supports sub_aff_id, sub_aff, sub1, aff_sub, p1) */
+$sub1 = $incomingParams['sub_aff_id'] 
+     ?? $incomingParams['sub_aff'] 
+     ?? $incomingParams['sub1'] 
+     ?? $incomingParams['aff_sub1'] 
+     ?? $incomingParams['aff_sub'] 
+     ?? $incomingParams['p1'] 
+     ?? null;
 
-/* Extract sub params safely for DB */
-$sub1 = $incomingParams['sub1'] ?? null;
-$sub2 = $incomingParams['sub2'] ?? null;
-$sub3 = $incomingParams['sub3'] ?? null;
-$sub4 = $incomingParams['sub4'] ?? null;
-$sub5 = $incomingParams['sub5'] ?? null;
+$sub2 = $incomingParams['sub2'] ?? $incomingParams['aff_sub2'] ?? $incomingParams['p2'] ?? null;
+$sub3 = $incomingParams['sub3'] ?? $incomingParams['aff_sub3'] ?? $incomingParams['p3'] ?? null;
+$sub4 = $incomingParams['sub4'] ?? $incomingParams['aff_sub4'] ?? $incomingParams['p4'] ?? null;
+$sub5 = $incomingParams['sub5'] ?? $incomingParams['aff_sub5'] ?? $incomingParams['p5'] ?? null;
 
 /* -------------------------------------------------
    3. Fetch & validate offer
@@ -166,45 +170,80 @@ $insert->execute([
 -------------------------------------------------- */
 $redirectUrl = $offer['offer_url'];
 
-$macroMap = [
-    '{click_id}'     => rawurlencode($clickId),
-    '{transaction_id}'=> rawurlencode($clickId),
-    '{offer_id}'     => rawurlencode((string)$offerId),
-    '{affiliate_id}' => rawurlencode((string)$affiliateId),
-    '{aff_id}'       => rawurlencode((string)$affiliateId),
-    '{sub_aff_id}'   => rawurlencode((string)($sub1 ?? '')),
-    '{sub_aff}'      => rawurlencode((string)($sub1 ?? '')),
-    '{sub1}'         => rawurlencode((string)($sub1 ?? '')),
-    '{sub2}'         => rawurlencode((string)($sub2 ?? '')),
-    '{sub3}'         => rawurlencode((string)($sub3 ?? '')),
-    '{sub4}'         => rawurlencode((string)($sub4 ?? '')),
-    '{sub5}'         => rawurlencode((string)($sub5 ?? '')),
-    '{aff_sub1}'     => rawurlencode((string)($sub1 ?? '')),
-    '{aff_sub2}'     => rawurlencode((string)($sub2 ?? '')),
-    '{aff_sub3}'     => rawurlencode((string)($sub3 ?? '')),
-    '{aff_sub4}'     => rawurlencode((string)($sub4 ?? '')),
-    '{aff_sub5}'     => rawurlencode((string)($sub5 ?? '')),
-    '{p1}'           => rawurlencode((string)($sub1 ?? '')),
-    '{p2}'           => rawurlencode((string)($sub2 ?? '')),
-    '{p3}'           => rawurlencode((string)($sub3 ?? '')),
-    '{p4}'           => rawurlencode((string)($sub4 ?? '')),
-    '{p5}'           => rawurlencode((string)($sub5 ?? '')),
-    '{source}'       => rawurlencode((string)($sub1 ?? '')),
-    '{ip_address}'   => rawurlencode($ipAddress),
-    '{country}'      => rawurlencode($_SERVER['HTTP_CF_IPCOUNTRY'] ?? ''),
-    '{gaid}'         => rawurlencode((string)($incomingParams['gaid'] ?? '')),
-    '{idfa}'         => rawurlencode((string)($incomingParams['idfa'] ?? ''))
+$gpId = $incomingParams['gp_id'] ?? ($incomingParams['gpid'] ?? ($incomingParams['GP_ID'] ?? ''));
+
+// Standard tokens lookup (lowercase token without curly braces => value)
+$macroValues = [
+    'click_id'        => rawurlencode($clickId),
+    'transaction_id'  => rawurlencode($clickId),
+    'offer_id'        => rawurlencode((string)$offerId),
+    'affiliate_id'    => rawurlencode((string)$affiliateId),
+    'aff_id'          => rawurlencode((string)$affiliateId),
+    'sub_aff_id'      => rawurlencode((string)($sub1 ?? '')),
+    'sub_aff'         => rawurlencode((string)($sub1 ?? '')),
+    'sub1'            => rawurlencode((string)($sub1 ?? '')),
+    'sub2'            => rawurlencode((string)($sub2 ?? '')),
+    'sub3'            => rawurlencode((string)($sub3 ?? '')),
+    'sub4'            => rawurlencode((string)($sub4 ?? '')),
+    'sub5'            => rawurlencode((string)($sub5 ?? '')),
+    'aff_sub'         => rawurlencode((string)($sub1 ?? '')),
+    'aff_sub1'        => rawurlencode((string)($sub1 ?? '')),
+    'aff_sub2'        => rawurlencode((string)($sub2 ?? '')),
+    'aff_sub3'        => rawurlencode((string)($sub3 ?? '')),
+    'aff_sub4'        => rawurlencode((string)($sub4 ?? '')),
+    'aff_sub5'        => rawurlencode((string)($sub5 ?? '')),
+    'p1'              => rawurlencode((string)($sub1 ?? '')),
+    'p2'              => rawurlencode((string)($sub2 ?? '')),
+    'p3'              => rawurlencode((string)($sub3 ?? '')),
+    'p4'              => rawurlencode((string)($sub4 ?? '')),
+    'p5'              => rawurlencode((string)($sub5 ?? '')),
+    'source'          => rawurlencode((string)($sub1 ?? '')),
+    'ip_address'      => rawurlencode($ipAddress),
+    'ip'              => rawurlencode($ipAddress),
+    'country'         => rawurlencode($_SERVER['HTTP_CF_IPCOUNTRY'] ?? ''),
+    'gaid'            => rawurlencode((string)($incomingParams['gaid'] ?? '')),
+    'idfa'            => rawurlencode((string)($incomingParams['idfa'] ?? '')),
+    'gp_id'           => rawurlencode((string)$gpId),
+    'gpid'            => rawurlencode((string)$gpId)
 ];
 
-// Perform macro replacements on offer URL
-$redirectUrl = str_replace(array_keys($macroMap), array_values($macroMap), $redirectUrl);
+// Perform case-insensitive macro replacements on offer URL
+$redirectUrl = preg_replace_callback('/\{([a-zA-Z0-9_-]+)\}/', function ($matches) use ($macroValues, $incomingParams) {
+    $tokenLower = strtolower($matches[1]);
+    if (isset($macroValues[$tokenLower])) {
+        return $macroValues[$tokenLower];
+    }
+    // Fallback: Check if token was passed as a query parameter in incoming request
+    foreach ($incomingParams as $k => $v) {
+        if (strtolower((string)$k) === $tokenLower) {
+            return rawurlencode((string)$v);
+        }
+    }
+    // If unknown macro or empty parameter, strip the token so {MACRO} doesn't leak into target URL
+    return '';
+}, $redirectUrl);
 
-// Forward any remaining query params if offer URL does not use macro syntax for them
-$unusedParams = $incomingParams;
-unset($unusedParams['sub1'], $unusedParams['sub2'], $unusedParams['sub3'], $unusedParams['sub4'], $unusedParams['sub5']);
+// Reserved internal parameters that should NEVER be appended to the destination URL
+$reservedKeys = array_flip([
+    'offer_id', 'offer',
+    'aff_id', 'aff', 'affiliate_id',
+    'sub_aff_id', 'sub_aff',
+    'sub1', 'sub2', 'sub3', 'sub4', 'sub5',
+    'aff_sub', 'aff_sub1', 'aff_sub2', 'aff_sub3', 'aff_sub4', 'aff_sub5',
+    'p1', 'p2', 'p3', 'p4', 'p5',
+    'source', 'gp_id', 'gpid', 'gaid', 'idfa'
+]);
 
-if (!empty($unusedParams)) {
-    $queryString = http_build_query($unusedParams);
+$forwardParams = [];
+foreach ($incomingParams as $key => $val) {
+    if (!isset($reservedKeys[strtolower((string)$key)])) {
+        $forwardParams[$key] = $val;
+    }
+}
+
+// Forward any genuine extra 3rd-party query params (e.g. custom UTM parameters) only if present
+if (!empty($forwardParams)) {
+    $queryString = http_build_query($forwardParams);
     $separator   = (strpos($redirectUrl, '?') === false) ? '?' : '&';
     $redirectUrl .= $separator . $queryString;
 }
