@@ -58,6 +58,24 @@ function register_user($role_name, array $data)
     // Hash password
     $passwordHash = password_hash($data['password'], PASSWORD_DEFAULT);
 
+    // Determine manager assignment for affiliates
+    $managerIdToAssign = null;
+    if ($role_name === 'affiliate') {
+        $candidateMgr = !empty($data['account_manager_id']) 
+                      ? (int)$data['account_manager_id'] 
+                      : (!empty($_SESSION['assigned_manager_id']) 
+                         ? (int)$_SESSION['assigned_manager_id'] 
+                         : (!empty($_COOKIE['aff_manager_id']) ? (int)$_COOKIE['aff_manager_id'] : null));
+
+        if ($candidateMgr) {
+            $vStmt = $pdo->prepare("SELECT user_id FROM users WHERE user_id = :id AND role_id = 2 LIMIT 1");
+            $vStmt->execute(['id' => $candidateMgr]);
+            if ($vStmt->fetchColumn()) {
+                $managerIdToAssign = $candidateMgr;
+            }
+        }
+    }
+
     // Insert user
     $insert = $pdo->prepare("
         INSERT INTO users (
@@ -67,6 +85,7 @@ function register_user($role_name, array $data)
             password_hash,
             company,
             status,
+            account_manager_id,
             created_at
         ) VALUES (
             :role_id,
@@ -75,16 +94,18 @@ function register_user($role_name, array $data)
             :password,
             :company,
             'pending',
+            :account_manager_id,
             NOW()
         )
     ");
 
     $insert->execute([
-        'role_id'  => $role['role_id'],
-        'name'     => trim($data['name']),
-        'email'    => strtolower(trim($data['email'])),
-        'password' => $passwordHash,
-        'company'  => isset($data['company']) ? trim($data['company']) : null
+        'role_id'            => $role['role_id'],
+        'name'               => trim($data['name']),
+        'email'              => strtolower(trim($data['email'])),
+        'password'           => $passwordHash,
+        'company'            => isset($data['company']) ? trim($data['company']) : null,
+        'account_manager_id' => $managerIdToAssign
     ]);
 
     // Send Welcome Email

@@ -3,6 +3,10 @@ define('APP_INIT', true);
 
 require_once __DIR__ . '/app/config/database.php';
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $error = null;
 $success = null;
 
@@ -10,6 +14,27 @@ $success = null;
 $initialRole = $_GET['role'] ?? 'affiliate';
 if (!in_array($initialRole, ['affiliate', 'advertiser'], true)) {
     $initialRole = 'affiliate';
+}
+
+// Check for Manager Referral / Invite Parameter (e.g. ?manager=5, ?manager_id=5, ?mgr=5)
+$rawManagerId = $_GET['manager'] ?? ($_GET['manager_id'] ?? ($_GET['mgr'] ?? null));
+$assignedManager = null;
+
+if (!empty($rawManagerId) && is_numeric($rawManagerId)) {
+    $mid = (int)$rawManagerId;
+    $mStmt = $pdo->prepare("SELECT user_id, name, email FROM users WHERE user_id = :id AND role_id = 2 AND status = 'active' LIMIT 1");
+    $mStmt->execute(['id' => $mid]);
+    $assignedManager = $mStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($assignedManager) {
+        $_SESSION['assigned_manager_id'] = $assignedManager['user_id'];
+        setcookie('aff_manager_id', (string)$assignedManager['user_id'], time() + (86400 * 30), '/');
+    }
+} elseif (!empty($_SESSION['assigned_manager_id']) || !empty($_COOKIE['aff_manager_id'])) {
+    $mid = (int)($_SESSION['assigned_manager_id'] ?? $_COOKIE['aff_manager_id']);
+    $mStmt = $pdo->prepare("SELECT user_id, name, email FROM users WHERE user_id = :id AND role_id = 2 AND status = 'active' LIMIT 1");
+    $mStmt->execute(['id' => $mid]);
+    $assignedManager = $mStmt->fetch(PDO::FETCH_ASSOC);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -46,6 +71,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$roleRow) {
                 $error = 'Invalid role selected';
             } else {
+                // Determine assigned account manager if registering as affiliate
+                $managerIdToAssign = null;
+                if ($role === 'affiliate') {
+                    $candidateMgrId = !empty($_POST['manager_id']) 
+                                    ? (int)$_POST['manager_id'] 
+                                    : ($assignedManager['user_id'] ?? null);
+
+                    if ($candidateMgrId) {
+                        $vStmt = $pdo->prepare("SELECT user_id FROM users WHERE user_id = :id AND role_id = 2 LIMIT 1");
+                        $vStmt->execute(['id' => $candidateMgrId]);
+                        if ($vStmt->fetchColumn()) {
+                            $managerIdToAssign = $candidateMgrId;
+                        }
+                    }
+                }
+
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
                 $stmt = $pdo->prepare("
@@ -58,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         teams_id,
                         role_id,
                         status,
+                        account_manager_id,
                         created_at
                     ) VALUES (
                         :name,
@@ -68,21 +110,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         :teams,
                         :role_id,
                         'pending',
+                        :account_manager_id,
                         NOW()
                     )
                 ");
 
                 $stmt->execute([
-                    'name'     => $name,
-                    'email'    => $email,
-                    'password' => $passwordHash,
-                    'mobile'   => $mobile,
-                    'telegram' => $telegramId !== '' ? $telegramId : null,
-                    'teams'    => $teamsId !== '' ? $teamsId : null,
-                    'role_id'  => $roleRow['role_id']
+                    'name'               => $name,
+                    'email'              => $email,
+                    'password'           => $passwordHash,
+                    'mobile'             => $mobile,
+                    'telegram'           => $telegramId !== '' ? $telegramId : null,
+                    'teams'              => $teamsId !== '' ? $teamsId : null,
+                    'role_id'            => $roleRow['role_id'],
+                    'account_manager_id' => $managerIdToAssign
                 ]);
 
-                $success = 'Registration submitted successfully! Your account is currently pending manager approval.';
+                // Clear stored manager cookie/session after successful registration
+                unset($_SESSION['assigned_manager_id']);
+                setcookie('aff_manager_id', '', time() - 3600, '/');
+
+                // Send Welcome Email
+                if (file_exists(__DIR__ . '/app/services/MailService.php')) {
+                    require_once __DIR__ . '/app/services/MailService.php';
+                    send_welcome_email($email, $name, $role);
+                }
+
+                $success = 'Registration submitted successfully! Your account is currently pending approval.';
             }
         }
     }
@@ -496,6 +550,52 @@ body {
     font-weight: 700;
     text-decoration: none;
 }
+
+/* Assigned Manager Badge */
+.assigned-manager-badge {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 1.5rem;
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    animation: fadeInBadge 0.3s ease;
+}
+
+.assigned-manager-badge .badge-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.assigned-manager-badge .badge-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+    font-size: 0.92rem;
+}
+
+.assigned-manager-badge .badge-desc {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    display: block;
+}
+
+@keyframes fadeInBadge {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
     </style>
 </head>
 <body>
@@ -574,6 +674,19 @@ body {
                             <i class="fas fa-bullhorn"></i> Advertiser / Brand
                         </button>
                     </div>
+
+                    <?php if ($assignedManager): ?>
+                        <input type="hidden" name="manager_id" value="<?php echo (int)$assignedManager['user_id']; ?>">
+                        <div class="assigned-manager-badge" id="managerBadge" style="<?php echo $initialRole === 'affiliate' ? 'display:flex;' : 'display:none;'; ?>">
+                            <div class="badge-icon">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <div>
+                                <span class="badge-title"><i class="fas fa-check-circle text-success mr-1"></i> Dedicated Manager: <?php echo htmlspecialchars($assignedManager['name']); ?></span>
+                                <span class="badge-desc">You are registering through this manager's direct link. Your account will be assigned directly to their portfolio.</span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <div class="form-group">
                         <label class="form-label" for="name">Full Name / Company Name</label>
@@ -654,10 +767,16 @@ body {
                 tabPub.className = 'role-tab active';
                 tabAdv.className = 'role-tab';
                 btnSubmit.className = 'btn btn-accent btn-submit';
+                if (document.getElementById('managerBadge')) {
+                    document.getElementById('managerBadge').style.display = 'flex';
+                }
             } else {
                 tabPub.className = 'role-tab';
                 tabAdv.className = 'role-tab adv-active';
                 btnSubmit.className = 'btn btn-primary btn-submit';
+                if (document.getElementById('managerBadge')) {
+                    document.getElementById('managerBadge').style.display = 'none';
+                }
             }
         }
 

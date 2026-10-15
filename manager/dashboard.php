@@ -221,6 +221,41 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                     <p class="mb-0 text-white-50">Manage your assigned publishers, track conversion performance, and inspect campaign reports.</p>
                 </div>
 
+                <!-- Dedicated Affiliate Invite Link Widget -->
+                <?php 
+                    $inviteUrl = "https://offeronmedia.com/register.php?role=affiliate&manager=" . (int)$managerId;
+                ?>
+                <div class="card card-custom p-4 mb-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; border: 1px solid #334155;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                        <div>
+                            <h4 class="font-weight-bold mb-1 text-white">
+                                <i class="fas fa-link text-primary mr-2"></i>Your Dedicated Publisher Signup Link
+                            </h4>
+                            <p class="text-white-50 mb-0 small">
+                                Share this exclusive link with publishers. When they register using your link, they are automatically assigned to your account portfolio.
+                            </p>
+                        </div>
+                        <span class="badge badge-success px-3 py-2 mt-2 mt-md-0 font-weight-bold" style="font-size: 0.85rem;">
+                            <i class="fas fa-magic mr-1"></i> Auto-Assign Active
+                        </span>
+                    </div>
+
+                    <div class="input-group input-group-lg mt-3">
+                        <input type="text" id="managerInviteUrl" class="form-control font-weight-bold bg-dark text-info border-secondary" readonly value="<?php echo htmlspecialchars($inviteUrl); ?>" style="font-family: monospace; font-size: 0.95rem;">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary px-4 font-weight-bold" type="button" onclick="copyInviteLink()" id="btnCopyInvite">
+                                <i class="fas fa-copy mr-1"></i> <span id="copyBtnText">Copy Link</span>
+                            </button>
+                            <a href="https://api.whatsapp.com/send?text=<?php echo urlencode("Join India's top performance marketing network using my publisher invite link: " . $inviteUrl); ?>" target="_blank" class="btn btn-success font-weight-bold px-3" title="Share via WhatsApp">
+                                <i class="fab fa-whatsapp"></i>
+                            </a>
+                            <a href="https://t.me/share/url?url=<?php echo urlencode($inviteUrl); ?>&text=<?php echo urlencode("Join our affiliate network with my manager invite link:"); ?>" target="_blank" class="btn btn-info font-weight-bold px-3" title="Share via Telegram">
+                                <i class="fab fa-telegram-plane"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 2x2 Mobile Stat Grid -->
                 <div class="row mb-4 stat-boxes-row">
                     <div class="col-6 col-md-3">
@@ -307,6 +342,36 @@ $(document).ready(function() {
         responsive: true
     });
 });
+
+function copyInviteLink() {
+    var copyText = document.getElementById("managerInviteUrl");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(copyText.value).then(function() {
+            showCopyFeedback();
+        }).catch(function() {
+            document.execCommand('copy');
+            showCopyFeedback();
+        });
+    } else {
+        document.execCommand('copy');
+        showCopyFeedback();
+    }
+}
+
+function showCopyFeedback() {
+    var btnText = document.getElementById("copyBtnText");
+    var btn = document.getElementById("btnCopyInvite");
+    btnText.innerText = "Copied!";
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    setTimeout(function() {
+        btnText.innerText = "Copy Link";
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+    }, 2500);
+}
 </script>
 </body>
 </html>

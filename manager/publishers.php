@@ -88,11 +88,10 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6"><h1 class="m-0 font-weight-bold">Assigned Publishers Directory</h1></div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
-                            <li class="breadcrumb-item active">My Publishers</li>
-                        </ol>
+                    <div class="col-sm-6 text-sm-right mt-2 mt-sm-0">
+                        <button type="button" class="btn btn-primary font-weight-bold shadow-sm" data-toggle="modal" data-target="#invitePublisherModal">
+                            <i class="fas fa-link mr-1"></i> My Publisher Signup Link
+                        </button>
                     </div>
                 </div>
             </div>
@@ -140,6 +139,55 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Invite Publisher Modal -->
+    <?php 
+        $inviteUrl = "https://offeronmedia.com/register.php?role=affiliate&manager=" . (int)$managerId;
+    ?>
+    <div class="modal fade" id="invitePublisherModal" tabindex="-1" role="dialog" aria-labelledby="inviteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title font-weight-bold" id="inviteModalLabel">
+                        <i class="fas fa-user-plus mr-2"></i>My Publisher Signup Link
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">
+                        Share this personalized link with your publishers. When they register using this link, they will be <strong>automatically assigned</strong> to your manager portfolio without manual admin approval.
+                    </p>
+
+                    <label class="font-weight-bold small text-uppercase text-secondary">Your Personal Invite URL</label>
+                    <div class="input-group mb-3">
+                        <input type="text" id="modalInviteInput" class="form-control font-weight-bold" readonly value="<?php echo htmlspecialchars($inviteUrl); ?>" style="font-family: monospace; background: #f8fafc;">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary font-weight-bold" type="button" onclick="copyModalInvite()" id="btnModalCopy">
+                                <i class="fas fa-copy mr-1"></i> <span id="modalCopyText">Copy</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                        <span class="small font-weight-bold text-muted">Direct Share:</span>
+                        <div>
+                            <a href="https://api.whatsapp.com/send?text=<?php echo urlencode("Join our performance marketing network using my publisher invite link: " . $inviteUrl); ?>" target="_blank" class="btn btn-sm btn-success font-weight-bold mr-1">
+                                <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                            </a>
+                            <a href="https://t.me/share/url?url=<?php echo urlencode($inviteUrl); ?>&text=<?php echo urlencode("Join our affiliate network with my manager invite link:"); ?>" target="_blank" class="btn btn-sm btn-info font-weight-bold">
+                                <i class="fab fa-telegram-plane mr-1"></i> Telegram
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Manager Portal v3.0</strong></div>
         <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
@@ -155,6 +203,36 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $(document).ready(function() {
     $('#publishersTable').DataTable({ pageLength: 10, responsive: true });
 });
+
+function copyModalInvite() {
+    var copyText = document.getElementById("modalInviteInput");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(copyText.value).then(function() {
+            showModalCopyFeedback();
+        }).catch(function() {
+            document.execCommand('copy');
+            showModalCopyFeedback();
+        });
+    } else {
+        document.execCommand('copy');
+        showModalCopyFeedback();
+    }
+}
+
+function showModalCopyFeedback() {
+    var btnText = document.getElementById("modalCopyText");
+    var btn = document.getElementById("btnModalCopy");
+    btnText.innerText = "Copied!";
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
+    setTimeout(function() {
+        btnText.innerText = "Copy";
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+    }, 2500);
+}
 </script>
 </body>
 </html>
