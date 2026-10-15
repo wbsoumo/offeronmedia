@@ -280,8 +280,12 @@ $offers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <td class="text-right">
                                         <?php if (manager_can('assign_offers')): ?>
                                         <button type="button" 
-                                                class="btn btn-sm btn-primary font-weight-bold shadow-sm"
-                                                onclick="openAssignModal(<?php echo $o['offer_id']; ?>, '<?php echo htmlspecialchars(addslashes($o['offer_name'])); ?>', '<?php echo $o['visibility']; ?>', <?php echo (float)$o['payout']; ?>)">
+                                                class="btn btn-sm btn-primary font-weight-bold shadow-sm btn-open-assign"
+                                                data-offer-id="<?php echo (int)$o['offer_id']; ?>"
+                                                data-offer-name="<?php echo htmlspecialchars($o['offer_name'], ENT_QUOTES); ?>"
+                                                data-visibility="<?php echo htmlspecialchars($o['visibility'] ?? 'public', ENT_QUOTES); ?>"
+                                                data-payout="<?php echo (float)($o['payout'] ?? 0); ?>"
+                                                onclick="openAssignModal(<?php echo (int)$o['offer_id']; ?>, <?php echo json_encode($o['offer_name']); ?>, <?php echo json_encode($o['visibility'] ?? 'public'); ?>, <?php echo (float)($o['payout'] ?? 0); ?>)">
                                             <i class="fas fa-user-plus mr-1"></i> Assign
                                         </button>
                                         <?php else: ?>
@@ -290,6 +294,7 @@ $offers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
                                         </button>
                                         <?php endif; ?>
                                     </td>
+
 
                                 </tr>
                                 <?php endforeach; ?>
@@ -404,15 +409,26 @@ $(document).ready(function() {
 });
 
 function openAssignModal(offerId, offerName, visibility, defaultPayout) {
-    document.getElementById('modalOfferId').value = offerId;
-    document.getElementById('modalOfferName').innerText = '#' + offerId + ' - ' + offerName;
-    document.getElementById('modalCustomPayout').placeholder = 'Default: $' + defaultPayout.toFixed(2);
+    var offerIdElem = document.getElementById('modalOfferId');
+    if (offerIdElem) offerIdElem.value = offerId;
+
+    var offerNameElem = document.getElementById('modalOfferName');
+    if (offerNameElem) offerNameElem.innerText = '#' + offerId + ' - ' + offerName;
+
+    var payoutElem = document.getElementById('modalCustomPayout');
+    if (payoutElem) {
+        var num = parseFloat(defaultPayout) || 0;
+        payoutElem.placeholder = 'Default: $' + num.toFixed(2);
+        payoutElem.value = '';
+    }
     
     var badgeContainer = document.getElementById('modalOfferVisibilityBadge');
-    if (visibility.toLowerCase() === 'private') {
-        badgeContainer.innerHTML = '<span class="visibility-badge visibility-private"><i class="fas fa-lock mr-1"></i> Private</span>';
-    } else {
-        badgeContainer.innerHTML = '<span class="visibility-badge visibility-public"><i class="fas fa-globe mr-1"></i> Public</span>';
+    if (badgeContainer) {
+        if (visibility && String(visibility).toLowerCase() === 'private') {
+            badgeContainer.innerHTML = '<span class="visibility-badge visibility-private"><i class="fas fa-lock mr-1"></i> Private</span>';
+        } else {
+            badgeContainer.innerHTML = '<span class="visibility-badge visibility-public"><i class="fas fa-globe mr-1"></i> Public</span>';
+        }
     }
 
     // Uncheck all checkboxes by default
@@ -422,6 +438,15 @@ function openAssignModal(offerId, offerName, visibility, defaultPayout) {
     $('#assignOfferModal').modal('show');
 }
 
+$(document).on('click', '.btn-open-assign', function(e) {
+    e.preventDefault();
+    var offerId    = $(this).data('offer-id');
+    var offerName  = $(this).data('offer-name');
+    var visibility = $(this).data('visibility');
+    var payout     = $(this).data('payout');
+    openAssignModal(offerId, offerName, visibility, payout);
+});
+
 var allSelected = false;
 function toggleSelectAllPublishers() {
     allSelected = !allSelected;
@@ -429,5 +454,6 @@ function toggleSelectAllPublishers() {
     cbs.forEach(function(cb) { cb.checked = allSelected; });
 }
 </script>
+
 </body>
 </html>
