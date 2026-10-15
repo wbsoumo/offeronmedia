@@ -1466,6 +1466,13 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         
+                                                        <a href="campaign_access.php?offer_id=<?php echo $offer['offer_id']; ?>" 
+                                                           class="btn-action btn-assign"
+                                                           style="background: #e0e7ff; color: #4338ca;"
+                                                           title="Assign to Publishers (Access Control)">
+                                                            <i class="fas fa-user-plus"></i>
+                                                        </a>
+
                                                         <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>" 
                                                            class="btn-action btn-view"
                                                            title="View Details">

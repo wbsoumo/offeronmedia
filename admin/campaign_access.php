@@ -556,8 +556,11 @@ foreach ($assignments as $as) {
                                     <label class="font-weight-bold">Select Campaign Offer <span class="text-danger">*</span></label>
                                     <select name="offer_id" class="form-control select2" data-placeholder="Choose Campaign Offer..." required>
                                         <option value=""></option>
-                                        <?php foreach ($offers as $of): ?>
-                                        <option value="<?php echo $of['offer_id']; ?>">
+                                        <?php 
+                                            $preOfferId = (int)($_GET['offer_id'] ?? 0);
+                                            foreach ($offers as $of): 
+                                        ?>
+                                        <option value="<?php echo $of['offer_id']; ?>" <?php echo ($preOfferId === (int)$of['offer_id']) ? 'selected' : ''; ?>>
                                             #<?php echo $of['offer_id']; ?> - <?php echo htmlspecialchars($of['offer_name']); ?> ($<?php echo number_format($of['payout'], 2); ?>)
                                         </option>
                                         <?php endforeach; ?>

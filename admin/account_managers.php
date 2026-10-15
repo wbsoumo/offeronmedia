@@ -62,6 +62,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_publisher'])) 
 }
 
 /* ===============================
+   HANDLE MANAGER PERMISSIONS SAVE
+================================ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_permissions'])) {
+    $targetMgrId = (int)($_POST['manager_id'] ?? 0);
+    $submittedPerms = $_POST['perms'] ?? [];
+    if ($targetMgrId > 0) {
+        save_manager_permissions($targetMgrId, $submittedPerms);
+        $success = "Permissions for Account Manager #{$targetMgrId} updated successfully!";
+    }
+}
+
+
+/* ===============================
    FETCH MANAGERS & ASSIGNMENTS
 ================================ */
 $managers = $pdo->query("
@@ -451,6 +464,8 @@ foreach ($managers as $m) {
                 <div class="card card-custom p-4">
                     <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-user-tie mr-2"></i>Account Managers Roster</h4>
 
+                    <?php $permDefs = get_manager_permission_definitions(); ?>
+
                     <div class="table-responsive">
                         <table class="table table-hover align-middle" id="managersTable">
                             <thead class="thead-light">
@@ -459,18 +474,30 @@ foreach ($managers as $m) {
                                     <th>Manager Name</th>
                                     <th>Email</th>
                                     <th>Assigned Publishers</th>
+                                    <th>Role Permissions</th>
                                     <th>Status</th>
                                     <th>Date Added</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($managers as $mgr): ?>
+                                <?php foreach ($managers as $mgr): 
+                                    $mPerms = get_manager_permissions($mgr['user_id']);
+                                    $enabledCount = 0;
+                                    foreach ($permDefs as $pk => $pd) {
+                                        if (!empty($mPerms[$pk])) $enabledCount++;
+                                    }
+                                ?>
                                 <tr>
                                     <td><strong>#<?php echo $mgr['user_id']; ?></strong></td>
                                     <td><strong class="text-dark"><?php echo htmlspecialchars($mgr['name']); ?></strong></td>
                                     <td><?php echo htmlspecialchars($mgr['email']); ?></td>
                                     <td><span class="badge badge-info p-2"><?php echo number_format($mgr['total_publishers']); ?> Publishers</span></td>
+                                    <td>
+                                        <button type="button" class="btn btn-xs btn-outline-primary font-weight-bold px-2 py-1 shadow-sm" data-toggle="modal" data-target="#permModal_<?php echo $mgr['user_id']; ?>">
+                                            <i class="fas fa-shield-alt mr-1"></i> <?php echo $enabledCount . '/' . count($permDefs); ?> Allowed
+                                        </button>
+                                    </td>
                                     <td>
                                         <span class="badge badge-<?php echo $mgr['status'] === 'active' ? 'success' : 'secondary'; ?> p-2">
                                             <?php echo ucfirst($mgr['status']); ?>
@@ -478,6 +505,9 @@ foreach ($managers as $m) {
                                     </td>
                                     <td><small class="text-muted"><?php echo date('Y-m-d', strtotime($mgr['created_at'])); ?></small></td>
                                     <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#permModal_<?php echo $mgr['user_id']; ?>" title="Configure Permissions">
+                                            <i class="fas fa-key"></i>
+                                        </button>
                                         <?php if ($mgr['status'] === 'active'): ?>
                                             <a href="?action=block&id=<?php echo $mgr['user_id']; ?>" class="btn btn-sm btn-outline-danger" title="Block"><i class="fas fa-ban"></i></a>
                                         <?php else: ?>
@@ -485,6 +515,60 @@ foreach ($managers as $m) {
                                         <?php endif; ?>
                                     </td>
                                 </tr>
+
+                                <!-- Permissions Modal for Manager #<?php echo $mgr['user_id']; ?> -->
+                                <div class="modal fade" id="permModal_<?php echo $mgr['user_id']; ?>" tabindex="-1" role="dialog" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                                        <div class="modal-content" style="border-radius: 12px; border: none; overflow: hidden;">
+                                            <div class="modal-header bg-dark text-white">
+                                                <h5 class="modal-title font-weight-bold">
+                                                    <i class="fas fa-user-shield mr-2 text-warning"></i>Permissions: <?php echo htmlspecialchars($mgr['name']); ?> (#<?php echo $mgr['user_id']; ?>)
+                                                </h5>
+                                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                                    <span>&times;</span>
+                                                </button>
+                                            </div>
+                                            <form method="post">
+                                                <input type="hidden" name="save_permissions" value="1">
+                                                <input type="hidden" name="manager_id" value="<?php echo $mgr['user_id']; ?>">
+                                                <div class="modal-body p-4">
+                                                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                                        <div>
+                                                            <span class="text-muted small">Select the specific platform capabilities allowed for this account manager.</span>
+                                                        </div>
+                                                        <div>
+                                                            <button type="button" class="btn btn-xs btn-outline-primary mr-1 font-weight-bold" onclick="toggleAllPerms('<?php echo $mgr['user_id']; ?>', true)">Select All</button>
+                                                            <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold" onclick="toggleAllPerms('<?php echo $mgr['user_id']; ?>', false)">Clear All</button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="list-group shadow-sm">
+                                                        <?php foreach ($permDefs as $pKey => $pDef): 
+                                                            $isChecked = !empty($mPerms[$pKey]);
+                                                        ?>
+                                                        <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-3">
+                                                            <div class="pr-3">
+                                                                <strong class="d-block text-dark" style="font-size: 14px;"><?php echo htmlspecialchars($pDef['label']); ?></strong>
+                                                                <small class="text-muted"><?php echo htmlspecialchars($pDef['desc']); ?></small>
+                                                            </div>
+                                                            <div class="custom-control custom-switch custom-switch-lg">
+                                                                <input type="checkbox" class="custom-control-input perm-switch-<?php echo $mgr['user_id']; ?>" id="sw_<?php echo $mgr['user_id'] . '_' . $pKey; ?>" name="perms[<?php echo $pKey; ?>]" value="1" <?php echo $isChecked ? 'checked' : ''; ?>>
+                                                                <label class="custom-control-label" for="sw_<?php echo $mgr['user_id'] . '_' . $pKey; ?>"></label>
+                                                            </div>
+                                                        </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer bg-light">
+                                                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary font-weight-bold shadow-sm">
+                                                        <i class="fas fa-save mr-1"></i> Save Permissions
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
@@ -517,6 +601,11 @@ $(document).ready(function() {
         responsive: true
     });
 });
+
+function toggleAllPerms(mgrId, state) {
+    $('.perm-switch-' + mgrId).prop('checked', state);
+}
+
 </script>
 </body>
 </html>

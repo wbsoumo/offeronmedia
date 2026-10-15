@@ -176,12 +176,23 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                             <p>Campaigns</p>
                         </a>
                     </li>
+                    <?php if (manager_can('affiliate_reports') || manager_can('advertiser_reports') || manager_can('all_reports')): ?>
                     <li class="nav-item">
                         <a href="reports.php" class="nav-link">
                             <i class="nav-icon fas fa-chart-bar"></i>
                             <p>Performance Reports</p>
                         </a>
                     </li>
+                    <?php endif; ?>
+                    <?php if (manager_can('link_tester')): ?>
+                    <li class="nav-item">
+                        <a href="link_tester.php" class="nav-link">
+                            <i class="nav-icon fas fa-vial"></i>
+                            <p>Link Tester</p>
+                        </a>
+                    </li>
+                    <?php endif; ?>
+
                     <li class="nav-item">
                         <a href="profile.php" class="nav-link">
                             <i class="nav-icon fas fa-user-cog"></i>

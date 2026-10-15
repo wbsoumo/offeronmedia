@@ -21,6 +21,8 @@ $where  = [];
 $params = ['aid' => $affiliateId];
 
 $where[] = "LOWER(o.status) IN ('approved', 'active', 'live')";
+// Private offers are only visible to affiliates who have been explicitly approved / assigned
+$where[] = "(LOWER(IFNULL(o.visibility, 'public')) = 'public' OR a.status = 'approved')";
 
 if (!empty($_GET['search'])) {
     $where[] = "(o.offer_name LIKE :search OR o.offer_description LIKE :search)";
@@ -54,6 +56,7 @@ SELECT
     o.payout,
     o.currency,
     o.category,
+    o.visibility,
     o.status AS offer_status,
     o.created_at,
     o.preview_url,
@@ -98,7 +101,17 @@ foreach ($offers as $o) {
     $totalClicks += (int)$o['total_clicks'];
 }
 
-$categoriesStmt = $pdo->query("SELECT DISTINCT category FROM offers WHERE status = 'approved' AND category IS NOT NULL AND category != '' ORDER BY category ASC");
+$categoriesStmt = $pdo->prepare("
+    SELECT DISTINCT o.category 
+    FROM offers o
+    LEFT JOIN affiliate_offer_approval a ON a.offer_id = o.offer_id AND a.affiliate_id = ?
+    WHERE LOWER(o.status) IN ('approved', 'active', 'live')
+      AND o.category IS NOT NULL 
+      AND o.category != ''
+      AND (LOWER(IFNULL(o.visibility, 'public')) = 'public' OR a.status = 'approved')
+    ORDER BY o.category ASC
+");
+$categoriesStmt->execute([$affiliateId]);
 $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
 ?>
 <!DOCTYPE html>
@@ -363,7 +376,9 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
                                         <small class="d-block text-muted"><?php echo $of['currency'] ?: 'USD'; ?></small>
                                     </td>
                                     <td>
-                                        <?php if ($isApproved): ?>
+                                        <?php if (strtolower($of['visibility'] ?? 'public') === 'private'): ?>
+                                            <span class="badge badge-success p-2" title="Assigned Private Campaign"><i class="fas fa-lock mr-1"></i> Private (Approved)</span>
+                                        <?php elseif ($isApproved): ?>
                                             <span class="badge badge-success p-2"><i class="fas fa-check-circle mr-1"></i> Approved</span>
                                         <?php elseif ($isPending): ?>
                                             <span class="badge badge-warning p-2"><i class="fas fa-clock mr-1"></i> Pending</span>
