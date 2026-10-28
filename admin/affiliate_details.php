@@ -346,6 +346,7 @@ $promotedOffers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                         <div>
                             <a href="publishers.php" class="btn btn-light font-weight-bold mr-1"><i class="fas fa-arrow-left mr-1"></i> Back</a>
+                            <a href="impersonate.php?id=<?php echo $affiliateId; ?>" target="_blank" class="btn btn-success font-weight-bold mr-1" title="Login directly as Publisher in new tab"><i class="fas fa-external-link-alt mr-1"></i> Login as Publisher</a>
                             <a href="publisher_postbacks.php?search=<?php echo urlencode($publisher['email']); ?>" class="btn btn-warning font-weight-bold"><i class="fas fa-link mr-1"></i> Postback Config</a>
                         </div>
                     </div>

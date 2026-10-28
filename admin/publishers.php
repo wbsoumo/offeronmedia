@@ -782,7 +782,7 @@ if (isset($_GET['kyc_action'], $_GET['publisher_id'])) {
                                                     </td>
                                                     <td class="text-right">
                                                         <div class="btn-group">
-                                                            <a href="publishers.php?impersonate=<?php echo $pub['user_id']; ?>" target="_blank" class="btn-action-sm btn-login-tab mr-1" title="Login directly as Publisher in new tab">
+                                                            <a href="impersonate.php?id=<?php echo $pub['user_id']; ?>" target="_blank" class="btn-action-sm btn-login-tab mr-1" title="Login directly as Publisher in new tab">
                                                                 <i class="fas fa-external-link-alt mr-1"></i> Login
                                                             </a>
                                                             <a href="affiliate_details.php?id=<?php echo $pub['user_id']; ?>" class="btn btn-sm btn-outline-primary" title="Publisher Profile"><i class="fas fa-eye"></i></a>

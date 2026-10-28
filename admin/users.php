@@ -674,8 +674,10 @@ $summary = $pdo->query("
                                                     <td class="text-right">
                                                         <div class="btn-group">
                                                             <?php if ($u['role_name'] === 'affiliate'): ?>
+                                                                <a href="impersonate.php?id=<?php echo $u['user_id']; ?>" target="_blank" class="btn btn-sm btn-outline-info mr-1" title="Login directly as Publisher in new tab"><i class="fas fa-external-link-alt"></i></a>
                                                                 <a href="affiliate_details.php?id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-primary" title="View Publisher Details"><i class="fas fa-eye"></i></a>
                                                             <?php elseif ($u['role_name'] === 'advertiser'): ?>
+                                                                <a href="impersonate.php?id=<?php echo $u['user_id']; ?>" target="_blank" class="btn btn-sm btn-outline-info mr-1" title="Login directly as Advertiser in new tab"><i class="fas fa-external-link-alt"></i></a>
                                                                 <a href="advertiser_edit.php?id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-primary" title="View Advertiser Details"><i class="fas fa-edit"></i></a>
                                                             <?php endif; ?>
 

@@ -924,7 +924,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                         <i class="fas fa-cog mr-2"></i> System Settings
                     </a>
                     <div class="dropdown-divider"></div>
-                    <a href="../logout.php" class="dropdown-item">
+                    <a href="../logout.php?scope=admin" class="dropdown-item">
                         <i class="fas fa-sign-out-alt mr-2"></i> Logout
                     </a>
                 </div>

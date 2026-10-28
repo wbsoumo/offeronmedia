@@ -166,7 +166,7 @@ $recentUsers = $pdo->query("
         </ul>
         <ul class="navbar-nav ml-auto">
             <li class="nav-item">
-                <a class="nav-link text-danger font-weight-bold" href="../logout.php"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a>
+                <a class="nav-link text-danger font-weight-bold" href="../logout.php?scope=admin"><i class="fas fa-sign-out-alt mr-1"></i> Logout</a>
             </li>
         </ul>
     </nav>

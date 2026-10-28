@@ -14,30 +14,140 @@ if (!defined('APP_INIT')) {
 ================================================= */
 
 /**
- * IMPORTANT RULES:
- * - session_set_cookie_params() MUST be called BEFORE session_start()
- * - session_start() MUST be called ONCE
- * - Do NOT mix ini_set + session_set_cookie_params
+ * Detect whether the current request is for the Admin console.
+ * Checks SCRIPT_FILENAME, SCRIPT_NAME, PHP_SELF, and REQUEST_URI.
  */
+function auth_is_admin_context(): bool
+{
+    // 1. Check executing script filesystem path
+    $scriptFilename = str_replace('\\', '/', realpath($_SERVER['SCRIPT_FILENAME'] ?? '') ?: ($_SERVER['SCRIPT_FILENAME'] ?? ''));
+    if ($scriptFilename !== '' && (strpos($scriptFilename, '/admin/') !== false || preg_match('#/admin/[^/]+$#', $scriptFilename))) {
+        return true;
+    }
 
-// Detect HTTPS
-$isHttps = (
-    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-    || ($_SERVER['SERVER_PORT'] ?? null) == 443
-);
+    // 2. Check URL script name / PHP_SELF
+    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    if (strpos($scriptName, '/admin/') !== false) {
+        return true;
+    }
 
-// Force cookie params (shared hosting safe)
-session_set_cookie_params(
-    0,          // lifetime (session)
-    '/',        // path (ENTIRE DOMAIN)
-    '',         // domain (auto)
-    $isHttps,   // secure
-    true        // httponly
-);
+    $phpSelf = str_replace('\\', '/', $_SERVER['PHP_SELF'] ?? '');
+    if (strpos($phpSelf, '/admin/') !== false) {
+        return true;
+    }
 
-// Start session ONCE
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    // 3. Check full request URI
+    $requestUri = str_replace('\\', '/', $_SERVER['REQUEST_URI'] ?? '');
+    if (strpos($requestUri, '/admin/') !== false) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Render floating top banner when an admin is impersonating a publisher/advertiser
+ */
+function auth_render_impersonation_banner($buffer)
+{
+    if (empty($_SESSION['is_impersonating']) || empty($_SESSION['auth'])) {
+        return $buffer;
+    }
+
+    // Only inject in HTML pages
+    if (stripos($buffer, '<body') === false) {
+        return $buffer;
+    }
+
+    $userName  = htmlspecialchars($_SESSION['user_name'] ?? 'Publisher');
+    $userEmail = htmlspecialchars($_SESSION['user_email'] ?? '');
+    $userId    = (int)($_SESSION['auth']['user_id'] ?? 0);
+    $roleName  = ucfirst($_SESSION['auth']['role'] ?? 'affiliate');
+
+    $bannerHtml = '
+    <div id="impersonation-notification-bar" style="background: linear-gradient(90deg, #0f172a 0%, #1e293b 60%, #0f172a 100%); color: #ffffff; padding: 10px 20px; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; font-size: 13px; position: sticky; top: 0; z-index: 9999999; border-bottom: 2px solid #3b82f6; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span style="background: #2563eb; color: #ffffff; font-weight: 700; font-size: 11px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Admin Impersonation
+            </span>
+            <span>
+                Logged in as <strong>' . $userName . '</strong> (' . $roleName . ' #' . $userId . ($userEmail ? ' &middot; ' . $userEmail : '') . ')
+            </span>
+            <span style="color: #94a3b8; font-size: 12px;">
+                &bull; Your Admin account session is safely active in your admin tab.
+            </span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <a href="/admin/publishers.php" target="_blank" style="background: rgba(255,255,255,0.08); color: #93c5fd; padding: 5px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 12px; border: 1px solid rgba(147,197,253,0.3); transition: all 0.2s ease;">
+                Go to Admin Panel &rarr;
+            </a>
+            <a href="/logout.php" style="background: #dc2626; color: #ffffff; padding: 5px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 12px; border: 1px solid #b91c1c; transition: all 0.2s ease;">
+                Exit Impersonation
+            </a>
+        </div>
+    </div>';
+
+    $pattern = '/(<body[^>]*>)/i';
+    if (preg_match($pattern, $buffer)) {
+        return preg_replace($pattern, '$1' . "\n" . $bannerHtml, $buffer, 1);
+    }
+
+    return $bannerHtml . $buffer;
+}
+
+if (php_sapi_name() !== 'cli') {
+    // Detect HTTPS
+    $isHttps = (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ($_SERVER['SERVER_PORT'] ?? null) == 443
+    );
+
+    // Force cookie params (shared hosting safe, entire domain)
+    session_set_cookie_params(
+        0,          // lifetime (session)
+        '/',        // path (ENTIRE DOMAIN)
+        '',         // domain (auto)
+        $isHttps,   // secure
+        true        // httponly
+    );
+
+    $isAdminReq = auth_is_admin_context();
+    // Admin uses OFFERON_ADMIN_SESS so admin session is never overwritten by partner logins/impersonation
+    $targetSessionName = $isAdminReq ? 'OFFERON_ADMIN_SESS' : 'OFFERON_PARTNER_SESS';
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_name($targetSessionName);
+        session_start();
+
+        // Smooth migration: if admin visits /admin/ and OFFERON_ADMIN_SESS is empty, check legacy PHPSESSID
+        if ($isAdminReq && empty($_SESSION['auth']) && !empty($_COOKIE['PHPSESSID'])) {
+            $legacyId = $_COOKIE['PHPSESSID'];
+            session_write_close();
+
+            session_name('PHPSESSID');
+            session_id($legacyId);
+            session_start();
+
+            if (!empty($_SESSION['auth']) && (($_SESSION['auth']['role'] ?? '') === 'admin')) {
+                $savedSession = $_SESSION;
+                session_write_close();
+
+                session_name('OFFERON_ADMIN_SESS');
+                session_start();
+                $_SESSION = $savedSession;
+            } else {
+                session_write_close();
+                session_name('OFFERON_ADMIN_SESS');
+                session_start();
+            }
+        }
+    }
+
+    // Render Impersonation Banner in partner portal if admin is impersonating
+    if (!$isAdminReq && !empty($_SESSION['is_impersonating']) && !empty($_SESSION['auth'])) {
+        ob_start('auth_render_impersonation_banner');
+    }
 }
 
 /* =================================================
@@ -119,8 +229,15 @@ function auth_login($email, $password, $remember = false, $requiredRole = null)
 function auth_logout()
 {
     if (session_status() === PHP_SESSION_ACTIVE) {
+        $sessName = session_name();
         $_SESSION = [];
         session_destroy();
+
+        $isHttps = (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || ($_SERVER['SERVER_PORT'] ?? null) == 443
+        );
+        setcookie($sessName, '', time() - 3600, '/', '', $isHttps, true);
     }
 }
 
@@ -154,7 +271,8 @@ function auth_role()
 function require_auth()
 {
     if (!auth_check()) {
-        header('Location: /login.php');
+        $loginUrl = auth_is_admin_context() ? '/admin/login.php' : '/login.php';
+        header('Location: ' . $loginUrl);
         exit;
     }
 }
@@ -167,7 +285,8 @@ function require_role($role)
     require_auth();
 
     if ($_SESSION['auth']['role'] !== $role) {
-        header('Location: /login.php');
+        $loginUrl = auth_is_admin_context() ? '/admin/login.php' : '/login.php';
+        header('Location: ' . $loginUrl);
         exit;
     }
 }
@@ -180,7 +299,8 @@ function require_any_role(array $roles)
     require_auth();
 
     if (!in_array($_SESSION['auth']['role'], $roles, true)) {
-        header('Location: /login.php');
+        $loginUrl = auth_is_admin_context() ? '/admin/login.php' : '/login.php';
+        header('Location: ' . $loginUrl);
         exit;
     }
 }
