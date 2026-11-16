@@ -204,35 +204,7 @@ $archiveStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
     </nav>
 
     <!-- Sidebar -->
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="dashboard.php" class="brand-link text-center">
-            <span class="brand-text font-weight-light" style="font-size: 1.4rem;">
-                <i class="fas fa-crown mr-2"></i><strong>Admin Console</strong>
-            </span>
-        </a>
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                    <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
-                    <li class="nav-header">CAMPAIGNS & OFFERS</li>
-                    <li class="nav-item"><a href="offers.php" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Manage Campaigns</p></a></li>
-                    <li class="nav-item"><a href="archived_offers.php" class="nav-link active"><i class="nav-icon fas fa-archive"></i><p>Archived Offers</p></a></li>
-                    <li class="nav-item"><a href="create_campaign.php" class="nav-link"><i class="nav-icon fas fa-plus-circle"></i><p>Create Campaign</p></a></li>
-                    <li class="nav-item"><a href="campaign_access.php" class="nav-link"><i class="nav-icon fas fa-key"></i><p>Offer Approval Rules</p></a></li>
-                    <li class="nav-header">USER MANAGEMENT</li>
-                    <li class="nav-item"><a href="users.php" class="nav-link"><i class="nav-icon fas fa-users"></i><p>All System Users</p></a></li>
-                    <li class="nav-item"><a href="publishers.php" class="nav-link"><i class="nav-icon fas fa-user-friends"></i><p>Publishers / Affiliates</p></a></li>
-                    <li class="nav-item"><a href="advertisers.php" class="nav-link"><i class="nav-icon fas fa-briefcase"></i><p>Advertisers</p></a></li>
-                    <li class="nav-item"><a href="account_managers.php" class="nav-link"><i class="nav-icon fas fa-user-tie"></i><p>Account Managers</p></a></li>
-                    <li class="nav-header">ANALYTICS & REPORTS</li>
-                    <li class="nav-item"><a href="reports_clicks.php" class="nav-link"><i class="nav-icon fas fa-mouse-pointer"></i><p>Click Reports</p></a></li>
-                    <li class="nav-item"><a href="reports_campaigns.php" class="nav-link"><i class="nav-icon fas fa-chart-bar"></i><p>Campaign Reports</p></a></li>
-                    <li class="nav-item"><a href="reports_affiliates.php" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Affiliate Reports</p></a></li>
-                    <li class="nav-item"><a href="reports_subid.php" class="nav-link"><i class="nav-icon fas fa-list"></i><p>SubID Performance</p></a></li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+    <?php include __DIR__ . '/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">

@@ -174,138 +174,7 @@ foreach ($offers as $of) {
 
     <!-- Sidebar -->
         <!-- Sidebar -->
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="dashboard.php" class="brand-link text-center">
-            <span class="brand-text font-weight-light" style="font-size: 1.4rem;">
-                <i class="fas fa-crown mr-2"></i><strong>Admin Console</strong>
-            </span>
-        </a>
-
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                    <li class="nav-item">
-                        <a href="dashboard.php" class="nav-link">
-                            <i class="nav-icon fas fa-tachometer-alt"></i>
-                            <p>Dashboard</p>
-                        </a>
-                    </li>
-
-                    <li class="nav-header">CAMPAIGNS & OFFERS</li>
-                    <li class="nav-item">
-                        <a href="campaigns.php" class="nav-link active">
-                            <i class="nav-icon fas fa-bullhorn"></i>
-                            <p>Manage Campaigns</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="create_campaign.php" class="nav-link">
-                            <i class="nav-icon fas fa-plus-circle"></i>
-                            <p>Create Campaign</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="campaign_access.php" class="nav-link">
-                            <i class="nav-icon fas fa-key"></i>
-                            <p>Offer Approval Rules</p>
-                        </a>
-                    </li>
-
-                    <li class="nav-header">USER MANAGEMENT</li>
-                    <li class="nav-item">
-                        <a href="users.php" class="nav-link">
-                            <i class="nav-icon fas fa-users"></i>
-                            <p>All System Users</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="publishers.php" class="nav-link">
-                            <i class="nav-icon fas fa-user-friends"></i>
-                            <p>Publishers / Affiliates</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="advertisers.php" class="nav-link">
-                            <i class="nav-icon fas fa-briefcase"></i>
-                            <p>Advertisers</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="account_managers.php" class="nav-link">
-                            <i class="nav-icon fas fa-user-tie"></i>
-                            <p>Account Managers</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="pending_kyc.php" class="nav-link">
-                            <i class="nav-icon fas fa-id-card"></i>
-                            <p>Pending KYC Approvals</p>
-                        </a>
-                    </li>
-
-                    <li class="nav-header">ANALYTICS & REPORTS</li>
-                    <li class="nav-item">
-                        <a href="reports_campaigns.php" class="nav-link">
-                            <i class="nav-icon fas fa-chart-bar"></i>
-                            <p>Campaign Reports</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="reports_affiliates.php" class="nav-link">
-                            <i class="nav-icon fas fa-chart-line"></i>
-                            <p>Affiliate Reports</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="reports_advertisers.php" class="nav-link">
-                            <i class="nav-icon fas fa-chart-pie"></i>
-                            <p>Advertiser Reports</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="reports_subid.php" class="nav-link">
-                            <i class="nav-icon fas fa-list"></i>
-                            <p>SubID Performance</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="fraud_dashboard.php" class="nav-link">
-                            <i class="nav-icon fas fa-shield-alt"></i>
-                            <p>Anti-Fraud Security</p>
-                        </a>
-                    </li>
-
-                                        <li class="nav-header">TOOLS & TESTING</li>
-                    <li class="nav-item">
-                        <a href="link_tester.php" class="nav-link">
-                            <i class="nav-icon fas fa-vial"></i>
-                            <p>Link Tester</p>
-                        </a>
-                    </li>
-
-                    <li class="nav-header">SYSTEM & POSTBACKS</li>
-                    <li class="nav-item">
-                        <a href="publisher_postbacks.php" class="nav-link">
-                            <i class="nav-icon fas fa-code"></i>
-                            <p>Global Postbacks Log</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="settings.php" class="nav-link">
-                            <i class="nav-icon fas fa-cogs"></i>
-                            <p>System Settings</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="profile.php" class="nav-link">
-                            <i class="nav-icon fas fa-user-cog"></i>
-                            <p>My Profile</p>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+    <?php include __DIR__ . '/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
@@ -369,9 +238,14 @@ foreach ($offers as $of) {
                 <div class="card card-custom p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="font-weight-bold text-primary mb-0"><i class="fas fa-bullhorn mr-2"></i>Network Campaigns Catalog</h4>
-                        <a href="create_campaign.php" class="btn btn-success font-weight-bold shadow-sm">
-                            <i class="fas fa-plus-circle mr-1"></i> Create New Campaign
-                        </a>
+                        <div>
+                            <button type="button" class="btn btn-primary font-weight-bold mr-2 open-assign-modal shadow-sm">
+                                <i class="fas fa-link mr-1"></i> Assign Offer
+                            </button>
+                            <a href="create_campaign.php" class="btn btn-success font-weight-bold shadow-sm">
+                                <i class="fas fa-plus-circle mr-1"></i> Create New Campaign
+                            </a>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -425,6 +299,15 @@ foreach ($offers as $of) {
                                     <td><strong class="text-success font-weight-bold"><?php echo format_currency($rev, $of['currency'] ?? 'USD'); ?></strong></td>
                                     <td>
                                         <div class="btn-group">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-success open-assign-modal font-weight-bold" 
+                                                    data-offer-id="<?php echo $of['offer_id']; ?>"
+                                                    data-offer-name="<?php echo htmlspecialchars($of['offer_name'], ENT_QUOTES); ?>"
+                                                    data-payout="<?php echo htmlspecialchars($of['payout']); ?>"
+                                                    data-currency="<?php echo htmlspecialchars($of['currency'] ?? 'USD'); ?>"
+                                                    title="Assign Offer & Generate Live Link">
+                                                <i class="fas fa-link mr-1"></i> Assign
+                                            </button>
                                             <a href="offer_details.php?id=<?php echo $of['offer_id']; ?>" class="btn btn-sm btn-outline-info" title="View Specs"><i class="fas fa-eye"></i></a>
                                             <a href="offer_edit.php?id=<?php echo $of['offer_id']; ?>" class="btn btn-sm btn-outline-primary" title="Edit Campaign"><i class="fas fa-edit"></i></a>
                                             <?php if ($of['status'] !== 'active'): ?>
@@ -468,5 +351,7 @@ $(document).ready(function() {
     });
 });
 </script>
+
+<?php include __DIR__ . '/modal_assign_offer.php'; ?>
 </body>
 </html>
