@@ -144,11 +144,15 @@ $sql = "
         u.user_id as affiliate_id,
         u.name AS affiliate_name,
         u.email AS affiliate_email,
+        u.account_manager_id,
+        am.name AS manager_name,
         o.offer_id,
         o.offer_name,
+        o.currency,
         o.payout as original_payout
     FROM affiliate_offer_approval aoa
     INNER JOIN users u ON u.user_id = aoa.affiliate_id
+    LEFT JOIN users am ON am.user_id = u.account_manager_id AND am.role_id = 2
     INNER JOIN offers o ON o.offer_id = aoa.offer_id
     ORDER BY aoa.id DESC
 ";
@@ -601,12 +605,19 @@ foreach ($assignments as $as) {
                                     <td>
                                         <strong class="text-dark font-weight-bold"><?php echo htmlspecialchars($as['affiliate_name']); ?></strong>
                                         <small class="d-block text-muted"><?php echo htmlspecialchars($as['affiliate_email']); ?></small>
+                                        <?php if (!empty($as['account_manager_id']) && !empty($as['manager_name'])): ?>
+                                            <div class="mt-1">
+                                                <a href="manager_profile.php?id=<?php echo $as['account_manager_id']; ?>" class="badge badge-light border text-primary" data-toggle="tooltip" title="Click to view Affiliate Manager Profile">
+                                                    <i class="fas fa-user-tie text-primary mr-1"></i><?php echo htmlspecialchars($as['manager_name']); ?>
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <strong class="text-primary">#<?php echo $as['offer_id']; ?> - <?php echo htmlspecialchars($as['offer_name']); ?></strong>
                                     </td>
                                     <td>
-                                        <strong class="text-success">$<?php echo number_format($as['custom_payout'] ?? $as['original_payout'], 2); ?></strong>
+                                        <strong class="text-success"><?php echo format_currency($as['custom_payout'] ?? $as['original_payout'], $as['currency']); ?></strong>
                                     </td>
                                     <td>
                                         <div class="input-group input-group-sm" style="min-width: 240px;">

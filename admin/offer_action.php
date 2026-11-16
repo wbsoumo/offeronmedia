@@ -9,14 +9,17 @@ require_any_role(['admin', 'manager']);
 $offerId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $action  = $_GET['action'] ?? '';
 
-if (!$offerId || !in_array($action, ['approve', 'pause', 'expire'], true)) {
+if (!$offerId || !in_array($action, ['approve', 'pause', 'expire', 'archive', 'delete', 'restore'], true)) {
     die('Invalid request');
 }
 
 $statusMap = [
     'approve' => 'approved',
     'pause'   => 'paused',
-    'expire'  => 'expired'
+    'expire'  => 'expired',
+    'archive' => 'archived',
+    'delete'  => 'archived',
+    'restore' => 'paused'
 ];
 
 $newStatus = $statusMap[$action];

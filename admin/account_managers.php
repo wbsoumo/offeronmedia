@@ -232,6 +232,18 @@ foreach ($managers as $m) {
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="offers.php" class="nav-link">
+                            <i class="nav-icon fas fa-tags"></i>
+                            <p>Manage Offers</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="offers.php?status=archived" class="nav-link">
+                            <i class="nav-icon fas fa-archive"></i>
+                            <p>Archived Offers</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="create_campaign.php" class="nav-link">
                             <i class="nav-icon fas fa-plus-circle"></i>
                             <p>Create Campaign</p>
@@ -277,6 +289,12 @@ foreach ($managers as $m) {
                     </li>
 
                     <li class="nav-header">ANALYTICS & REPORTS</li>
+                    <li class="nav-item">
+                        <a href="reports_clicks.php" class="nav-link">
+                            <i class="nav-icon fas fa-mouse-pointer"></i>
+                            <p>Click Reports</p>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a href="reports_campaigns.php" class="nav-link">
                             <i class="nav-icon fas fa-chart-bar"></i>
@@ -490,7 +508,11 @@ foreach ($managers as $m) {
                                 ?>
                                 <tr>
                                     <td><strong>#<?php echo $mgr['user_id']; ?></strong></td>
-                                    <td><strong class="text-dark"><?php echo htmlspecialchars($mgr['name']); ?></strong></td>
+                                    <td>
+                                        <a href="manager_profile.php?id=<?php echo $mgr['user_id']; ?>" class="font-weight-bold text-primary">
+                                            <i class="fas fa-user-tie mr-1"></i><?php echo htmlspecialchars($mgr['name']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($mgr['email']); ?></td>
                                     <td><span class="badge badge-info p-2"><?php echo number_format($mgr['total_publishers']); ?> Publishers</span></td>
                                     <td>
@@ -499,20 +521,52 @@ foreach ($managers as $m) {
                                         </button>
                                     </td>
                                     <td>
-                                        <span class="badge badge-<?php echo $mgr['status'] === 'active' ? 'success' : 'secondary'; ?> p-2">
+                                        <span class="badge badge-<?php echo $mgr['status'] === 'active' ? 'success' : 'danger'; ?> p-2">
+                                            <i class="fas fa-<?php echo $mgr['status'] === 'active' ? 'check-circle' : 'ban'; ?> mr-1"></i>
                                             <?php echo ucfirst($mgr['status']); ?>
                                         </span>
                                     </td>
                                     <td><small class="text-muted"><?php echo date('Y-m-d', strtotime($mgr['created_at'])); ?></small></td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="modal" data-target="#permModal_<?php echo $mgr['user_id']; ?>" title="Configure Permissions">
-                                            <i class="fas fa-key"></i>
-                                        </button>
-                                        <?php if ($mgr['status'] === 'active'): ?>
-                                            <a href="?action=block&id=<?php echo $mgr['user_id']; ?>" class="btn btn-sm btn-outline-danger" title="Block"><i class="fas fa-ban"></i></a>
-                                        <?php else: ?>
-                                            <a href="?action=activate&id=<?php echo $mgr['user_id']; ?>" class="btn btn-sm btn-outline-success" title="Activate"><i class="fas fa-check"></i></a>
-                                        <?php endif; ?>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="manager_profile.php?id=<?php echo $mgr['user_id']; ?>" 
+                                               class="btn btn-outline-info" 
+                                               data-toggle="tooltip" 
+                                               title="View Full Profile & Performance Reports">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="impersonate.php?id=<?php echo $mgr['user_id']; ?>&target=manager" 
+                                               target="_blank" 
+                                               class="btn btn-outline-dark" 
+                                               data-toggle="tooltip" 
+                                               title="Login as Account Manager (Opens Manager Dashboard in new tab)">
+                                                <i class="fas fa-user-secret"></i>
+                                            </a>
+                                            <button type="button" 
+                                                    class="btn btn-outline-primary" 
+                                                    data-toggle="modal" 
+                                                    data-target="#permModal_<?php echo $mgr['user_id']; ?>" 
+                                                    title="Configure Granular Permissions">
+                                                <i class="fas fa-key"></i>
+                                            </button>
+                                            <?php if ($mgr['status'] === 'active'): ?>
+                                                <a href="?action=block&id=<?php echo $mgr['user_id']; ?>" 
+                                                   class="btn btn-outline-danger" 
+                                                   data-toggle="tooltip" 
+                                                   title="Block Account Manager"
+                                                   onclick="return confirm('Block Account Manager <?php echo htmlspecialchars(addslashes($mgr['name'])); ?>?');">
+                                                    <i class="fas fa-ban"></i>
+                                                </a>
+                                            <?php else: ?>
+                                                <a href="?action=activate&id=<?php echo $mgr['user_id']; ?>" 
+                                                   class="btn btn-outline-success" 
+                                                   data-toggle="tooltip" 
+                                                   title="Activate Account Manager"
+                                                   onclick="return confirm('Activate Account Manager <?php echo htmlspecialchars(addslashes($mgr['name'])); ?>?');">
+                                                    <i class="fas fa-check"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
 

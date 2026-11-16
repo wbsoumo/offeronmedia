@@ -19,6 +19,7 @@ $dateFrom = $_GET['from'] ?? date('Y-m-01'); // Start of current month
 $dateTo = $_GET['to'] ?? date('Y-m-d'); // Today
 $affiliateFilter = $_GET['affiliate'] ?? 'all';
 $offerFilter = $_GET['offer'] ?? 'all';
+$managerFilter = $_GET['manager'] ?? 'all';
 $statusFilter = $_GET['status'] ?? 'all';
 $sortBy = $_GET['sort'] ?? 'payout';
 $sortOrder = $_GET['order'] ?? 'desc';
@@ -60,6 +61,16 @@ if ($offerFilter !== 'all') {
     $where[] = 'cl.offer_id = :offer_id';
     $params['offer_id'] = (int)$offerFilter;
     $joinClauses[] = 'LEFT JOIN offers o ON o.offer_id = cl.offer_id';
+}
+
+// Manager filter
+if ($managerFilter !== 'all') {
+    if ($managerFilter === 'unassigned') {
+        $where[] = 'u.account_manager_id IS NULL';
+    } else {
+        $where[] = 'u.account_manager_id = :manager_id';
+        $params['manager_id'] = (int)$managerFilter;
+    }
 }
 
 // Status filter for conversions
@@ -130,6 +141,8 @@ $sql = "
         u.status as affiliate_status,
         u.created_at as affiliate_joined,
         u.balance,
+        u.account_manager_id,
+        am.name AS manager_name,
         
         COUNT(DISTINCT cl.click_id) AS clicks,
         COUNT(DISTINCT c.conversion_id) AS conversions,
@@ -173,6 +186,7 @@ $sql = "
         COUNT(DISTINCT cl.offer_id) as unique_offers
         
     FROM users u
+    LEFT JOIN users am ON am.user_id = u.account_manager_id AND am.role_id = 2
     LEFT JOIN clicks cl ON cl.affiliate_id = u.user_id
     LEFT JOIN offers o ON o.offer_id = cl.offer_id
     LEFT JOIN conversions c ON c.click_id = cl.click_id
@@ -272,6 +286,13 @@ $allOffers = $pdo->query("
     INNER JOIN clicks cl ON cl.offer_id = o.offer_id
     WHERE o.status IN ('active', 'approved')
     ORDER BY o.offer_name
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$allManagers = $pdo->query("
+    SELECT user_id, name 
+    FROM users 
+    WHERE role_id = 2 AND status = 'active'
+    ORDER BY name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 /* ===============================
@@ -1194,6 +1215,19 @@ if (isset($_GET['export'])) {
                             </div>
                             
                             <div class="filter-group">
+                                <label for="manager"><i class="fas fa-user-tie mr-1"></i> Account Manager</label>
+                                <select name="manager" id="manager" class="filter-control select2">
+                                    <option value="all" <?php echo $managerFilter === 'all' ? 'selected' : ''; ?>>All Managers</option>
+                                    <option value="unassigned" <?php echo $managerFilter === 'unassigned' ? 'selected' : ''; ?>>Unassigned (No Manager)</option>
+                                    <?php foreach ($allManagers as $mgr): ?>
+                                    <option value="<?php echo $mgr['user_id']; ?>" <?php echo $managerFilter == $mgr['user_id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($mgr['name']); ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div class="filter-group">
                                 <label for="offer"><i class="fas fa-bullhorn mr-1"></i> Campaign</label>
                                 <select name="offer" id="offer" class="filter-control select2">
                                     <option value="all" <?php echo $offerFilter === 'all' ? 'selected' : ''; ?>>All Campaigns</option>
@@ -1251,6 +1285,7 @@ if (isset($_GET['export'])) {
                                         <tr>
                                             <th>OfferID</th>
                                             <th>Affiliate</th>
+                                            <th>Account Manager</th>
                                             <th class="text-center">GrossClicks<br><small class="text-muted">Total</small></th>
                                             <th class="text-center">Conversions<br><small class="text-muted">Total</small></th>
                                             <th class="text-center">AdvertiserPrice<br><small class="text-muted">Total</small></th>
@@ -1281,10 +1316,19 @@ if (isset($_GET['export'])) {
                                                     <span class="text-muted small">(<?php echo htmlspecialchars($row['company']); ?>)</span>
                                                 <?php endif; ?>
                                             </td>
+                                            <td>
+                                                <?php if (!empty($row['account_manager_id']) && !empty($row['manager_name'])): ?>
+                                                    <a href="manager_profile.php?id=<?php echo $row['account_manager_id']; ?>" class="badge badge-light border text-primary" data-toggle="tooltip" title="Click to view Affiliate Manager Profile">
+                                                        <i class="fas fa-user-tie text-primary mr-1"></i><?php echo htmlspecialchars($row['manager_name']); ?>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="badge badge-secondary">Unassigned</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td class="text-center font-weight-bold text-dark"><?php echo number_format($clicks); ?></td>
                                             <td class="text-center font-weight-bold text-dark"><?php echo number_format($conversions); ?></td>
-                                            <td class="text-center font-weight-bold text-success">$<?php echo number_format($revenue, 2); ?></td>
-                                            <td class="text-center font-weight-bold text-primary">$<?php echo number_format($payout, 2); ?></td>
+                                            <td class="text-center font-weight-bold text-success"><?php echo format_currency($revenue, $currency); ?></td>
+                                            <td class="text-center font-weight-bold text-primary"><?php echo format_currency($payout, $currency); ?></td>
                                             <td><span class="badge badge-light border font-weight-bold"><?php echo htmlspecialchars($currency); ?></span></td>
                                             <td><span class="badge badge-success p-2"><?php echo htmlspecialchars($statusLabel); ?></span></td>
                                         </tr>

@@ -850,7 +850,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="form-group mb-4">
                                         <label class="font-weight-bold">Advertiser Revenue (Network Earns) <span class="text-danger">*</span></label>
                                         <div class="input-group input-group-lg">
-                                            <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                                            <div class="input-group-prepend"><span class="input-group-text currency-symbol">$</span></div>
                                             <input type="number" step="0.01" name="revenue" id="rev_input" class="form-control" placeholder="50.00" required oninput="calcMargin()">
                                         </div>
                                     </div>
@@ -859,7 +859,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="form-group mb-4">
                                         <label class="font-weight-bold">Affiliate Payout (Publisher Earns) <span class="text-danger">*</span></label>
                                         <div class="input-group input-group-lg">
-                                            <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                                            <div class="input-group-prepend"><span class="input-group-text currency-symbol">$</span></div>
                                             <input type="number" step="0.01" name="payout" id="payout_input" class="form-control" placeholder="35.00" required oninput="calcMargin()">
                                         </div>
                                     </div>
@@ -881,7 +881,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="col-md-6">
                                     <div class="form-group mb-4">
                                         <label class="font-weight-bold">Currency</label>
-                                        <select name="currency" class="form-control">
+                                        <select name="currency" id="currency_select" class="form-control" onchange="updateCurrencySymbols(); calcMargin();">
                                             <option value="USD">USD ($)</option>
                                             <option value="INR">INR (₹)</option>
                                             <option value="EUR">EUR (€)</option>
@@ -969,13 +969,21 @@ function insertToken(token) {
     input.setSelectionRange(start + token.length, start + token.length);
 }
 
+function updateCurrencySymbols() {
+    const curr = $('#currency_select').val();
+    const sym = curr === 'INR' ? '₹' : (curr === 'EUR' ? '€' : '$');
+    $('.currency-symbol').text(sym);
+}
+
 function calcMargin() {
     const rev = parseFloat($('#rev_input').val()) || 0;
     const pay = parseFloat($('#payout_input').val()) || 0;
     const net = rev - pay;
     const pct = rev > 0 ? ((net / rev) * 100).toFixed(1) : 0;
+    const curr = $('#currency_select').val();
+    const sym = curr === 'INR' ? '₹' : (curr === 'EUR' ? '€' : '$');
     
-    $('#margin_usd').text('$' + net.toFixed(2));
+    $('#margin_usd').text(sym + net.toFixed(2));
     $('#margin_pct').text(pct + '%');
 }
 

@@ -91,6 +91,7 @@ $offersStmt = $pdo->prepare("
         o.category,
         o.payout_type,
         o.payout,
+        o.currency,
         o.visibility,
         o.status,
         COUNT(DISTINCT c.click_id) AS total_clicks,
@@ -106,6 +107,7 @@ $offersStmt = $pdo->prepare("
     FROM offers o
     LEFT JOIN clicks c ON c.offer_id = o.offer_id
     LEFT JOIN conversions cv ON cv.offer_id = o.offer_id
+    WHERE o.status != 'archived'
     GROUP BY o.offer_id
     ORDER BY o.created_at DESC
 ");
@@ -254,7 +256,7 @@ $offers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <strong class="text-success">$<?php echo number_format($o['payout'], 2); ?></strong>
+                                        <strong class="text-success"><?php echo format_currency($o['payout'], $o['currency'] ?? 'USD'); ?></strong>
                                         <small class="text-muted d-block"><?php echo strtoupper($o['payout_type'] ?: 'CPA'); ?></small>
                                     </td>
                                     <td>

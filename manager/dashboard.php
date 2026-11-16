@@ -38,6 +38,30 @@ $payouts = (float)($mStats['publisher_payouts'] ?? 0);
 $revenue = (float)($mStats['gross_revenue'] ?? 0);
 $cr = $clicks > 0 ? number_format(($approvedLeads / $clicks) * 100, 2) : '0.00';
 
+// Dual currency payout breakdown
+$payStmt = $pdo->prepare("
+    SELECT 
+        COALESCE(o.currency, 'USD') as currency,
+        SUM(cv.payout) as payout
+    FROM users u
+    JOIN conversions cv ON cv.affiliate_id = u.user_id AND cv.status = 'approved'
+    JOIN offers o ON o.offer_id = cv.offer_id
+    WHERE u.role_id = 3 AND u.account_manager_id = ?
+    GROUP BY COALESCE(o.currency, 'USD')
+");
+$payStmt->execute([$managerId]);
+$payBreakdown = $payStmt->fetchAll(PDO::FETCH_ASSOC);
+
+$managerPayoutUSD = 0; $managerPayoutINR = 0;
+foreach ($payBreakdown as $pb) {
+    if ($pb['currency'] === 'INR') {
+        $managerPayoutINR += (float)$pb['payout'];
+    } else {
+        $managerPayoutUSD += (float)$pb['payout'];
+    }
+}
+$canViewFinancials = manager_can('can_view_financials');
+
 /* ===============================
    FETCH ASSIGNED PUBLISHERS LIST
 ================================ */
@@ -289,7 +313,11 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
-                            <div class="stat-number text-success">$<?php echo number_format($payouts, 2); ?></div>
+                            <?php if ($canViewFinancials): ?>
+                                <div class="stat-number text-success" style="font-size: 1.15rem;"><?php echo format_dual_currency($managerPayoutUSD, $managerPayoutINR); ?></div>
+                            <?php else: ?>
+                                <div class="stat-number text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Restricted</span></div>
+                            <?php endif; ?>
                             <div class="stat-label">Publisher Payouts</div>
                         </div>
                     </div>
@@ -321,7 +349,13 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <td><small class="text-dark"><?php echo htmlspecialchars($ap['email']); ?></small></td>
                                     <td><strong><?php echo number_format($ap['clicks']); ?></strong></td>
                                     <td><strong class="text-success"><?php echo number_format($ap['approved_conversions']); ?></strong></td>
-                                    <td><strong class="text-success">$<?php echo number_format($ap['total_earned'], 2); ?></strong></td>
+                                    <td>
+                                        <?php if ($canViewFinancials): ?>
+                                            <strong class="text-success">$<?php echo number_format($ap['total_earned'], 2); ?></strong>
+                                        <?php else: ?>
+                                            <span class="badge badge-light text-muted border"><i class="fas fa-lock mr-1"></i>Hidden</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><span class="badge badge-<?php echo $ap['status'] === 'active' ? 'success' : 'secondary'; ?> p-2"><?php echo ucfirst($ap['status']); ?></span></td>
                                 </tr>
                                 <?php endforeach; ?>

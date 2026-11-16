@@ -23,7 +23,29 @@ if ($offerId <= 0 || $affiliateId <= 0) {
 }
 
 /* -------------------------------------------------
-   2. Capture ALL incoming params (copy)
+   2. Verify Affiliate Status (Blocked / Inactive Check)
+-------------------------------------------------- */
+$affStmt = $pdo->prepare("
+    SELECT user_id, status 
+    FROM users 
+    WHERE user_id = :aff AND role_id = 3 
+    LIMIT 1
+");
+$affStmt->execute(['aff' => $affiliateId]);
+$affiliateUser = $affStmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$affiliateUser) {
+    http_response_code(404);
+    exit('AFFILIATE_NOT_FOUND');
+}
+
+if ($affiliateUser['status'] !== 'active') {
+    http_response_code(403);
+    exit('AFFILIATE_INACTIVE_OR_BLOCKED');
+}
+
+/* -------------------------------------------------
+   3. Capture ALL incoming params (copy)
 -------------------------------------------------- */
 $incomingParams = $_GET;
 
@@ -58,7 +80,7 @@ if (!$offer) {
     exit('OFFER_NOT_FOUND');
 }
 
-if (!in_array(strtolower($offer['status']), ['approved', 'active', 'live'], true)) {
+if (strtolower($offer['status']) === 'archived' || !in_array(strtolower($offer['status']), ['approved', 'active', 'live'], true)) {
     http_response_code(403);
     exit('OFFER_NOT_APPROVED');
 }

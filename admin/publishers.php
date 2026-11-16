@@ -87,7 +87,7 @@ SELECT
     COALESCE(SUM(CASE WHEN cv.status = 'pending'  THEN cv.payout END), 0) AS pending_earnings
 
 FROM users u
-LEFT JOIN account_managers am ON am.id = u.account_manager_id
+LEFT JOIN users am          ON am.user_id = u.account_manager_id AND am.role_id = 2
 LEFT JOIN clicks c          ON c.affiliate_id = u.user_id
 LEFT JOIN conversions cv    ON cv.affiliate_id = u.user_id
 $whereSql
@@ -103,10 +103,10 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
    FETCH ACCOUNT MANAGERS
 ================================ */
 $managers = $pdo->query("
-    SELECT id, name 
-    FROM account_managers
-    WHERE status = 'active'
-    ORDER BY name
+    SELECT user_id AS id, name 
+    FROM users
+    WHERE role_id = 2 AND status = 'active'
+    ORDER BY name ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 /* ===============================
@@ -135,23 +135,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
     } else {
         $in = implode(',', array_fill(0, count($ids), '?'));
 
-        $actions = [
-            'activate'        => "UPDATE users SET status='active', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
-            'deactivate'      => "UPDATE users SET status='pending', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
-            'block'           => "UPDATE users SET status='blocked', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
-            'enable_payout'   => "UPDATE users SET payout_enabled=1, updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
-            'disable_payout'  => "UPDATE users SET payout_enabled=0, updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
-            'approve_kyc'     => "UPDATE users SET kyc_status='approved', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
-            'reject_kyc'      => "UPDATE users SET kyc_status='rejected', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
-        ];
-
-        if (!isset($actions[$_POST['bulk_action']])) {
-            $error = 'Invalid bulk action';
-        } else {
-            $pdo->prepare($actions[$_POST['bulk_action']])->execute($ids);
-            $success = count($ids) . ' publishers updated successfully';
-            header("Location: publishers.php");
+        if ($_POST['bulk_action'] === 'block') {
+            affiliates_bulk_block($ids, 'Bulk Admin Block Action');
+            $success = count($ids) . ' publishers blocked and all their active offers disabled';
+            header("Location: publishers.php?success=" . urlencode($success));
             exit;
+        } elseif ($_POST['bulk_action'] === 'activate') {
+            affiliates_bulk_unblock($ids);
+            $success = count($ids) . ' publishers activated and their offer access restored';
+            header("Location: publishers.php?success=" . urlencode($success));
+            exit;
+        } else {
+            $actions = [
+                'deactivate'      => "UPDATE users SET status='pending', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
+                'enable_payout'   => "UPDATE users SET payout_enabled=1, updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
+                'disable_payout'  => "UPDATE users SET payout_enabled=0, updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
+                'approve_kyc'     => "UPDATE users SET kyc_status='approved', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
+                'reject_kyc'      => "UPDATE users SET kyc_status='rejected', updated_at=NOW() WHERE role_id=3 AND user_id IN ($in)",
+            ];
+
+            if (!isset($actions[$_POST['bulk_action']])) {
+                $error = 'Invalid bulk action';
+            } else {
+                $pdo->prepare($actions[$_POST['bulk_action']])->execute($ids);
+                $success = count($ids) . ' publishers updated successfully';
+                header("Location: publishers.php?success=" . urlencode($success));
+                exit;
+            }
         }
     }
 }
@@ -164,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_manager'])) {
     $managerId   = $_POST['manager_id'] !== '' ? (int)$_POST['manager_id'] : null;
 
     if ($managerId !== null) {
-        $chk = $pdo->prepare("SELECT 1 FROM account_managers WHERE id = ?");
+        $chk = $pdo->prepare("SELECT 1 FROM users WHERE user_id = ? AND role_id = 2");
         $chk->execute([$managerId]);
         if (!$chk->fetchColumn()) {
             $error = 'Invalid account manager selected';
@@ -186,12 +196,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_manager'])) {
    TOGGLE STATUS
 ================================ */
 if (isset($_GET['toggle_status'])) {
-    $pdo->prepare("
-        UPDATE users
-        SET status = IF(status='active','pending','active'), updated_at=NOW()
-        WHERE role_id=3 AND user_id=?
-    ")->execute([(int)$_GET['toggle_status']]);
-    header("Location: publishers.php");
+    $tId = (int)$_GET['toggle_status'];
+    $curStatus = $pdo->query("SELECT status FROM users WHERE user_id = $tId AND role_id = 3")->fetchColumn();
+    if ($curStatus === 'blocked') {
+        affiliate_unblock($tId);
+        $success = "Publisher #$tId unblocked and offer access restored.";
+    } else {
+        affiliate_block($tId, 'Admin Toggled Status');
+        $success = "Publisher #$tId blocked and active offer access disabled.";
+    }
+    header("Location: publishers.php?success=" . urlencode($success));
     exit;
 }
 
@@ -745,12 +759,17 @@ if (isset($_GET['kyc_action'], $_GET['publisher_id'])) {
                                                         <?php endif; ?>
                                                     </td>
                                                     <td>
-                                                        <?php if ($pub['manager_name']): ?>
-                                                            <span class="badge badge-light border"><i class="fas fa-user-tie text-primary mr-1"></i><?php echo htmlspecialchars($pub['manager_name']); ?></span>
+                                                        <?php if (!empty($pub['account_manager_id']) && !empty($pub['manager_name'])): ?>
+                                                            <a href="manager_profile.php?id=<?php echo $pub['account_manager_id']; ?>" 
+                                                               class="badge badge-light border text-primary" 
+                                                               data-toggle="tooltip" 
+                                                               title="Click to view Affiliate Manager Profile">
+                                                                <i class="fas fa-user-tie text-primary mr-1"></i><?php echo htmlspecialchars($pub['manager_name']); ?>
+                                                            </a>
                                                         <?php else: ?>
                                                             <span class="badge badge-secondary">Unassigned</span>
                                                         <?php endif; ?>
-                                                        <a href="#" class="ml-1 text-muted" data-toggle="modal" data-target="#assignManagerModal" data-publisher-id="<?php echo $pub['user_id']; ?>" data-publisher-name="<?php echo htmlspecialchars($pub['name']); ?>" data-current-manager="<?php echo $pub['account_manager_id'] ?? ''; ?>">
+                                                        <a href="#" class="ml-1 text-muted" data-toggle="modal" data-target="#assignManagerModal" data-publisher-id="<?php echo $pub['user_id']; ?>" data-publisher-name="<?php echo htmlspecialchars($pub['name']); ?>" data-current-manager="<?php echo $pub['account_manager_id'] ?? ''; ?>" data-toggle="tooltip" title="Reassign Manager">
                                                             <i class="fas fa-pen small"></i>
                                                         </a>
                                                     </td>
@@ -782,11 +801,27 @@ if (isset($_GET['kyc_action'], $_GET['publisher_id'])) {
                                                     </td>
                                                     <td class="text-right">
                                                         <div class="btn-group">
-                                                            <a href="impersonate.php?id=<?php echo $pub['user_id']; ?>" target="_blank" class="btn-action-sm btn-login-tab mr-1" title="Login directly as Publisher in new tab">
+                                                            <a href="impersonate.php?id=<?php echo $pub['user_id']; ?>" target="_blank" class="btn btn-sm btn-outline-dark mr-1" data-toggle="tooltip" title="Login as Affiliate in new browser tab">
                                                                 <i class="fas fa-external-link-alt mr-1"></i> Login
                                                             </a>
-                                                            <a href="affiliate_details.php?id=<?php echo $pub['user_id']; ?>" class="btn btn-sm btn-outline-primary" title="Publisher Profile"><i class="fas fa-eye"></i></a>
-                                                            <a href="?toggle_status=<?php echo $pub['user_id']; ?>" class="btn btn-sm btn-outline-secondary ml-1" title="Toggle Status"><i class="fas fa-power-off"></i></a>
+                                                            <a href="affiliate_details.php?id=<?php echo $pub['user_id']; ?>" class="btn btn-sm btn-outline-primary mr-1" data-toggle="tooltip" title="View Full Affiliate Details"><i class="fas fa-eye"></i></a>
+                                                            <?php if ($pub['status'] === 'blocked'): ?>
+                                                                <a href="?toggle_status=<?php echo $pub['user_id']; ?>" 
+                                                                   class="btn btn-sm btn-outline-success" 
+                                                                   data-toggle="tooltip" 
+                                                                   title="Unblock Affiliate & Restore Offer Access"
+                                                                   onclick="return confirm('Unblock publisher <?php echo htmlspecialchars(addslashes($pub['name'])); ?>? Their eligible offer assignments and tracking links will be restored.');">
+                                                                    <i class="fas fa-check-circle"></i>
+                                                                </a>
+                                                            <?php else: ?>
+                                                                <a href="?toggle_status=<?php echo $pub['user_id']; ?>" 
+                                                                   class="btn btn-sm btn-outline-danger" 
+                                                                   data-toggle="tooltip" 
+                                                                   title="Block Affiliate & Disable Tracking Links"
+                                                                   onclick="return confirm('Block publisher <?php echo htmlspecialchars(addslashes($pub['name'])); ?>? All assigned offers and tracking links will immediately become inactive.');">
+                                                                    <i class="fas fa-ban"></i>
+                                                                </a>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </td>
                                                 </tr>

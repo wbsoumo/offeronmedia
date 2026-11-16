@@ -19,17 +19,29 @@ if (!$offerId) {
 }
 
 /* ===============================
-   HANDLE ACTION REQUESTS (Activate, Pause, Approve)
+   HANDLE ACTION REQUESTS (Activate, Pause, Approve, Archive, Restore)
 ================================ */
 if (!empty($_GET['action'])) {
     $act = $_GET['action'];
     if ($act === 'activate' || $act === 'approve') {
         $pdo->exec("UPDATE offers SET status='active', updated_at=NOW() WHERE offer_id=$offerId");
+        admin_log_action('offer_activate', 'offer', $offerId, 'Campaign activated');
         header("Location: offer_details.php?id=$offerId&success=Campaign activated successfully");
         exit;
     } elseif ($act === 'pause') {
         $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id=$offerId");
+        admin_log_action('offer_pause', 'offer', $offerId, 'Campaign paused');
         header("Location: offer_details.php?id=$offerId&success=Campaign paused successfully");
+        exit;
+    } elseif ($act === 'archive') {
+        $pdo->exec("UPDATE offers SET status='archived', updated_at=NOW() WHERE offer_id=$offerId");
+        admin_log_action('offer_archive', 'offer', $offerId, 'Campaign moved to archived status');
+        header("Location: offer_details.php?id=$offerId&success=Campaign archived successfully. Historical tracking records preserved.");
+        exit;
+    } elseif ($act === 'restore') {
+        $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id=$offerId");
+        admin_log_action('offer_restore', 'offer', $offerId, 'Campaign restored from archive to paused');
+        header("Location: offer_details.php?id=$offerId&success=Campaign restored to Paused status successfully.");
         exit;
     }
 }
@@ -47,6 +59,7 @@ $stmt = $pdo->prepare("
         u.created_at AS advertiser_joined,
         
         -- Account manager info
+        am.user_id AS account_manager_user_id,
         am.name AS account_manager_name,
         am.email AS account_manager_email,
         
@@ -76,7 +89,7 @@ $stmt = $pdo->prepare("
          
     FROM offers o
     INNER JOIN users u ON u.user_id = o.advertiser_id
-    LEFT JOIN users am ON am.user_id = u.account_manager_id
+    LEFT JOIN users am ON am.user_id = u.account_manager_id AND am.role_id = 2
     LEFT JOIN clicks c ON c.offer_id = o.offer_id
     LEFT JOIN conversions cv ON cv.offer_id = o.offer_id
     WHERE o.offer_id = :offer_id
@@ -873,19 +886,28 @@ $notes = [
                             </p>
                         </div>
                         <div class="action-buttons mb-3">
-                            <a href="campaigns.php" class="btn btn-light font-weight-bold mr-1">
+                            <a href="offers.php" class="btn btn-light font-weight-bold mr-1">
                                 <i class="fas fa-arrow-left mr-1"></i> Back
                             </a>
                             <a href="offer_edit.php?id=<?php echo $offer['offer_id']; ?>" class="btn btn-warning font-weight-bold mr-1">
                                 <i class="fas fa-edit mr-1"></i> Edit Campaign
                             </a>
-                            <?php if ($offer['status'] === 'active'): ?>
-                                <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=pause" class="btn btn-danger font-weight-bold">
-                                    <i class="fas fa-pause mr-1"></i> Pause
+                            <?php if ($offer['status'] === 'archived'): ?>
+                                <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=restore" class="btn btn-success font-weight-bold mr-1" onclick="return confirm('Restore this archived campaign to Paused status?')">
+                                    <i class="fas fa-undo mr-1"></i> Restore Campaign
                                 </a>
                             <?php else: ?>
-                                <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=activate" class="btn btn-success font-weight-bold">
-                                    <i class="fas fa-play mr-1"></i> Activate
+                                <?php if ($offer['status'] === 'active'): ?>
+                                    <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=pause" class="btn btn-danger font-weight-bold mr-1">
+                                        <i class="fas fa-pause mr-1"></i> Pause
+                                    </a>
+                                <?php else: ?>
+                                    <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=activate" class="btn btn-success font-weight-bold mr-1">
+                                        <i class="fas fa-play mr-1"></i> Activate
+                                    </a>
+                                <?php endif; ?>
+                                <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=archive" class="btn btn-secondary font-weight-bold" onclick="return confirm('Archive this campaign? It will be soft-deleted and removed from active lists. Historical clicks and conversions are preserved.')">
+                                    <i class="fas fa-archive mr-1"></i> Archive
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -912,19 +934,19 @@ $notes = [
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="stat-card-custom">
-                            <div class="stat-number text-success">$<?php echo number_format($offer['earned_revenue'] ?? 0, 2); ?></div>
+                            <div class="stat-number text-success"><?php echo format_currency($offer['earned_revenue'] ?? 0, $offer['currency'] ?? 'USD'); ?></div>
                             <div class="stat-label">Revenue</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="stat-card-custom">
-                            <div class="stat-number text-warning">$<?php echo number_format($offer['paid_payout'] ?? 0, 2); ?></div>
+                            <div class="stat-number text-warning"><?php echo format_currency($offer['paid_payout'] ?? 0, $offer['currency'] ?? 'USD'); ?></div>
                             <div class="stat-label">Payout</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-2">
                         <div class="stat-card-custom">
-                            <div class="stat-number text-success font-weight-bold">$<?php echo number_format($offer['profit'] ?? 0, 2); ?></div>
+                            <div class="stat-number text-success font-weight-bold"><?php echo format_currency($offer['profit'] ?? 0, $offer['currency'] ?? 'USD'); ?></div>
                             <div class="stat-label">Net Profit</div>
                         </div>
                     </div>
@@ -1031,16 +1053,16 @@ $notes = [
                                             </div>
                                             <div class="info-row">
                                                 <div class="info-label">Revenue:</div>
-                                                <div class="info-value text-success">$<?php echo number_format($offer['revenue'], 2); ?> <?php echo $offer['currency']; ?></div>
+                                                <div class="info-value text-success"><?php echo format_currency($offer['revenue'], $offer['currency'] ?? 'USD'); ?></div>
                                             </div>
                                             <div class="info-row">
                                                 <div class="info-label">Payout:</div>
-                                                <div class="info-value text-warning">$<?php echo number_format($offer['payout'], 2); ?> <?php echo $offer['currency']; ?></div>
+                                                <div class="info-value text-warning"><?php echo format_currency($offer['payout'], $offer['currency'] ?? 'USD'); ?></div>
                                             </div>
                                             <div class="info-row">
                                                 <div class="info-label">Margin:</div>
                                                 <div class="info-value <?php echo ($offer['revenue'] - $offer['payout']) >= 0 ? 'profit-positive' : 'profit-negative'; ?>">
-                                                    $<?php echo number_format($offer['revenue'] - $offer['payout'], 2); ?> 
+                                                    <?php echo format_currency($offer['revenue'] - $offer['payout'], $offer['currency'] ?? 'USD'); ?> 
                                                     (<?php echo $offer['revenue'] > 0 ? number_format((($offer['revenue'] - $offer['payout']) / $offer['revenue']) * 100, 1) : 0; ?>%)
                                                 </div>
                                             </div>
@@ -1277,8 +1299,8 @@ $notes = [
                                                 </td>
                                                 <td><?php echo number_format($aff['clicks'] ?? 0); ?></td>
                                                 <td><?php echo number_format($aff['conversions']); ?></td>
-                                                <td class="text-success">$<?php echo number_format($aff['revenue'], 2); ?></td>
-                                                <td class="text-warning">$<?php echo number_format($aff['payout'], 2); ?></td>
+                                                <td class="text-success"><?php echo format_currency($aff['revenue'], $offer['currency'] ?? 'USD'); ?></td>
+                                                <td class="text-warning"><?php echo format_currency($aff['payout'], $offer['currency'] ?? 'USD'); ?></td>
                                                 <td>
                                                     <a href="affiliate_details.php?id=<?php echo $aff['user_id']; ?>" class="btn-action btn-view">
                                                         <i class="fas fa-eye"></i>
@@ -1336,7 +1358,9 @@ $notes = [
                                 <div class="info-row">
                                     <div class="info-label">Account Manager:</div>
                                     <div class="info-value">
-                                        <?php echo htmlspecialchars($offer['account_manager_name']); ?>
+                                        <a href="manager_profile.php?id=<?php echo (int)($offer['account_manager_user_id'] ?? 0); ?>" class="text-primary font-weight-bold" title="Click to view Manager Profile">
+                                            <i class="fas fa-user-tie mr-1"></i><?php echo htmlspecialchars($offer['account_manager_name']); ?>
+                                        </a>
                                         <small class="text-muted d-block"><?php echo htmlspecialchars($offer['account_manager_email']); ?></small>
                                     </div>
                                 </div>
@@ -1420,8 +1444,8 @@ $notes = [
                                                         <?php echo htmlspecialchars($conv['affiliate_name'] ?? 'Unknown'); ?>
                                                     </a>
                                                 </td>
-                                                <td class="text-success">$<?php echo number_format($conv['revenue'], 2); ?></td>
-                                                <td class="text-warning">$<?php echo number_format($conv['payout'], 2); ?></td>
+                                                <td class="text-success"><?php echo format_currency($conv['revenue'], $offer['currency'] ?? 'USD'); ?></td>
+                                                <td class="text-warning"><?php echo format_currency($conv['payout'], $offer['currency'] ?? 'USD'); ?></td>
                                                 <td>
                                                     <span class="status-badge status-<?php echo $conv['status']; ?>" style="padding: 3px 8px;">
                                                         <?php echo ucfirst($conv['status']); ?>

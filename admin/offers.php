@@ -20,8 +20,10 @@ if (isset($_GET['approved'])) {
     $success = 'Offer paused';
 } elseif (isset($_GET['activated'])) {
     $success = 'Offer activated';
-} elseif (isset($_GET['deleted'])) {
-    $success = 'Offer deleted successfully';
+} elseif (isset($_GET['archived']) || isset($_GET['deleted'])) {
+    $success = 'Offer archived successfully. Historical tracking and reporting records are preserved.';
+} elseif (isset($_GET['restored'])) {
+    $success = 'Offer restored to paused status successfully.';
 } elseif (isset($_GET['error'])) {
     $error = $_GET['error'];
 }
@@ -50,6 +52,9 @@ if ($search) {
 if ($statusFilter !== 'all') {
     $where[] = 'o.status = :status';
     $params['status'] = $statusFilter;
+} else {
+    // Exclude archived offers from active listing by default
+    $where[] = "o.status != 'archived'";
 }
 
 if ($advertiserFilter !== 'all') {
@@ -121,6 +126,7 @@ $sql = "
         o.offer_description,
         o.payout,
         o.payout_type,
+        o.currency,
         o.revenue,
         o.status,
         o.visibility,
@@ -217,18 +223,41 @@ $summaryStmt = $pdo->query("
         SUM(status = 'active') as active_offers,
         SUM(status = 'paused') as paused_offers,
         SUM(status = 'rejected') as rejected_offers,
+        SUM(status = 'archived') as archived_offers,
         
         AVG(payout) as avg_payout,
         AVG(revenue) as avg_revenue,
         SUM(revenue) as total_potential_revenue,
         
         (SELECT COUNT(*) FROM clicks) as total_clicks,
-        (SELECT COUNT(*) FROM conversions) as total_conversions,
-        (SELECT SUM(revenue) FROM conversions WHERE status = 'approved') as total_earned_revenue,
-        (SELECT SUM(payout) FROM conversions WHERE status = 'approved') as total_paid_payout
+        (SELECT COUNT(*) FROM conversions) as total_conversions
     FROM offers
 ");
 $summary = $summaryStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+// Dual Currency Revenue & Payout breakdown
+$revBreakdown = $pdo->query("
+    SELECT 
+        COALESCE(o.currency, 'USD') as currency,
+        SUM(cv.revenue) as earned_revenue,
+        SUM(cv.payout) as paid_payout
+    FROM conversions cv
+    JOIN offers o ON o.offer_id = cv.offer_id
+    WHERE cv.status = 'approved'
+    GROUP BY COALESCE(o.currency, 'USD')
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$totalEarnedUSD = 0; $totalEarnedINR = 0;
+$totalPaidUSD = 0; $totalPaidINR = 0;
+foreach ($revBreakdown as $rb) {
+    if ($rb['currency'] === 'INR') {
+        $totalEarnedINR += (float)$rb['earned_revenue'];
+        $totalPaidINR += (float)$rb['paid_payout'];
+    } else {
+        $totalEarnedUSD += (float)$rb['earned_revenue'];
+        $totalPaidUSD += (float)$rb['paid_payout'];
+    }
+}
 
 /* ===============================
    BULK ACTIONS
@@ -259,9 +288,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
                 $sql = "UPDATE offers SET status = 'rejected', updated_at = NOW() WHERE offer_id IN ($placeholders)";
                 $message = 'selected offers have been rejected';
                 break;
+            case 'archive':
             case 'delete':
-                $sql = "DELETE FROM offers WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been deleted';
+                $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been archived (historical records preserved)';
+                break;
+            case 'restore':
+                $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been restored to paused status';
                 break;
             default:
                 $error = 'Invalid action selected';
@@ -271,6 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
         if (!$error) {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($selectedOffers);
+            admin_log_action('offers_bulk_' . $action, 'offers', null, count($selectedOffers) . " offers $action");
             $success = count($selectedOffers) . ' ' . $message;
             
             // Refresh page
@@ -287,29 +322,35 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     $offerId = (int)$_GET['id'];
     $action = $_GET['action'];
     
-    $validActions = ['approve', 'reject', 'activate', 'pause', 'delete'];
+    $validActions = ['approve', 'reject', 'activate', 'pause', 'archive', 'delete', 'restore'];
     
     if (in_array($action, $validActions)) {
-        if ($action === 'delete') {
-            $sql = "DELETE FROM offers WHERE offer_id = ?";
+        if ($action === 'delete' || $action === 'archive') {
+            $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$offerId]);
+            admin_log_action('offer_archive', 'offer', $offerId, 'Offer moved to archived status');
+            header("Location: offers.php?archived=1");
+            exit;
+        } elseif ($action === 'restore') {
+            $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$offerId]);
+            admin_log_action('offer_restore', 'offer', $offerId, 'Offer restored from archive to paused');
+            header("Location: offers.php?restored=1");
+            exit;
         } else {
             $status = ($action === 'approve') ? 'approved' : 
                      (($action === 'activate') ? 'active' : 
                      (($action === 'pause') ? 'paused' : 
                      (($action === 'reject') ? 'rejected' : $action)));
             $sql = "UPDATE offers SET status = ?, updated_at = NOW() WHERE offer_id = ?";
-        }
-        
-        $stmt = $pdo->prepare($sql);
-        
-        if ($action === 'delete') {
-            $stmt->execute([$offerId]);
-            header("Location: offers.php?deleted=1");
-        } else {
+            $stmt = $pdo->prepare($sql);
             $stmt->execute([$status, $offerId]);
+            admin_log_action('offer_status_' . $status, 'offer', $offerId, "Offer status changed to $status");
             header("Location: offers.php?" . $action . "=1");
+            exit;
         }
-        exit;
     }
 }
 ?>
@@ -959,9 +1000,15 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 
                     <li class="nav-header">CAMPAIGNS & OFFERS</li>
                     <li class="nav-item">
-                        <a href="campaigns.php" class="nav-link active">
+                        <a href="offers.php" class="nav-link <?php echo $statusFilter !== 'archived' ? 'active' : ''; ?>">
                             <i class="nav-icon fas fa-bullhorn"></i>
                             <p>Manage Campaigns</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="offers.php?status=archived" class="nav-link <?php echo $statusFilter === 'archived' ? 'active' : ''; ?>">
+                            <i class="nav-icon fas fa-archive"></i>
+                            <p>Archived Offers</p>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -1010,6 +1057,12 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                     </li>
 
                     <li class="nav-header">ANALYTICS & REPORTS</li>
+                    <li class="nav-item">
+                        <a href="reports_clicks.php" class="nav-link">
+                            <i class="nav-icon fas fa-mouse-pointer"></i>
+                            <p>Click Reports</p>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a href="reports_campaigns.php" class="nav-link">
                             <i class="nav-icon fas fa-chart-bar"></i>
@@ -1150,8 +1203,12 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                         <div class="metric-label">Paused</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value revenue-value">$<?php echo number_format($summary['total_earned_revenue'] ?? 0, 2); ?></div>
-                        <div class="metric-label">Total Revenue</div>
+                        <div class="metric-value text-secondary"><?php echo number_format($summary['archived_offers'] ?? 0); ?></div>
+                        <div class="metric-label">Archived</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value revenue-value" style="font-size: 1.15rem;"><?php echo format_dual_currency($totalEarnedUSD, $totalEarnedINR); ?></div>
+                        <div class="metric-label">Approved Revenue</div>
                     </div>
                 </div>
 
@@ -1170,12 +1227,13 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                 <div class="filter-group">
                                     <label for="status"><i class="fas fa-toggle-on mr-1"></i> Status</label>
                                     <select name="status" id="status" class="filter-control">
-                                        <option value="all" <?php echo $statusFilter === 'all' ? 'selected' : ''; ?>>All Status</option>
+                                        <option value="all" <?php echo $statusFilter === 'all' ? 'selected' : ''; ?>>Active Campaigns (All)</option>
                                         <option value="pending" <?php echo $statusFilter === 'pending' ? 'selected' : ''; ?>>Pending</option>
                                         <option value="approved" <?php echo $statusFilter === 'approved' ? 'selected' : ''; ?>>Approved</option>
                                         <option value="active" <?php echo $statusFilter === 'active' ? 'selected' : ''; ?>>Active</option>
                                         <option value="paused" <?php echo $statusFilter === 'paused' ? 'selected' : ''; ?>>Paused</option>
                                         <option value="rejected" <?php echo $statusFilter === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                                        <option value="archived" <?php echo $statusFilter === 'archived' ? 'selected' : ''; ?>>Archived</option>
                                     </select>
                                 </div>
                                 
@@ -1246,7 +1304,8 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                             <option value="activate">Activate Selected</option>
                             <option value="pause">Pause Selected</option>
                             <option value="reject">Reject Selected</option>
-                            <option value="delete">Delete Selected</option>
+                            <option value="archive">Archive Selected</option>
+                            <option value="restore">Restore Selected</option>
                         </select>
                         
                         <button type="submit" class="btn btn-outline-primary btn-sm" onclick="return confirmBulkAction()">
@@ -1352,16 +1411,16 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                                 </td>
                                                 <td>
                                                     <div class="font-weight-bold text-success">
-                                                        $<?php echo number_format($offer['payout'], 2); ?>
+                                                        <?php echo format_currency($offer['payout'], $offer['currency'] ?? 'USD'); ?>
                                                     </div>
                                                     <div class="small text-muted">
                                                         <?php echo strtoupper($offer['payout_type'] ?? 'CPA'); ?>
                                                     </div>
                                                     <div class="small text-primary">
-                                                        Revenue: $<?php echo number_format($offer['revenue'], 2); ?>
+                                                        Revenue: <?php echo format_currency($offer['revenue'], $offer['currency'] ?? 'USD'); ?>
                                                     </div>
                                                     <div class="small <?php echo $profit >= 0 ? 'profit-positive' : 'profit-negative'; ?>">
-                                                        Profit: $<?php echo number_format($profit, 2); ?>
+                                                        Profit: <?php echo format_currency($profit, $offer['currency'] ?? 'USD'); ?>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -1479,12 +1538,21 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                                             <i class="fas fa-eye"></i>
                                                         </a>
                                                         
-                                                        <a href="?action=delete&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-delete"
-                                                           title="Delete"
-                                                           onclick="return confirm('Are you sure you want to delete this campaign? This action cannot be undone.')">
-                                                            <i class="fas fa-trash"></i>
+                                                        <?php if ($offer['status'] === 'archived'): ?>
+                                                        <a href="?action=restore&id=<?php echo $offer['offer_id']; ?>" 
+                                                           class="btn-action btn-activate"
+                                                           title="Restore Campaign (Unarchive to Paused)"
+                                                           onclick="return confirm('Restore campaign #<?php echo $offer['offer_id']; ?> to Paused status? Historical tracking records remain intact.')">
+                                                            <i class="fas fa-undo"></i>
                                                         </a>
+                                                        <?php else: ?>
+                                                        <a href="?action=archive&id=<?php echo $offer['offer_id']; ?>" 
+                                                           class="btn-action btn-delete"
+                                                           title="Archive Campaign (Soft Delete)"
+                                                           onclick="return confirm('Archive campaign #<?php echo $offer['offer_id']; ?>? It will be removed from the active campaign list and can be restored at any time. Historical clicks and conversions are preserved.')">
+                                                            <i class="fas fa-archive"></i>
+                                                        </a>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </td>
                                             </tr>

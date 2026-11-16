@@ -39,6 +39,32 @@ $totalPayout = (float)($convStats['total_payout'] ?? 0);
 $netProfit = $totalRevenue - $totalPayout;
 $networkCR = $totalClicks > 0 ? number_format(($approvedConversions / $totalClicks) * 100, 2) : '0.00';
 
+// Currency breakdown to prevent mixing USD and INR
+$currBreakdown = $pdo->query("
+    SELECT 
+        COALESCE(o.currency, 'USD') as currency,
+        SUM(cv.revenue) as revenue,
+        SUM(cv.payout) as payout
+    FROM conversions cv
+    JOIN offers o ON o.offer_id = cv.offer_id
+    WHERE cv.status = 'approved'
+    GROUP BY COALESCE(o.currency, 'USD')
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$totalRevUSD = 0; $totalRevINR = 0;
+$totalPayUSD = 0; $totalPayINR = 0;
+foreach ($currBreakdown as $cb) {
+    if ($cb['currency'] === 'INR') {
+        $totalRevINR += (float)$cb['revenue'];
+        $totalPayINR += (float)$cb['payout'];
+    } else {
+        $totalRevUSD += (float)$cb['revenue'];
+        $totalPayUSD += (float)$cb['payout'];
+    }
+}
+$netProfitUSD = $totalRevUSD - $totalPayUSD;
+$netProfitINR = $totalRevINR - $totalPayINR;
+
 /* -------------------------------------------------
    2. TODAY PERFORMANCE
 -------------------------------------------------- */
@@ -191,9 +217,15 @@ $recentUsers = $pdo->query("
 
                     <li class="nav-header">CAMPAIGNS & OFFERS</li>
                     <li class="nav-item">
-                        <a href="campaigns.php" class="nav-link">
+                        <a href="offers.php" class="nav-link">
                             <i class="nav-icon fas fa-bullhorn"></i>
                             <p>Manage Campaigns</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="archived_offers.php" class="nav-link">
+                            <i class="nav-icon fas fa-archive"></i>
+                            <p>Archived Offers</p>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -242,6 +274,12 @@ $recentUsers = $pdo->query("
                     </li>
 
                     <li class="nav-header">ANALYTICS & REPORTS</li>
+                    <li class="nav-item">
+                        <a href="reports_clicks.php" class="nav-link">
+                            <i class="nav-icon fas fa-mouse-pointer"></i>
+                            <p>Click Reports</p>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a href="reports_campaigns.php" class="nav-link">
                             <i class="nav-icon fas fa-chart-bar"></i>
@@ -336,13 +374,13 @@ $recentUsers = $pdo->query("
                 <div class="row mb-4 stat-boxes-row">
                     <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
-                            <div class="stat-number text-success">$<?php echo number_format($netProfit, 2); ?></div>
+                            <div class="stat-number text-success" style="font-size: 1.25rem;"><?php echo format_dual_currency($netProfitUSD, $netProfitINR); ?></div>
                             <div class="stat-label">Net Network Profit</div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
-                            <div class="stat-number text-primary">$<?php echo number_format($totalRevenue, 2); ?></div>
+                            <div class="stat-number text-primary" style="font-size: 1.25rem;"><?php echo format_dual_currency($totalRevUSD, $totalRevINR); ?></div>
                             <div class="stat-label">Gross Revenue</div>
                         </div>
                     </div>

@@ -15,26 +15,49 @@ $success = $error = null;
    HANDLE PUBLISHER STATUS CHANGE
 ================================ */
 if (!empty($_GET['action']) && !empty($_GET['id'])) {
-    if (!manager_can('manage_affiliates')) {
-        $error = "Permission Denied: You do not have permission to manage affiliate account statuses.";
-    } else {
-        $pubId = (int)$_GET['id'];
-        $act   = $_GET['action'];
-        $validActions = ['approve', 'reject', 'block', 'activate'];
+    $pubId = (int)$_GET['id'];
+    $act   = $_GET['action'];
+    $validActions = ['approve', 'reject', 'block', 'activate'];
 
-        if (in_array($act, $validActions, true)) {
-            // Validate publisher belongs to this manager
-            $check = $pdo->prepare("SELECT user_id, name FROM users WHERE user_id = ? AND role_id = 3 AND account_manager_id = ? LIMIT 1");
-            $check->execute([$pubId, $managerId]);
-            $pubData = $check->fetch(PDO::FETCH_ASSOC);
+    if (in_array($act, $validActions, true)) {
+        // Validate publisher belongs to this manager
+        $check = $pdo->prepare("SELECT user_id, name FROM users WHERE user_id = ? AND role_id = 3 AND account_manager_id = ? LIMIT 1");
+        $check->execute([$pubId, $managerId]);
+        $pubData = $check->fetch(PDO::FETCH_ASSOC);
 
-            if ($pubData) {
-                $newStatus = ($act === 'approve' || $act === 'activate') ? 'active' : ($act === 'reject' ? 'rejected' : 'blocked');
-                $upd = $pdo->prepare("UPDATE users SET status = ?, updated_at = NOW() WHERE user_id = ? AND account_manager_id = ?");
-                $upd->execute([$newStatus, $pubId, $managerId]);
-                $success = "Publisher #{$pubId} (" . htmlspecialchars($pubData['name']) . ") status updated to " . ucfirst($newStatus) . " successfully!";
-            } else {
-                $error = "Publisher not found or not assigned to your manager account.";
+        if (!$pubData) {
+            $error = "Publisher not found or not assigned to your manager account.";
+        } else {
+            if ($act === 'block') {
+                if (!manager_can('can_block_affiliates') && !manager_can('manage_affiliates')) {
+                    $error = "Permission Denied: You do not have authorization to block affiliates.";
+                } else {
+                    $res = affiliate_block($pubId, 'Blocked by Account Manager #' . $managerId);
+                    if ($res['success']) {
+                        $success = "Publisher #{$pubId} (" . htmlspecialchars($pubData['name']) . ") blocked and all assigned offers immediately disabled.";
+                    } else {
+                        $error = $res['message'] ?? 'Failed to block affiliate.';
+                    }
+                }
+            } elseif ($act === 'activate' || $act === 'approve') {
+                if (!manager_can('can_approve_affiliates') && !manager_can('manage_affiliates')) {
+                    $error = "Permission Denied: You do not have authorization to approve/activate affiliates.";
+                } else {
+                    $res = affiliate_unblock($pubId, 'Activated by Account Manager #' . $managerId);
+                    if ($res['success']) {
+                        $success = "Publisher #{$pubId} (" . htmlspecialchars($pubData['name']) . ") activated and eligible offer access restored.";
+                    } else {
+                        $error = $res['message'] ?? 'Failed to activate affiliate.';
+                    }
+                }
+            } elseif ($act === 'reject') {
+                if (!manager_can('can_block_affiliates') && !manager_can('manage_affiliates')) {
+                    $error = "Permission Denied: You do not have authorization to reject affiliates.";
+                } else {
+                    affiliate_block($pubId, 'Rejected by Account Manager #' . $managerId);
+                    $pdo->exec("UPDATE users SET status = 'rejected', updated_at = NOW() WHERE user_id = $pubId");
+                    $success = "Publisher #{$pubId} (" . htmlspecialchars($pubData['name']) . ") rejected.";
+                }
             }
         }
     }
@@ -257,23 +280,21 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </td>
                                     <td style="white-space: nowrap;">
                                         <!-- Status Controls if Allowed -->
-                                        <?php if (manager_can('manage_affiliates')): ?>
-                                            <?php if ($p['status'] === 'pending'): ?>
-                                                <a href="?action=approve&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-success font-weight-bold mr-1" title="Approve Affiliate">
-                                                    <i class="fas fa-check"></i> Approve
-                                                </a>
-                                                <a href="?action=reject&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-danger font-weight-bold mr-1" onclick="return confirm('Reject this affiliate registration?')" title="Reject Affiliate">
-                                                    <i class="fas fa-times"></i> Reject
-                                                </a>
-                                            <?php elseif ($p['status'] === 'active'): ?>
-                                                <a href="?action=block&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-danger font-weight-bold mr-1" onclick="return confirm('Block this publisher?')" title="Block Affiliate">
-                                                    <i class="fas fa-ban"></i> Block
-                                                </a>
-                                            <?php else: ?>
-                                                <a href="?action=activate&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-success font-weight-bold mr-1" title="Reactivate Affiliate">
-                                                    <i class="fas fa-check-circle"></i> Activate
-                                                </a>
-                                            <?php endif; ?>
+                                        <?php if ($p['status'] === 'pending' && manager_can('can_approve_affiliates')): ?>
+                                            <a href="?action=approve&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-success font-weight-bold mr-1" title="Approve Affiliate">
+                                                <i class="fas fa-check"></i> Approve
+                                            </a>
+                                            <a href="?action=reject&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-danger font-weight-bold mr-1" onclick="return confirm('Reject this affiliate registration?')" title="Reject Affiliate">
+                                                <i class="fas fa-times"></i> Reject
+                                            </a>
+                                        <?php elseif ($p['status'] === 'active' && manager_can('can_block_affiliates')): ?>
+                                            <a href="?action=block&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-danger font-weight-bold mr-1" onclick="return confirm('Block this publisher? All assigned offers and tracking links will be immediately deactivated.')" title="Block Affiliate">
+                                                <i class="fas fa-ban"></i> Block
+                                            </a>
+                                        <?php elseif ($p['status'] !== 'active' && $p['status'] !== 'pending' && manager_can('can_approve_affiliates')): ?>
+                                            <a href="?action=activate&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-success font-weight-bold mr-1" onclick="return confirm('Activate this publisher? Eligible offer assignments will be restored.')" title="Reactivate Affiliate">
+                                                <i class="fas fa-check-circle"></i> Activate
+                                            </a>
                                         <?php endif; ?>
 
                                         <!-- Postback Modal Trigger if Allowed -->

@@ -703,21 +703,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="form-group mb-4">
-                                    <label class="font-weight-bold">Advertiser Revenue ($) <span class="text-danger">*</span></label>
+                                    <label class="font-weight-bold">Payment Currency <span class="text-danger">*</span></label>
+                                    <select name="currency" id="currency_select" class="form-control font-weight-bold" onchange="updateCurrencySymbols(); calcMargin();">
+                                        <option value="USD" <?php echo (($offer['currency'] ?? 'USD') === 'USD') ? 'selected' : ''; ?>>USD ($)</option>
+                                        <option value="INR" <?php echo (($offer['currency'] ?? 'USD') === 'INR') ? 'selected' : ''; ?>>INR (₹)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-4">
+                                    <label class="font-weight-bold">Payout Type</label>
+                                    <select name="payout_type" class="form-control">
+                                        <option value="cpa" <?php echo strtolower($offer['payout_type'] ?? '') === 'cpa' ? 'selected' : ''; ?>>CPA (Cost Per Action)</option>
+                                        <option value="cpc" <?php echo strtolower($offer['payout_type'] ?? '') === 'cpc' ? 'selected' : ''; ?>>CPC (Cost Per Click)</option>
+                                        <option value="cpl" <?php echo strtolower($offer['payout_type'] ?? '') === 'cpl' ? 'selected' : ''; ?>>CPL (Cost Per Lead)</option>
+                                        <option value="cps" <?php echo strtolower($offer['payout_type'] ?? '') === 'cps' ? 'selected' : ''; ?>>CPS (Cost Per Sale)</option>
+                                        <option value="cpi" <?php echo strtolower($offer['payout_type'] ?? '') === 'cpi' ? 'selected' : ''; ?>>CPI (Cost Per Install)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group mb-4">
+                                    <label class="font-weight-bold">Advertiser Revenue (<span class="curr-sym"><?php echo ($offer['currency'] ?? 'USD') === 'INR' ? '₹' : '$'; ?></span>) <span class="text-danger">*</span></label>
                                     <input type="number" step="0.01" name="revenue" id="rev_input" class="form-control form-control-lg font-weight-bold text-success" required value="<?php echo (float)$offer['revenue']; ?>" oninput="calcMargin()">
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="form-group mb-4">
-                                    <label class="font-weight-bold">Publisher Payout ($) <span class="text-danger">*</span></label>
+                                    <label class="font-weight-bold">Publisher Payout (<span class="curr-sym"><?php echo ($offer['currency'] ?? 'USD') === 'INR' ? '₹' : '$'; ?></span>) <span class="text-danger">*</span></label>
                                     <input type="number" step="0.01" name="payout" id="payout_input" class="form-control form-control-lg font-weight-bold text-indigo" style="color: #4f46e5;" required value="<?php echo (float)$offer['payout']; ?>" oninput="calcMargin()">
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-4">
-                                    <label class="font-weight-bold">Estimated Network Margin:</label>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <div class="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
+                                    <span class="font-weight-bold text-muted">Estimated Margin per Conversion:</span>
                                     <div class="margin-box">
                                         <strong class="text-success h4 mb-0" id="margin_usd">$0.00</strong>
                                         <span class="text-muted ml-1" id="margin_pct">(0%)</span>
@@ -806,15 +830,26 @@ function insertToken(token) {
     input.setSelectionRange(start + token.length, start + token.length);
 }
 
+function updateCurrencySymbols() {
+    const sym = $('#currency_select').val() === 'INR' ? '₹' : '$';
+    $('.curr-sym').text(sym);
+}
+
 function calcMargin() {
     const rev = parseFloat($('#rev_input').val()) || 0;
     const pay = parseFloat($('#payout_input').val()) || 0;
     const net = rev - pay;
     const pct = rev > 0 ? ((net / rev) * 100).toFixed(1) : 0;
+    const sym = $('#currency_select').val() === 'INR' ? '₹' : '$';
     
-    $('#margin_usd').text('$' + net.toFixed(2));
-    $('#margin_pct').text(pct + '%');
+    $('#margin_usd').text(sym + net.toFixed(2));
+    $('#margin_pct').text('(' + pct + '%)');
 }
+
+$(document).ready(function() {
+    updateCurrencySymbols();
+    calcMargin();
+});
 </script>
 </body>
 </html>

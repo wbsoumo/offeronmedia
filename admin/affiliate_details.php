@@ -347,6 +347,11 @@ $promotedOffers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
                         <div>
                             <a href="publishers.php" class="btn btn-light font-weight-bold mr-1"><i class="fas fa-arrow-left mr-1"></i> Back</a>
                             <a href="impersonate.php?id=<?php echo $affiliateId; ?>" target="_blank" class="btn btn-success font-weight-bold mr-1" title="Login directly as Publisher in new tab"><i class="fas fa-external-link-alt mr-1"></i> Login as Publisher</a>
+                            <?php if ($publisher['status'] === 'active'): ?>
+                                <a href="publishers.php?toggle_status=<?php echo $affiliateId; ?>" class="btn btn-danger font-weight-bold mr-1" data-toggle="tooltip" title="Block affiliate & disable offers" onclick="return confirm('Block this affiliate? All active tracking links and offer access will be immediately disabled.');"><i class="fas fa-ban mr-1"></i> Block</a>
+                            <?php else: ?>
+                                <a href="publishers.php?toggle_status=<?php echo $affiliateId; ?>" class="btn btn-success font-weight-bold mr-1" data-toggle="tooltip" title="Unblock affiliate & restore offers" onclick="return confirm('Unblock this affiliate? Eligible offers and tracking will be restored.');"><i class="fas fa-check-circle mr-1"></i> Unblock</a>
+                            <?php endif; ?>
                             <a href="publisher_postbacks.php?search=<?php echo urlencode($publisher['email']); ?>" class="btn btn-warning font-weight-bold"><i class="fas fa-link mr-1"></i> Postback Config</a>
                         </div>
                     </div>
@@ -392,7 +397,15 @@ $promotedOffers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
                                 </tr>
                                 <tr>
                                     <th class="pl-0 text-muted">Account Manager:</th>
-                                    <td class="font-weight-bold text-primary"><?php echo htmlspecialchars($publisher['account_manager_name'] ?: 'Unassigned'); ?></td>
+                                    <td class="font-weight-bold">
+                                        <?php if (!empty($publisher['account_manager_id']) && !empty($publisher['account_manager_name'])): ?>
+                                            <a href="manager_profile.php?id=<?php echo $publisher['account_manager_id']; ?>" class="text-primary font-weight-bold" data-toggle="tooltip" title="Click to view complete Affiliate Manager Profile">
+                                                <i class="fas fa-user-tie mr-1"></i><?php echo htmlspecialchars($publisher['account_manager_name']); ?>
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="text-muted">Unassigned</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <th class="pl-0 text-muted">Global Postback:</th>

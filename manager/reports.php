@@ -15,6 +15,7 @@ $managerName = $_SESSION['user_name'] ?? 'Account Manager';
 $canAffReports = manager_can('affiliate_reports');
 $canAdvReports = manager_can('advertiser_reports');
 $canAllReports = manager_can('all_reports');
+$canViewFinancials = manager_can('can_view_financials');
 $hasAnyReportPermission = $canAffReports || $canAdvReports || $canAllReports;
 
 // Determine active tab
@@ -283,11 +284,17 @@ if ($hasAnyReportPermission) {
                                     </td>
                                     <td class="text-center font-weight-bold text-dark"><?php echo number_format((int)$r['clicks']); ?></td>
                                     <td class="text-center font-weight-bold text-dark"><?php echo number_format((int)$r['approved_conversions']); ?></td>
-                                    <td class="text-center font-weight-bold text-success">$<?php echo number_format((float)$r['total_revenue'], 2); ?></td>
-                                    <td class="text-center font-weight-bold text-primary">$<?php echo number_format((float)$r['total_payout'], 2); ?></td>
+                                    <?php if ($canViewFinancials): ?>
+                                    <td class="text-center font-weight-bold text-success"><?php echo format_currency((float)$r['total_revenue'], $currency); ?></td>
+                                    <td class="text-center font-weight-bold text-primary"><?php echo format_currency((float)$r['total_payout'], $currency); ?></td>
                                     <td class="text-center font-weight-bold text-<?php echo $margin >= 0 ? 'success' : 'danger'; ?>">
-                                        $<?php echo number_format($margin, 2); ?>
+                                        <?php echo format_currency($margin, $currency); ?>
                                     </td>
+                                    <?php else: ?>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <?php endif; ?>
                                     <td><span class="badge badge-light border font-weight-bold"><?php echo htmlspecialchars($currency); ?></span></td>
                                     <td><span class="badge badge-success p-2"><?php echo htmlspecialchars($statusLabel); ?></span></td>
                                 </tr>
@@ -329,11 +336,17 @@ if ($hasAnyReportPermission) {
                                     <td class="text-center"><span class="badge badge-info p-2"><?php echo number_format((int)$adv['total_offers']); ?> Offers</span></td>
                                     <td class="text-center font-weight-bold"><?php echo number_format((int)$adv['clicks']); ?></td>
                                     <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$adv['conversions']); ?></td>
+                                    <?php if ($canViewFinancials): ?>
                                     <td class="text-center font-weight-bold text-success">$<?php echo number_format((float)$adv['total_revenue'], 2); ?></td>
                                     <td class="text-center font-weight-bold text-primary">$<?php echo number_format((float)$adv['total_payout'], 2); ?></td>
                                     <td class="text-center font-weight-bold text-<?php echo $net >= 0 ? 'success' : 'danger'; ?>">
                                         $<?php echo number_format($net, 2); ?>
                                     </td>
+                                    <?php else: ?>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <?php endif; ?>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -373,11 +386,17 @@ if ($hasAnyReportPermission) {
                                     <td class="text-center font-weight-bold"><?php echo number_format((int)$camp['clicks']); ?></td>
                                     <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$camp['conversions']); ?></td>
                                     <td class="text-center font-weight-bold text-muted"><?php echo $cr; ?>%</td>
-                                    <td class="text-center font-weight-bold text-success">$<?php echo number_format((float)$camp['total_revenue'], 2); ?></td>
-                                    <td class="text-center font-weight-bold text-primary">$<?php echo number_format((float)$camp['total_payout'], 2); ?></td>
+                                    <?php if ($canViewFinancials): ?>
+                                    <td class="text-center font-weight-bold text-success"><?php echo format_currency((float)$camp['total_revenue'], $camp['currency'] ?? 'USD'); ?></td>
+                                    <td class="text-center font-weight-bold text-primary"><?php echo format_currency((float)$camp['total_payout'], $camp['currency'] ?? 'USD'); ?></td>
                                     <td class="text-center font-weight-bold text-<?php echo $campNet >= 0 ? 'success' : 'danger'; ?>">
-                                        $<?php echo number_format($campNet, 2); ?>
+                                        <?php echo format_currency($campNet, $camp['currency'] ?? 'USD'); ?>
                                     </td>
+                                    <?php else: ?>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <?php endif; ?>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -407,7 +426,11 @@ if ($hasAnyReportPermission) {
                                     <td><strong class="text-dark"><?php echo htmlspecialchars($sub['affiliate_name']); ?></strong></td>
                                     <td class="text-center font-weight-bold"><?php echo number_format((int)$sub['clicks']); ?></td>
                                     <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$sub['conversions']); ?></td>
+                                    <?php if ($canViewFinancials): ?>
                                     <td class="text-center font-weight-bold text-primary">$<?php echo number_format((float)$sub['total_payout'], 2); ?></td>
+                                    <?php else: ?>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <?php endif; ?>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

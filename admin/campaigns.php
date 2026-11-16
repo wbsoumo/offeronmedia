@@ -23,9 +23,12 @@ if (!empty($_GET['action']) && !empty($_GET['id'])) {
     } elseif ($act === 'pause') {
         $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id=$id");
         $success = "Campaign #$id paused successfully.";
-    } elseif ($act === 'archive') {
+    } elseif ($act === 'archive' || $act === 'delete') {
         $pdo->exec("UPDATE offers SET status='archived', updated_at=NOW() WHERE offer_id=$id");
-        $success = "Campaign #$id archived.";
+        $success = "Campaign #$id archived successfully.";
+    } elseif ($act === 'restore') {
+        $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id=$id");
+        $success = "Campaign #$id restored to paused status.";
     }
 }
 
@@ -40,6 +43,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['bulk_action'])) {
         } elseif ($action === 'pause') {
             $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id IN ($idList)");
             $success = "Selected campaigns paused.";
+        } elseif ($action === 'archive' || $action === 'delete') {
+            $pdo->exec("UPDATE offers SET status='archived', updated_at=NOW() WHERE offer_id IN ($idList)");
+            $success = "Selected campaigns archived.";
+        } elseif ($action === 'restore') {
+            $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id IN ($idList)");
+            $success = "Selected campaigns restored to paused.";
         }
     }
 }
@@ -53,6 +62,7 @@ $sql = "
         o.offer_name,
         o.payout,
         o.revenue,
+        o.currency,
         o.status,
         o.category,
         o.campaign_url,
@@ -68,6 +78,7 @@ $sql = "
     LEFT JOIN users u ON u.user_id = o.advertiser_id
     LEFT JOIN clicks c ON c.offer_id = o.offer_id
     LEFT JOIN conversions cv ON cv.offer_id = o.offer_id
+    WHERE o.status != 'archived'
     GROUP BY o.offer_id
     ORDER BY o.created_at DESC
 ";
@@ -395,8 +406,8 @@ foreach ($offers as $of) {
                                         <small class="d-block text-muted"><?php echo htmlspecialchars($of['advertiser_email'] ?: ''); ?></small>
                                     </td>
                                     <td>
-                                        <strong class="text-success">$<?php echo number_format($of['payout'], 2); ?></strong>
-                                        <small class="d-block text-muted">Rev: $<?php echo number_format($of['revenue'], 2); ?></small>
+                                        <strong class="text-success"><?php echo format_currency($of['payout'], $of['currency'] ?? 'USD'); ?></strong>
+                                        <small class="d-block text-muted">Rev: <?php echo format_currency($of['revenue'], $of['currency'] ?? 'USD'); ?></small>
                                     </td>
                                     <td>
                                         <?php if ($of['status'] === 'active'): ?>
@@ -411,7 +422,7 @@ foreach ($offers as $of) {
                                     </td>
                                     <td><strong><?php echo number_format($clicks); ?></strong></td>
                                     <td><strong><?php echo number_format($convs); ?></strong></td>
-                                    <td><strong class="text-success font-weight-bold">$<?php echo number_format($rev, 2); ?></strong></td>
+                                    <td><strong class="text-success font-weight-bold"><?php echo format_currency($rev, $of['currency'] ?? 'USD'); ?></strong></td>
                                     <td>
                                         <div class="btn-group">
                                             <a href="offer_details.php?id=<?php echo $of['offer_id']; ?>" class="btn btn-sm btn-outline-info" title="View Specs"><i class="fas fa-eye"></i></a>
@@ -421,6 +432,7 @@ foreach ($offers as $of) {
                                             <?php else: ?>
                                                 <a href="?action=pause&id=<?php echo $of['offer_id']; ?>" class="btn btn-sm btn-outline-warning" title="Pause Campaign"><i class="fas fa-pause"></i></a>
                                             <?php endif; ?>
+                                            <a href="?action=archive&id=<?php echo $of['offer_id']; ?>" class="btn btn-sm btn-outline-secondary" title="Archive Campaign (Soft Delete)" onclick="return confirm('Archive this campaign? Historical clicks & conversions will be preserved.')"><i class="fas fa-archive"></i></a>
                                         </div>
                                     </td>
                                 </tr>

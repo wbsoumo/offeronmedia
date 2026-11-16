@@ -23,8 +23,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $act = $_POST['action'];
         
         if (in_array($act, ['active', 'pending', 'rejected', 'blocked'], true)) {
-            $uStmt = $pdo->prepare("UPDATE users SET status = ?, updated_at = NOW() WHERE user_id = ?");
-            $uStmt->execute([$act, $targetId]);
+            $userRole = (int)$pdo->query("SELECT role_id FROM users WHERE user_id = $targetId")->fetchColumn();
+            if ($userRole === 3) {
+                if ($act === 'blocked') {
+                    affiliate_block($targetId, 'Admin Block from Users Table');
+                } elseif ($act === 'active') {
+                    affiliate_unblock($targetId);
+                } else {
+                    $uStmt = $pdo->prepare("UPDATE users SET status = ?, updated_at = NOW() WHERE user_id = ?");
+                    $uStmt->execute([$act, $targetId]);
+                }
+            } else {
+                $uStmt = $pdo->prepare("UPDATE users SET status = ?, updated_at = NOW() WHERE user_id = ?");
+                $uStmt->execute([$act, $targetId]);
+            }
             $success = "User #$targetId status updated to '" . strtoupper($act) . "'!";
         }
     }
@@ -38,14 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $placeholders = implode(',', array_fill(0, count($selectedUsers), '?'));
             
             if ($action === 'approve') {
+                affiliates_bulk_unblock($selectedUsers);
                 $sql = "UPDATE users SET status = 'active', updated_at = NOW() WHERE user_id IN ($placeholders)";
-                $msg = count($selectedUsers) . ' users approved successfully!';
+                $msg = count($selectedUsers) . ' users approved & offer access enabled!';
             } elseif ($action === 'reject') {
                 $sql = "UPDATE users SET status = 'rejected', updated_at = NOW() WHERE user_id IN ($placeholders)";
                 $msg = count($selectedUsers) . ' users rejected!';
             } elseif ($action === 'block') {
+                affiliates_bulk_block($selectedUsers, 'Bulk Admin Block');
                 $sql = "UPDATE users SET status = 'blocked', updated_at = NOW() WHERE user_id IN ($placeholders)";
-                $msg = count($selectedUsers) . ' users blocked!';
+                $msg = count($selectedUsers) . ' users blocked & offer access deactivated!';
             }
             
             if (isset($sql)) {
@@ -106,9 +120,12 @@ $query = "
         u.company,
         u.telegram_id,
         u.balance,
+        u.account_manager_id,
+        am.name AS manager_name,
         (SELECT COUNT(*) FROM conversions WHERE affiliate_id = u.user_id) AS conversion_count
     FROM users u
     INNER JOIN roles r ON r.role_id = u.role_id
+    LEFT JOIN users am ON am.user_id = u.account_manager_id AND am.role_id = 2
     WHERE $whereSql
     ORDER BY u.user_id DESC
 ";
@@ -638,6 +655,13 @@ $summary = $pdo->query("
                                                             <div>
                                                                 <strong class="text-dark d-block"><?php echo htmlspecialchars($u['name']); ?></strong>
                                                                 <small class="text-muted">ID: #<?php echo $u['user_id']; ?><?php if ($u['company']) echo ' • ' . htmlspecialchars($u['company']); ?></small>
+                                                                <?php if ($u['role_name'] === 'affiliate' && !empty($u['account_manager_id']) && !empty($u['manager_name'])): ?>
+                                                                    <div class="mt-1">
+                                                                        <a href="manager_profile.php?id=<?php echo $u['account_manager_id']; ?>" class="badge badge-light border text-primary" data-toggle="tooltip" title="Click to view Affiliate Manager Profile">
+                                                                            <i class="fas fa-user-tie text-primary mr-1"></i><?php echo htmlspecialchars($u['manager_name']); ?>
+                                                                        </a>
+                                                                    </div>
+                                                                <?php endif; ?>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -679,6 +703,9 @@ $summary = $pdo->query("
                                                             <?php elseif ($u['role_name'] === 'advertiser'): ?>
                                                                 <a href="impersonate.php?id=<?php echo $u['user_id']; ?>" target="_blank" class="btn btn-sm btn-outline-info mr-1" title="Login directly as Advertiser in new tab"><i class="fas fa-external-link-alt"></i></a>
                                                                 <a href="advertiser_edit.php?id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-primary" title="View Advertiser Details"><i class="fas fa-edit"></i></a>
+                                                            <?php elseif ($u['role_name'] === 'manager'): ?>
+                                                                <a href="impersonate.php?id=<?php echo $u['user_id']; ?>&target=manager" target="_blank" class="btn btn-sm btn-outline-dark mr-1" data-toggle="tooltip" title="Login as Account Manager in new tab"><i class="fas fa-user-secret"></i></a>
+                                                                <a href="manager_profile.php?id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-primary" data-toggle="tooltip" title="View Manager Profile & Affiliates"><i class="fas fa-user-tie"></i></a>
                                                             <?php endif; ?>
 
                                                             <?php if ($u['status'] !== 'active'): ?>

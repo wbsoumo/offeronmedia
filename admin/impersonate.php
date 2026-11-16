@@ -46,6 +46,15 @@ if (!$targetUser) {
     die('User account not found.');
 }
 
+// Log impersonation in admin logs before switching session
+admin_log_action(
+    'impersonate_user',
+    $targetUser['role_name'],
+    $targetUserId,
+    $targetUser['name'],
+    "Admin {$adminName} (#{$adminUserId}) impersonated {$targetUser['role_name']} #{$targetUserId} ({$targetUser['name']})"
+);
+
 // CRITICAL FIX: Preserve Admin session! DO NOT destroy or overwrite it!
 // 1. Flush & close admin session without destroying it
 session_write_close();
@@ -67,7 +76,7 @@ $_SESSION['auth'] = [
     'role'     => $targetUser['role_name'],
     'login_at' => time()
 ];
-$_SESSION['user_name']               = $targetUser['name'] ?? 'Publisher';
+$_SESSION['user_name']               = $targetUser['name'] ?? 'User';
 $_SESSION['user_email']              = $targetUser['email'] ?? '';
 $_SESSION['is_impersonating']        = true;
 $_SESSION['impersonated_by_admin']   = true;
@@ -82,6 +91,8 @@ if ($targetUser['role_name'] === 'affiliate') {
     header('Location: /affiliate/dashboard.php');
 } elseif ($targetUser['role_name'] === 'advertiser') {
     header('Location: /advertiser/dashboard.php');
+} elseif ($targetUser['role_name'] === 'manager') {
+    header('Location: /manager/dashboard.php');
 } else {
     header('Location: /dashboard.php');
 }
