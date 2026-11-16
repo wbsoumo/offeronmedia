@@ -27,7 +27,7 @@ $stmt = $pdo->prepare("
         ap.postback_url,
         ap.status as postback_status,
         ap.postback_type,
-        ap.name as postback_name
+        ap.postback_name
     FROM users u
     LEFT JOIN users am ON am.user_id = u.account_manager_id
     LEFT JOIN affiliate_postbacks ap ON ap.affiliate_id = u.user_id

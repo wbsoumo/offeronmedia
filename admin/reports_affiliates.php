@@ -1152,13 +1152,13 @@ if (isset($_GET['export'])) {
                                 <table class="table table-dashboard" id="performanceTable">
                                     <thead>
                                         <tr>
-                                            <th>OfferID</th>
-                                            <th>Affiliate</th>
+                                            <th>Campaign Offer</th>
+                                            <th>Publisher / Affiliate</th>
                                             <th>Account Manager</th>
-                                            <th class="text-center">GrossClicks<br><small class="text-muted">Total</small></th>
-                                            <th class="text-center">Conversions<br><small class="text-muted">Total</small></th>
-                                            <th class="text-center">AdvertiserPrice<br><small class="text-muted">Total</small></th>
-                                            <th class="text-center">AffiliatePayout<br><small class="text-muted">Total</small></th>
+                                            <th class="text-center">Gross Clicks<br><small class="text-muted">Total</small></th>
+                                            <th class="text-center">Conversions<br><small class="text-muted">Approved</small></th>
+                                            <th class="text-center">Advertiser Revenue<br><small class="text-muted">Earned</small></th>
+                                            <th class="text-center">Publisher Payout<br><small class="text-muted">Cost</small></th>
                                             <th>Currency</th>
                                             <th>Status</th>
                                         </tr>

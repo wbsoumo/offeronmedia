@@ -1365,9 +1365,9 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                                             </span>
                                                         </div>
                                                         <div class="small text-muted mt-1">
-                                                            <span class="postback-token-preview" title="<?php echo htmlspecialchars($offer['postback_token'] ?? 'No token'); ?>" onclick="copyToken('<?php echo $offer['postback_token']; ?>')">
+                                                            <span class="postback-token-preview" data-toggle="tooltip" title="Click to copy S2S Postback Token: <?php echo htmlspecialchars($offer['postback_token'] ?? 'No token'); ?>" onclick="copyToken('<?php echo $offer['postback_token']; ?>')">
                                                                 <i class="fas fa-key mr-1"></i>
-                                                                Token
+                                                                Postback Token
                                                             </span>
                                                         </div>
                                                     </div>

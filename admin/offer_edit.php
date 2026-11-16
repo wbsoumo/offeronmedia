@@ -15,7 +15,7 @@ $success = $error = null;
 $offerId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$offerId) {
-    header('Location: campaigns.php?error=Invalid campaign ID');
+    header('Location: offers.php?error=Invalid campaign ID');
     exit;
 }
 
@@ -50,7 +50,7 @@ $stmt->execute(['offer_id' => $offerId]);
 $offer = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$offer) {
-    header('Location: campaigns.php?error=Campaign not found');
+    header('Location: offers.php?error=Campaign not found');
     exit;
 }
 
@@ -351,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
             </li>
             <li class="nav-item d-none d-sm-inline-block"><a href="dashboard.php" class="nav-link">Dashboard</a></li>
-            <li class="nav-item d-none d-sm-inline-block"><a href="campaigns.php" class="nav-link">Campaigns</a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="offers.php" class="nav-link">Campaigns</a></li>
             <li class="nav-item d-none d-sm-inline-block"><a href="#" class="nav-link active">Edit Campaign #<?php echo $offerId; ?></a></li>
         </ul>
     </nav>
@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
                             <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
-                            <li class="breadcrumb-item"><a href="campaigns.php">Campaigns</a></li>
+                            <li class="breadcrumb-item"><a href="offers.php">Campaigns</a></li>
                             <li class="breadcrumb-item active">Edit Campaign #<?php echo $offerId; ?></li>
                         </ol>
                     </div>
@@ -650,7 +650,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <!-- STICKY ACTION BAR -->
                     <div class="sticky-save-bar d-flex justify-content-between align-items-center">
                         <div>
-                            <a href="campaigns.php" class="btn btn-outline-secondary font-weight-bold px-4"><i class="fas fa-arrow-left mr-2"></i> Back to Campaigns</a>
+                            <a href="offers.php" class="btn btn-outline-secondary font-weight-bold px-4"><i class="fas fa-arrow-left mr-2"></i> Back to Campaigns</a>
                         </div>
                         <div>
                             <button type="submit" class="btn btn-success btn-lg font-weight-bold px-5 shadow-sm"><i class="fas fa-save mr-2"></i> Save Campaign Changes</button>

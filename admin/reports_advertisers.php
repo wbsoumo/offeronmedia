@@ -1198,48 +1198,56 @@ if (isset($_GET['export'])) {
                                 <table class="table table-dashboard" id="performanceTable">
                                     <thead>
                                         <tr>
-                                            <th>OfferID</th>
-                                            <th>Affiliate</th>
-                                            <th class="text-center">GrossClicks<br><small class="text-muted">Total</small></th>
-                                            <th class="text-center">Conversions<br><small class="text-muted">Total</small></th>
-                                            <th class="text-center">AdvertiserPrice<br><small class="text-muted">Total</small></th>
-                                            <th class="text-center">AffiliatePayout<br><small class="text-muted">Total</small></th>
+                                            <th>Advertiser</th>
+                                            <th>Campaign Offer</th>
+                                            <th>Traffic Publisher</th>
+                                            <th class="text-center">Gross Clicks<br><small class="text-muted">Total</small></th>
+                                            <th class="text-center">Conversions<br><small class="text-muted">Approved</small></th>
+                                            <th class="text-center">Advertiser Revenue<br><small class="text-muted">Earned</small></th>
+                                            <th class="text-center">Publisher Payout<br><small class="text-muted">Cost</small></th>
+                                            <th class="text-center">Net Margin</th>
                                             <th>Currency</th>
-                                            <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($advertisers as $row): 
                                             $clicks = (int)($row['clicks'] ?? 0);
-                                            $conversions = (int)($row['conversions'] ?? 0);
+                                            $conversions = (int)($row['approved_conversions'] ?? ($row['conversions'] ?? 0));
                                             $revenue = (float)($row['revenue'] ?? 0);
                                             $payout = (float)($row['payout'] ?? 0);
+                                            $profit = $revenue - $payout;
                                             $currency = !empty($row['currency']) ? strtoupper($row['currency']) : 'USD';
                                             $affName = !empty($row['affiliate_name']) ? htmlspecialchars($row['affiliate_name']) : 'Direct / Organic';
                                             $affId = (int)($row['affiliate_id'] ?? 0);
                                         ?>
                                         <tr>
                                             <td>
-                                                <a href="offer_edit.php?id=<?php echo (int)($row['offer_id'] ?? 0); ?>" class="text-primary font-weight-bold">
-                                                    <?php echo (int)($row['offer_id'] ?? 0); ?> ~ <?php echo htmlspecialchars($row['offer_name'] ?? 'General Campaign'); ?>
+                                                <strong class="text-dark d-block"><?php echo htmlspecialchars($row['advertiser_name']); ?></strong>
+                                                <small class="text-muted">ID: #<?php echo (int)$row['advertiser_id']; ?></small>
+                                            </td>
+                                            <td>
+                                                <a href="offers.php?search=<?php echo (int)($row['offer_id'] ?? 0); ?>" class="text-primary font-weight-bold">
+                                                    #<?php echo (int)($row['offer_id'] ?? 0); ?> - <?php echo htmlspecialchars($row['offer_name'] ?? 'Campaign'); ?>
                                                 </a>
                                             </td>
                                             <td>
                                                 <?php if ($affId > 0): ?>
-                                                    <strong class="text-dark"><?php echo $affId; ?> ~ <?php echo $affName; ?></strong>
+                                                    <strong class="text-dark">#<?php echo $affId; ?> - <?php echo $affName; ?></strong>
                                                     <?php if (!empty($row['affiliate_company'])): ?>
-                                                        <span class="text-muted small">(<?php echo htmlspecialchars($row['affiliate_company']); ?>)</span>
+                                                        <span class="text-muted small d-block">(<?php echo htmlspecialchars($row['affiliate_company']); ?>)</span>
                                                     <?php endif; ?>
                                                 <?php else: ?>
-                                                    <span class="text-muted">Direct / N/A</span>
+                                                    <span class="text-muted">Direct / Organic</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center font-weight-bold text-dark"><?php echo number_format($clicks); ?></td>
-                                            <td class="text-center font-weight-bold text-dark"><?php echo number_format($conversions); ?></td>
-                                            <td class="text-center font-weight-bold text-success">$<?php echo number_format($revenue, 2); ?></td>
-                                            <td class="text-center font-weight-bold text-primary">$<?php echo number_format($payout, 2); ?></td>
+                                            <td class="text-center font-weight-bold text-success"><?php echo number_format($conversions); ?></td>
+                                            <td class="text-center font-weight-bold text-success"><?php echo function_exists('format_currency') ? format_currency($revenue, $currency) : ('$' . number_format($revenue, 2)); ?></td>
+                                            <td class="text-center font-weight-bold text-primary"><?php echo function_exists('format_currency') ? format_currency($payout, $currency) : ('$' . number_format($payout, 2)); ?></td>
+                                            <td class="text-center font-weight-bold <?php echo $profit >= 0 ? 'text-success' : 'text-danger'; ?>">
+                                                <?php echo function_exists('format_currency') ? format_currency($profit, $currency) : ('$' . number_format($profit, 2)); ?>
+                                            </td>
                                             <td><span class="badge badge-light border font-weight-bold"><?php echo htmlspecialchars($currency); ?></span></td>
-                                            <td><span class="badge badge-success p-2">Approved</span></td>
                                         </tr>
                                         <?php endforeach; ?>
                                     </tbody>

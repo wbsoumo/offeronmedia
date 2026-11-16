@@ -83,8 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid Preview URL format.';
     } elseif ($revenue <= 0 || $payout <= 0) {
         $error = 'Revenue and payout amounts must be greater than zero.';
-    } elseif ($payout > $revenue) {
-        $error = 'Affiliate payout ($' . number_format($payout, 2) . ') cannot exceed total revenue ($' . number_format($revenue, 2) . ').';
+    } elseif ($payoutType !== 'revshare' && $payout > $revenue) {
+        $error = 'Affiliate payout (' . ($currency === 'INR' ? '₹' : '$') . number_format($payout, 2) . ') cannot exceed total revenue (' . ($currency === 'INR' ? '₹' : '$') . number_format($revenue, 2) . ').';
+    } elseif ($payoutType === 'revshare' && $payout > 100) {
+        $error = 'Revenue share percentage cannot exceed 100%.';
     } else {
 
         try {
@@ -370,7 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="dashboard.php" class="nav-link">Dashboard</a>
             </li>
             <li class="nav-item d-none d-sm-inline-block">
-                <a href="campaigns.php" class="nav-link">Campaigns</a>
+                <a href="offers.php" class="nav-link">Campaigns</a>
             </li>
             <li class="nav-item d-none d-sm-inline-block">
                 <a href="create_campaign.php" class="nav-link active">Create Campaign</a>
@@ -393,7 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
                             <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
-                            <li class="breadcrumb-item"><a href="campaigns.php">Campaigns</a></li>
+                            <li class="breadcrumb-item"><a href="offers.php">Campaigns</a></li>
                             <li class="breadcrumb-item active">Create Campaign</li>
                         </ol>
                     </div>
@@ -879,6 +881,28 @@ function applyPreset(type) {
         $('#campaign_description').val('High converting crypto offer. FTD verified within 24 hours via S2S postback.');
     }
 }
+
+// Auto navigate to invalid step if user submits with missing fields
+$('#adminCampaignForm').on('submit', function(e) {
+    var form = this;
+    if (!form.checkValidity()) {
+        e.preventDefault();
+        var firstInvalid = $(form).find(':invalid').first();
+        if (firstInvalid.length) {
+            var stepPane = firstInvalid.closest('.tab-pane-step');
+            if (stepPane.length) {
+                var stepId = stepPane.attr('id');
+                var stepNum = parseInt(stepId.replace('step-', '')) || 1;
+                goToStep(stepNum);
+                setTimeout(function() {
+                    firstInvalid.focus();
+                }, 200);
+            }
+        }
+        form.reportValidity();
+        return false;
+    }
+});
 </script>
 </body>
 </html>

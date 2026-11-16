@@ -16,7 +16,7 @@ $grantedLinks = [];
 /* ===============================
    GRANT OFFER ACCESS TO PUBLISHER(S)
 ================================ */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (isset($_POST['assign_offer'])) {
         $publisherIds = $_POST['affiliate_ids'] ?? [];
         // Support single or multiple selected publishers
@@ -133,11 +133,14 @@ $offers = $pdo->query("SELECT offer_id, offer_name, payout, status FROM offers O
 /* ===============================
    FETCH ALL ACCESS ASSIGNMENTS
 ================================ */
+$aoaCols = $pdo->query("SHOW COLUMNS FROM affiliate_offer_approval")->fetchAll(PDO::FETCH_COLUMN);
+$payoutTypeCol = in_array('payout_type', $aoaCols, true) ? "aoa.payout_type" : "'default' AS payout_type";
+
 $sql = "
     SELECT 
         aoa.id,
         aoa.status,
-        aoa.payout_type,
+        {$payoutTypeCol},
         aoa.custom_payout,
         aoa.notes,
         aoa.created_at,
@@ -303,7 +306,7 @@ foreach ($assignments as $as) {
                 <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
             </li>
             <li class="nav-item d-none d-sm-inline-block"><a href="dashboard.php" class="nav-link">Dashboard</a></li>
-            <li class="nav-item d-none d-sm-inline-block"><a href="campaigns.php" class="nav-link">Campaigns</a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="offers.php" class="nav-link">Campaigns</a></li>
             <li class="nav-item d-none d-sm-inline-block"><a href="campaign_access.php" class="nav-link active">Offer Approval Rules</a></li>
         </ul>
     </nav>

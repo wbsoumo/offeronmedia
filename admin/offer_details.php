@@ -14,7 +14,7 @@ $adminName = $_SESSION['user_name'] ?? 'Admin';
 $offerId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if (!$offerId) {
-    header('Location: campaigns.php?error=Invalid campaign ID');
+    header('Location: offers.php?error=Invalid campaign ID');
     exit;
 }
 
@@ -721,7 +721,7 @@ $notes = [
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
                             <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
-                            <li class="breadcrumb-item"><a href="campaigns.php">Campaigns</a></li>
+                            <li class="breadcrumb-item"><a href="offers.php">Campaigns</a></li>
                             <li class="breadcrumb-item active">Campaign #<?php echo $offerId; ?></li>
                         </ol>
                     </div>

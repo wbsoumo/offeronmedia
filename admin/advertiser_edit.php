@@ -22,7 +22,7 @@ if (!$advertiserId) {
 /* ===============================
    HANDLE FORM SUBMIT
 ================================ */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $name     = trim($_POST['name'] ?? '');
     $email    = trim($_POST['email'] ?? '');
     $mobile   = trim($_POST['mobile'] ?? '');

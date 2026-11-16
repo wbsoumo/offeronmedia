@@ -146,6 +146,23 @@ function auto_ensure_all_schema_tables($pdo)
                 INDEX `idx_offer` (`offer_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+            CREATE TABLE IF NOT EXISTS `postback_logs` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `affiliate_id` INT DEFAULT NULL,
+                `offer_id` INT DEFAULT NULL,
+                `click_id` VARCHAR(100) DEFAULT NULL,
+                `status` VARCHAR(50) DEFAULT 'success',
+                `url` TEXT DEFAULT NULL,
+                `response_code` INT DEFAULT NULL,
+                `response_body` TEXT DEFAULT NULL,
+                `ip_address` VARCHAR(45) DEFAULT NULL,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_aff` (`affiliate_id`),
+                INDEX `idx_offer` (`offer_id`),
+                INDEX `idx_click` (`click_id`),
+                INDEX `idx_status` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
             CREATE TABLE IF NOT EXISTS `error_logs` (
                 `id` INT AUTO_INCREMENT PRIMARY KEY,
                 `error_code` INT DEFAULT NULL,
@@ -208,6 +225,21 @@ function auto_ensure_all_schema_tables($pdo)
         }
         if (!in_array('approved_at', $aoaCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `approved_at` DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+        }
+        if (!in_array('payout_type', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `payout_type` VARCHAR(50) DEFAULT 'default' AFTER `status`"); } catch (Exception $e) {}
+        }
+        if (!in_array('created_by', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `created_by` VARCHAR(100) DEFAULT NULL AFTER `notes`"); } catch (Exception $e) {}
+        }
+
+        // 6. Ensure Columns in `affiliate_postbacks`
+        $apCols = $pdo->query("SHOW COLUMNS FROM `affiliate_postbacks`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('postback_name', $apCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_postbacks` ADD COLUMN `postback_name` VARCHAR(100) DEFAULT NULL AFTER `postback_type`"); } catch (Exception $e) {}
+        }
+        if (!in_array('updated_at', $apCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_postbacks` ADD COLUMN `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`"); } catch (Exception $e) {}
         }
 
         // 6. Ensure Columns in `account_managers`

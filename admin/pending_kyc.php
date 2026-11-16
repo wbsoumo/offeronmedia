@@ -26,7 +26,7 @@ if (!empty($_GET['action']) && !empty($_GET['id'])) {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id']) && isset($_POST['action'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && isset($_POST['user_id']) && isset($_POST['action'])) {
     $userId = (int)$_POST['user_id'];
     $action = $_POST['action'];
     if ($action === 'verify') {
@@ -152,7 +152,6 @@ foreach ($kycUsers as $user) {
     </nav>
 
     <!-- Sidebar -->
-        <!-- Sidebar -->
     <?php include __DIR__ . '/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
@@ -264,8 +263,13 @@ foreach ($kycUsers as $user) {
                                     <td><small class="text-muted"><?php echo date('Y-m-d', strtotime($u['created_at'])); ?></small></td>
                                     <td>
                                         <div class="btn-group">
-                                            <a href="?action=verify&id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-success font-weight-bold" title="Approve KYC"><i class="fas fa-check mr-1"></i> Verify</a>
-                                            <a href="?action=reject&id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-danger font-weight-bold" title="Reject KYC"><i class="fas fa-times mr-1"></i> Reject</a>
+                                            <?php if (strtolower($u['role_name']) === 'affiliate'): ?>
+                                                <a href="affiliate_details.php?id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-info" title="View Full Publisher Profile"><i class="fas fa-eye"></i></a>
+                                            <?php else: ?>
+                                                <a href="advertiser_edit.php?id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-info" title="View Advertiser Account"><i class="fas fa-eye"></i></a>
+                                            <?php endif; ?>
+                                            <a href="?action=verify&id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-success font-weight-bold" title="Approve KYC" onclick="return confirm('Verify KYC compliance for <?php echo htmlspecialchars(addslashes($u['name'])); ?>?');"><i class="fas fa-check mr-1"></i> Verify</a>
+                                            <a href="?action=reject&id=<?php echo $u['user_id']; ?>" class="btn btn-sm btn-outline-danger font-weight-bold" title="Reject KYC" onclick="return confirm('Reject KYC for <?php echo htmlspecialchars(addslashes($u['name'])); ?>?');"><i class="fas fa-times mr-1"></i> Reject</a>
                                         </div>
                                     </td>
                                 </tr>

@@ -46,7 +46,7 @@ $adminUserName = $_SESSION['user_name'] ?? 'Admin';
                 <li class="nav-item">
                     <a href="campaign_access.php" class="nav-link <?php echo ($currentPage === 'campaign_access.php') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-key"></i>
-                        <p>Offer Approval Rules</p>
+                        <p>Campaign Access Rules</p>
                     </a>
                 </li>
 

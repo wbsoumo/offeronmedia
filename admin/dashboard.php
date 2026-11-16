@@ -68,23 +68,28 @@ $netProfitINR = $totalRevINR - $totalPayINR;
 /* -------------------------------------------------
    2. TODAY PERFORMANCE
 -------------------------------------------------- */
-$todayStmt = $pdo->query("
-    SELECT 
-        COUNT(DISTINCT c.click_id) AS today_clicks,
-        COUNT(DISTINCT cv.conversion_id) AS today_conversions,
-        IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS today_revenue,
-        IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS today_payout
-    FROM clicks c
-    LEFT JOIN conversions cv ON cv.click_id = c.click_id AND DATE(cv.created_at) = CURDATE()
-    WHERE DATE(c.created_at) = CURDATE()
-");
-$today = $todayStmt->fetch(PDO::FETCH_ASSOC);
+$todayClicks = (int)$pdo->query("SELECT COUNT(*) FROM clicks WHERE DATE(created_at) = CURDATE()")->fetchColumn();
+$todayConversions = (int)$pdo->query("SELECT COUNT(*) FROM conversions WHERE DATE(created_at) = CURDATE() AND status = 'approved'")->fetchColumn();
 
-$todayClicks = (int)($today['today_clicks'] ?? 0);
-$todayConversions = (int)($today['today_conversions'] ?? 0);
-$todayRevenue = (float)($today['today_revenue'] ?? 0);
-$todayPayout = (float)($today['today_payout'] ?? 0);
-$todayProfit = $todayRevenue - $todayPayout;
+$todayBreakdown = $pdo->query("
+    SELECT 
+        COALESCE(o.currency, 'USD') as currency,
+        IFNULL(SUM(cv.revenue), 0) as revenue,
+        IFNULL(SUM(cv.payout), 0) as payout
+    FROM conversions cv
+    JOIN offers o ON o.offer_id = cv.offer_id
+    WHERE cv.status = 'approved' AND DATE(cv.created_at) = CURDATE()
+    GROUP BY COALESCE(o.currency, 'USD')
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$todayProfitUSD = 0; $todayProfitINR = 0;
+foreach ($todayBreakdown as $tb) {
+    if ($tb['currency'] === 'INR') {
+        $todayProfitINR += ((float)$tb['revenue'] - (float)$tb['payout']);
+    } else {
+        $todayProfitUSD += ((float)$tb['revenue'] - (float)$tb['payout']);
+    }
+}
 
 /* -------------------------------------------------
    3. TOP REVENUE CAMPAIGN OFFERS
@@ -95,6 +100,7 @@ $topOffers = $pdo->query("
         o.offer_name,
         o.category,
         o.payout,
+        COALESCE(o.currency, 'USD') AS currency,
         COUNT(DISTINCT c.click_id) AS clicks,
         SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS conversions,
         IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS gross_revenue
@@ -284,7 +290,7 @@ $recentUsers = $pdo->query("
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
-                            <div class="stat-number text-success">$<?php echo number_format($todayProfit, 2); ?></div>
+                            <div class="stat-number text-success"><?php echo format_dual_currency($todayProfitUSD, $todayProfitINR); ?></div>
                             <div class="stat-label">Today's Net Profit</div>
                         </div>
                     </div>
@@ -297,7 +303,7 @@ $recentUsers = $pdo->query("
                         <div class="card card-custom p-4">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h4 class="font-weight-bold text-primary mb-0"><i class="fas fa-trophy mr-2"></i>Top Revenue Campaigns</h4>
-                                <a href="campaigns.php" class="btn btn-sm btn-outline-primary">Manage All</a>
+                                <a href="offers.php" class="btn btn-sm btn-outline-primary">Manage All</a>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle">
@@ -324,7 +330,7 @@ $recentUsers = $pdo->query("
                                                 <td><span class="badge badge-info p-2"><?php echo htmlspecialchars($to['category'] ?: 'General'); ?></span></td>
                                                 <td><strong><?php echo number_format($to['clicks']); ?></strong></td>
                                                 <td><strong class="text-success"><?php echo number_format($to['conversions']); ?></strong></td>
-                                                <td><strong class="text-success">$<?php echo number_format($to['gross_revenue'], 2); ?></strong></td>
+                                                <td><strong class="text-success"><?php echo format_currency($to['gross_revenue'], $to['currency'] ?? 'USD'); ?></strong></td>
                                             </tr>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
@@ -362,6 +368,8 @@ $recentUsers = $pdo->query("
                                                     <span class="badge badge-success">Publisher</span>
                                                 <?php elseif ($ru['role_id'] == 4): ?>
                                                     <span class="badge badge-info">Advertiser</span>
+                                                <?php elseif ($ru['role_id'] == 2): ?>
+                                                    <span class="badge badge-warning text-dark font-weight-bold">Manager</span>
                                                 <?php else: ?>
                                                     <span class="badge badge-dark">Admin</span>
                                                 <?php endif; ?>

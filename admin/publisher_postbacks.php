@@ -14,7 +14,7 @@ $success = $error = null;
 /* ===============================
    SAVE / UPDATE AFFILIATE POSTBACK
 ================================ */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     if (isset($_POST['save_postback'])) {
         $affiliateId = (int)$_POST['affiliate_id'];
         $postbackUrl = trim($_POST['postback_url']);
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     SET postback_url = :url,
                         status = :status,
                         postback_type = :type,
-                        name = :name,
+                        postback_name = :name,
                         updated_at = NOW()
                     WHERE id = :id
                 ");
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Insert new record
                 $insertStmt = $pdo->prepare("
                     INSERT INTO affiliate_postbacks 
-                        (affiliate_id, postback_url, status, postback_type, name, created_at, updated_at)
+                        (affiliate_id, postback_url, status, postback_type, postback_name, created_at, updated_at)
                     VALUES 
                         (:aid, :url, :status, :type, :name, NOW(), NOW())
                 ");
@@ -85,8 +85,8 @@ $affiliatesQuery = $pdo->query("
         ap.postback_url,
         ap.status as postback_status,
         ap.postback_type,
-        ap.name as postback_name,
-        ap.updated_at as postback_updated
+        ap.postback_name,
+        COALESCE(ap.updated_at, ap.created_at) as postback_updated
     FROM users u
     LEFT JOIN affiliate_postbacks ap ON ap.affiliate_id = u.user_id
     WHERE u.role_id = 3

@@ -57,18 +57,23 @@ $badAff = $pdo->query("
     LIMIT 50
 ")->fetchAll(PDO::FETCH_ASSOC);
 
-// 4. Postback Abuse / Failures
-$pb = $pdo->query("
-    SELECT status, COUNT(*) AS cnt
-    FROM postback_logs
-    WHERE status IN ('invalid_token','ip_blocked','duplicate')
-    GROUP BY status
-")->fetchAll(PDO::FETCH_ASSOC);
+// 4. Postback Abuse / Failures (Wrapped in safe try-catch)
+$pb = [];
+try {
+    $pb = $pdo->query("
+        SELECT status, COUNT(*) AS cnt
+        FROM postback_logs
+        WHERE status IN ('invalid_token','ip_blocked','duplicate')
+        GROUP BY status
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $pb = [];
+}
 
 $totalFastConversions = count($fast);
 $totalSuspiciousIps   = count($ips);
 $totalZeroConvAffs    = count($badAff);
-$totalPostbackAbuse   = array_sum(array_column($pb, 'cnt'));
+$totalPostbackAbuse   = !empty($pb) ? array_sum(array_column($pb, 'cnt')) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -209,15 +214,21 @@ $totalPostbackAbuse   = array_sum(array_column($pb, 'cnt'));
                                             <th>Publisher</th>
                                             <th>Campaign</th>
                                             <th>Duration</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($fast as $r): ?>
                                             <tr>
-                                                <td><code class="small text-muted"><?php echo htmlspecialchars(substr($r['click_id'], 0, 10)); ?>...</code></td>
+                                                <td><code class="small text-primary font-weight-bold" style="word-break: break-all;"><?php echo htmlspecialchars($r['click_id']); ?></code></td>
                                                 <td><strong class="text-dark"><?php echo htmlspecialchars($r['affiliate']); ?></strong></td>
                                                 <td><small><?php echo htmlspecialchars($r['offer_name']); ?></small></td>
                                                 <td><span class="badge badge-danger p-2"><i class="fas fa-stopwatch mr-1"></i><?php echo (int)$r['seconds_diff']; ?>s</span></td>
+                                                <td>
+                                                    <a href="reports_clicks.php?search=<?php echo urlencode($r['click_id']); ?>" class="btn btn-xs btn-outline-primary font-weight-bold" title="Inspect Click Record in Click Reports">
+                                                        <i class="fas fa-search mr-1"></i> Inspect
+                                                    </a>
+                                                </td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
@@ -238,6 +249,7 @@ $totalPostbackAbuse   = array_sum(array_column($pb, 'cnt'));
                                             <th>IP Address</th>
                                             <th>Approved Conversions</th>
                                             <th>Risk Level</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -251,6 +263,11 @@ $totalPostbackAbuse   = array_sum(array_column($pb, 'cnt'));
                                                     <?php else: ?>
                                                         <span class="badge badge-warning p-2">Moderate</span>
                                                     <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <a href="reports_clicks.php?search=<?php echo urlencode($r['ip'] ?? ''); ?>" class="btn btn-xs btn-outline-info font-weight-bold" title="View all traffic from this IP">
+                                                        <i class="fas fa-list mr-1"></i> Clicks
+                                                    </a>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -274,6 +291,7 @@ $totalPostbackAbuse   = array_sum(array_column($pb, 'cnt'));
                                             <th>Publisher Name</th>
                                             <th>Total Clicks</th>
                                             <th>Status</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -282,6 +300,11 @@ $totalPostbackAbuse   = array_sum(array_column($pb, 'cnt'));
                                                 <td><strong class="text-dark"><?php echo htmlspecialchars($r['name']); ?></strong></td>
                                                 <td><span class="badge badge-info p-2"><?php echo number_format((int)$r['clicks']); ?> Clicks</span></td>
                                                 <td><span class="badge badge-secondary p-2">0% CR (Review)</span></td>
+                                                <td>
+                                                    <a href="publishers.php?search=<?php echo urlencode($r['name']); ?>" class="btn btn-xs btn-outline-primary font-weight-bold" title="Inspect & Manage Publisher Account">
+                                                        <i class="fas fa-user-cog mr-1"></i> Manage
+                                                    </a>
+                                                </td>
                                             </tr>
                                         <?php endforeach; ?>
                                     </tbody>
