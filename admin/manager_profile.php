@@ -358,15 +358,20 @@ $permDefs = get_manager_permission_definitions();
 $mPerms   = get_manager_permissions($managerId);
 
 // Activity Logs
-$logStmt = $pdo->prepare("
-    SELECT * FROM admin_logs 
-    WHERE (target_type = 'manager' AND target_id = ?) 
-       OR (admin_id = ?)
-    ORDER BY created_at DESC 
-    LIMIT 20
-");
-$logStmt->execute([$managerId, $managerId]);
-$activityLogs = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+$activityLogs = [];
+try {
+    $logStmt = $pdo->prepare("
+        SELECT * FROM admin_logs 
+        WHERE (target_type = 'manager' AND target_id = ?) 
+           OR (admin_id = ?)
+        ORDER BY created_at DESC 
+        LIMIT 20
+    ");
+    $logStmt->execute([$managerId, $managerId]);
+    $activityLogs = $logStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $activityLogs = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
