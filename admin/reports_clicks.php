@@ -412,15 +412,21 @@ $allManagers = $pdo->query("SELECT user_id, name FROM users WHERE role_id = 2 OR
         }
         .click-id-badge {
             font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 12px;
+            font-size: 11.5px;
             background: #f1f5f9;
             color: #0f172a;
-            padding: 3px 8px;
+            padding: 4px 8px;
             border-radius: 4px;
             border: 1px solid #cbd5e1;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+            display: inline-block;
+            word-break: break-all;
+            user-select: all;
+            cursor: pointer;
+            line-height: 1.3;
+        }
+        .click-id-badge:hover {
+            background: #e2e8f0;
+            border-color: #94a3b8;
         }
         .subid-tag {
             font-size: 11px;
@@ -748,8 +754,8 @@ $allManagers = $pdo->query("SELECT user_id, name FROM users WHERE role_id = 2 OR
                                 ?>
                                 <tr>
                                     <td>
-                                        <span class="click-id-badge" title="Click to copy click_id" onclick="copyToClipboard('<?php echo $c['click_id']; ?>')">
-                                            <i class="fas fa-fingerprint text-primary mr-1"></i><?php echo substr($c['click_id'], 0, 16); ?>...
+                                        <span class="click-id-badge" title="Click to copy full Click ID" onclick="copyToClipboard('<?php echo htmlspecialchars($c['click_id']); ?>')">
+                                            <i class="fas fa-fingerprint text-primary mr-1"></i><?php echo htmlspecialchars($c['click_id']); ?>
                                         </span>
                                         <small class="text-muted d-block mt-1">
                                             <i class="far fa-clock mr-1"></i><?php echo date('M d, Y H:i:s', strtotime($c['created_at'])); ?>
