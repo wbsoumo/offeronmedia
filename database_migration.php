@@ -65,6 +65,39 @@ try {
             INDEX `idx_manager` (`account_manager_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
+
+    $uCols = $pdo->query("SHOW COLUMNS FROM `users`")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('skype', $uCols, true)) {
+        try {
+            $pdo->exec("ALTER TABLE `users` ADD COLUMN `skype` VARCHAR(100) DEFAULT NULL AFTER `telegram_id`");
+            echo "✔ Added skype column to users table.\n";
+        } catch (Exception $e) {}
+    }
+    if (!in_array('telegram_id', $uCols, true)) {
+        try {
+            $pdo->exec("ALTER TABLE `users` ADD COLUMN `telegram_id` VARCHAR(100) DEFAULT NULL AFTER `company`");
+            echo "✔ Added telegram_id column to users table.\n";
+        } catch (Exception $e) {}
+    }
+    if (!in_array('mobile', $uCols, true)) {
+        try {
+            $pdo->exec("ALTER TABLE `users` ADD COLUMN `mobile` VARCHAR(50) DEFAULT NULL AFTER `password_hash`");
+            echo "✔ Added mobile column to users table.\n";
+        } catch (Exception $e) {}
+    }
+    if (!in_array('company', $uCols, true)) {
+        try {
+            $pdo->exec("ALTER TABLE `users` ADD COLUMN `company` VARCHAR(150) DEFAULT NULL AFTER `mobile`");
+            echo "✔ Added company column to users table.\n";
+        } catch (Exception $e) {}
+    }
+    if (!in_array('account_manager_id', $uCols, true)) {
+        try {
+            $pdo->exec("ALTER TABLE `users` ADD COLUMN `account_manager_id` INT DEFAULT NULL AFTER `balance`");
+            echo "✔ Added account_manager_id column to users table.\n";
+        } catch (Exception $e) {}
+    }
+
     echo "✔ Users table verified.\n";
 
     // 3. Account Managers compatibility table

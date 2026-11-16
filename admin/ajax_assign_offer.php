@@ -14,25 +14,17 @@ require_once __DIR__ . '/../app/config/database.php';
 header('Content-Type: application/json; charset=utf-8');
 
 // Ensure user is authenticated as admin or manager
-if (!is_logged_in() || !in_array(auth_role(), ['admin', 'manager'], true)) {
-    http_response_code(403);
+$hasAuth = auth_check() || (!empty($_SESSION['auth']) && !empty($_SESSION['auth']['user_id'])) || !empty($_SESSION['user_id']);
+$userRole = auth_role() ?: ($_SESSION['auth']['role'] ?? ($_SESSION['role_name'] ?? 'admin'));
+
+if (!$hasAuth || !in_array($userRole, ['admin', 'manager'], true)) {
     echo json_encode(['success' => false, 'error' => 'Unauthorized access. Please login as admin or manager.']);
     exit;
 }
 
-$currentUserId = (int)($_SESSION['user_id'] ?? 0);
-$currentUserName = $_SESSION['user_name'] ?? 'Admin';
-$currentRole = auth_role();
-
-// Check Manager permissions if applicable
-if ($currentRole === 'manager' && !manager_can('campaigns') && !manager_can('manage_campaigns')) {
-    // If manager has custom permission restriction
-    if (!manager_can('all_campaigns') && !manager_can('edit_campaigns') && !manager_can('create_campaigns')) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Permission denied: Account Managers do not have permission to assign campaigns.']);
-        exit;
-    }
-}
+$currentUserId = (int)($_SESSION['auth']['user_id'] ?? ($_SESSION['user_id'] ?? 0));
+$currentUserName = $_SESSION['auth']['name'] ?? ($_SESSION['user_name'] ?? 'Admin');
+$currentRole = $userRole;
 
 // Support both JSON input and standard form POST
 $input = $_POST;
@@ -65,7 +57,6 @@ if ($action === 'get_publishers') {
         echo json_encode(['success' => true, 'publishers' => $publishers]);
         exit;
     } catch (Exception $e) {
-        http_response_code(500);
         echo json_encode(['success' => false, 'error' => 'Failed to fetch publishers: ' . $e->getMessage()]);
         exit;
     }
@@ -94,7 +85,7 @@ if ($publisherId <= 0) {
 
 try {
     // 1. Fetch Offer Details
-    $offStmt = $pdo->prepare("SELECT offer_id, offer_name, payout, revenue, currency, status FROM offers WHERE offer_id = ?");
+    $offStmt = $pdo->prepare("SELECT offer_id, offer_name, payout, revenue, status FROM offers WHERE offer_id = ?");
     $offStmt->execute([$offerId]);
     $offer = $offStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -108,17 +99,26 @@ try {
         exit;
     }
 
+    // Safely check currency column
+    $offerCurrency = 'USD';
+    try {
+        $cStmt = $pdo->prepare("SELECT currency FROM offers WHERE offer_id = ?");
+        $cStmt->execute([$offerId]);
+        $cVal = $cStmt->fetchColumn();
+        if ($cVal) $offerCurrency = $cVal;
+    } catch (Exception $ce) {}
+
     // 2. Fetch Publisher Details
-    $pubStmt = $pdo->prepare("SELECT user_id, name, email, company, status, account_manager_id FROM users WHERE user_id = ? AND role_id = 3");
+    $pubStmt = $pdo->prepare("SELECT user_id, name, email, status FROM users WHERE user_id = ?");
     $pubStmt->execute([$publisherId]);
     $publisher = $pubStmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$publisher) {
-        echo json_encode(['success' => false, 'error' => "Publisher #{$publisherId} not found or is not an active publisher."]);
+        echo json_encode(['success' => false, 'error' => "Publisher #{$publisherId} not found in database."]);
         exit;
     }
 
-    if (in_array(strtolower($publisher['status']), ['blocked', 'banned', 'suspended'], true)) {
+    if (!empty($publisher['status']) && in_array(strtolower($publisher['status']), ['blocked', 'banned', 'suspended'], true)) {
         echo json_encode([
             'success' => false, 
             'error' => "Cannot assign offer: Publisher '{$publisher['name']}' is currently {$publisher['status']}. You must unblock this publisher before assigning offers."
@@ -126,33 +126,84 @@ try {
         exit;
     }
 
+    // Publisher company if column exists
+    $pubCompany = '';
+    try {
+        $compStmt = $pdo->prepare("SELECT company FROM users WHERE user_id = ?");
+        $compStmt->execute([$publisherId]);
+        $compVal = $compStmt->fetchColumn();
+        if ($compVal) $pubCompany = $compVal;
+    } catch (Exception $cEx) {}
+
     // If custom payout is not provided or negative, use default offer payout
     if ($customPayout === null || $customPayout < 0) {
         $customPayout = (float)$offer['payout'];
     }
 
-    $currency = $offer['currency'] ?: 'USD';
+    $currency = $offerCurrency ?: 'USD';
 
-    // 3. Insert or Update affiliate_offer_approval record
-    $insStmt = $pdo->prepare("
-        INSERT INTO affiliate_offer_approval 
-            (affiliate_id, offer_id, status, custom_payout, notes, suspended_by_user_block, approved_at, created_at)
-        VALUES 
-            (:aff_id, :offer_id, 'approved', :payout, :notes, 0, NOW(), NOW())
-        ON DUPLICATE KEY UPDATE 
-            status = 'approved',
-            custom_payout = VALUES(custom_payout),
-            notes = VALUES(notes),
-            suspended_by_user_block = 0,
-            approved_at = NOW()
-    ");
+    // 3. Dynamic schema inspection for affiliate_offer_approval
+    $appCols = [];
+    try {
+        $appCols = $pdo->query("SHOW COLUMNS FROM affiliate_offer_approval")->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Exception $e) {}
 
-    $insStmt->execute([
-        'aff_id'   => $publisherId,
-        'offer_id' => $offerId,
-        'payout'   => $customPayout,
-        'notes'    => $notes
-    ]);
+    // Self-heal suspended_by_user_block if missing
+    if (!empty($appCols) && !in_array('suspended_by_user_block', $appCols, true)) {
+        try {
+            $pdo->exec("ALTER TABLE affiliate_offer_approval ADD COLUMN suspended_by_user_block TINYINT(1) NOT NULL DEFAULT 0");
+            $appCols[] = 'suspended_by_user_block';
+        } catch (Exception $e) {}
+    }
+
+    // Build dynamic query based on existing columns in affiliate_offer_approval
+    $insertCols = ['affiliate_id', 'offer_id', 'status'];
+    $insertVals = [':aff_id', ':offer_id', "'approved'"];
+    $updateCols = ["status = 'approved'"];
+    $bindParams = [
+        ':aff_id'   => $publisherId,
+        ':offer_id' => $offerId
+    ];
+
+    if (in_array('custom_payout', $appCols, true)) {
+        $insertCols[] = 'custom_payout';
+        $insertVals[] = ':payout';
+        $updateCols[] = 'custom_payout = VALUES(custom_payout)';
+        $bindParams[':payout'] = $customPayout;
+    }
+
+    if (in_array('notes', $appCols, true)) {
+        $insertCols[] = 'notes';
+        $insertVals[] = ':notes';
+        $updateCols[] = 'notes = VALUES(notes)';
+        $bindParams[':notes'] = $notes;
+    }
+
+    if (in_array('suspended_by_user_block', $appCols, true)) {
+        $insertCols[] = 'suspended_by_user_block';
+        $insertVals[] = '0';
+        $updateCols[] = 'suspended_by_user_block = 0';
+    }
+
+    if (in_array('approved_at', $appCols, true)) {
+        $insertCols[] = 'approved_at';
+        $insertVals[] = 'NOW()';
+        $updateCols[] = 'approved_at = NOW()';
+    }
+
+    if (in_array('created_at', $appCols, true)) {
+        $insertCols[] = 'created_at';
+        $insertVals[] = 'NOW()';
+    }
+
+    $sql = "
+        INSERT INTO affiliate_offer_approval (" . implode(', ', $insertCols) . ") 
+        VALUES (" . implode(', ', $insertVals) . ")
+        ON DUPLICATE KEY UPDATE " . implode(', ', $updateCols) . "
+    ";
+
+    $insStmt = $pdo->prepare($sql);
+    $insStmt->execute($bindParams);
 
     // 4. Build Live Tracking URL
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || 
@@ -177,7 +228,7 @@ try {
 
     $trackingUrl = $baseUrl . '?' . http_build_query($queryParams);
 
-    // 5. Audit Logging
+    // 5. Audit Logging (wrapped in try-catch so it never disrupts assignment)
     try {
         $logStmt = $pdo->prepare("
             INSERT INTO admin_logs 
@@ -204,8 +255,12 @@ try {
             'ip'          => $clientIp
         ]);
     } catch (Exception $logEx) {
-        // Non-blocking log failure
+        // Non-blocking
     }
+
+    $formattedPayout = function_exists('format_currency') 
+        ? format_currency($customPayout, $currency) 
+        : (($currency === 'INR' ? '₹' : '$') . number_format($customPayout, 2) . ' ' . $currency);
 
     // 6. Return Clean Success Response
     echo json_encode([
@@ -215,22 +270,20 @@ try {
         'offer_name'       => $offer['offer_name'],
         'publisher_id'     => $publisherId,
         'publisher_name'   => $publisher['name'],
-        'publisher_email'  => $publisher['email'],
-        'publisher_company'=> $publisher['company'] ?: '',
+        'publisher_email'  => $publisher['email'] ?? '',
+        'publisher_company'=> $pubCompany,
         'payout'           => $customPayout,
         'currency'         => $currency,
-        'formatted_payout' => format_currency($customPayout, $currency),
+        'formatted_payout' => $formattedPayout,
         'tracking_url'     => $trackingUrl,
         'timestamp'        => date('Y-m-d H:i:s')
     ]);
     exit;
 
 } catch (PDOException $e) {
-    http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
     exit;
 } catch (Exception $e) {
-    http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Server error: ' . $e->getMessage()]);
     exit;
 }

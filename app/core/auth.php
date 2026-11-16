@@ -279,6 +279,9 @@ function require_auth()
     // Verify user account status from database
     global $pdo;
     if ($pdo && !empty($_SESSION['auth']['user_id'])) {
+        // Self-heal critical database schema
+        auto_ensure_schema($pdo);
+
         try {
             $stmt = $pdo->prepare("SELECT status FROM users WHERE user_id = ? LIMIT 1");
             $stmt->execute([(int)$_SESSION['auth']['user_id']]);
@@ -867,6 +870,71 @@ function format_dual_currency($usdAmount, $inrAmount, $decimals = 2)
         return '₹' . number_format($inr, $decimals);
     } else {
         return '$' . number_format($usd, $decimals);
+    }
+}
+
+/**
+ * Compatibility alias for authentication check
+ */
+if (!function_exists('is_logged_in')) {
+    function is_logged_in()
+    {
+        return auth_check();
+    }
+}
+
+/**
+ * Auto-ensure critical database columns and tables exist (Self-healing schema)
+ */
+function auto_ensure_schema($pdo)
+{
+    static $alreadyRun = false;
+    if ($alreadyRun || empty($pdo)) {
+        return;
+    }
+    $alreadyRun = true;
+
+    try {
+        // 1. Ensure users table columns
+        $uCols = $pdo->query("SHOW COLUMNS FROM `users`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('skype', $uCols, true)) {
+            try { $pdo->exec("ALTER TABLE `users` ADD COLUMN `skype` VARCHAR(100) DEFAULT NULL AFTER `telegram_id`"); } catch (Exception $e) {}
+        }
+        if (!in_array('telegram_id', $uCols, true)) {
+            try { $pdo->exec("ALTER TABLE `users` ADD COLUMN `telegram_id` VARCHAR(100) DEFAULT NULL AFTER `company`"); } catch (Exception $e) {}
+        }
+        if (!in_array('mobile', $uCols, true)) {
+            try { $pdo->exec("ALTER TABLE `users` ADD COLUMN `mobile` VARCHAR(50) DEFAULT NULL AFTER `password_hash`"); } catch (Exception $e) {}
+        }
+        if (!in_array('company', $uCols, true)) {
+            try { $pdo->exec("ALTER TABLE `users` ADD COLUMN `company` VARCHAR(150) DEFAULT NULL AFTER `mobile`"); } catch (Exception $e) {}
+        }
+        if (!in_array('account_manager_id', $uCols, true)) {
+            try { $pdo->exec("ALTER TABLE `users` ADD COLUMN `account_manager_id` INT DEFAULT NULL AFTER `balance`"); } catch (Exception $e) {}
+        }
+
+        // 2. Ensure affiliate_offer_approval columns
+        $aoaCols = $pdo->query("SHOW COLUMNS FROM `affiliate_offer_approval`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('suspended_by_user_block', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `suspended_by_user_block` TINYINT(1) NOT NULL DEFAULT 0 AFTER `notes`"); } catch (Exception $e) {}
+        }
+        if (!in_array('custom_payout', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `custom_payout` DECIMAL(10,2) DEFAULT NULL"); } catch (Exception $e) {}
+        }
+        if (!in_array('notes', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `notes` TEXT DEFAULT NULL"); } catch (Exception $e) {}
+        }
+        if (!in_array('approved_at', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `approved_at` DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+        }
+
+        // 3. Ensure offers columns
+        $offCols = $pdo->query("SHOW COLUMNS FROM `offers`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('currency', $offCols, true)) {
+            try { $pdo->exec("ALTER TABLE `offers` ADD COLUMN `currency` VARCHAR(10) NOT NULL DEFAULT 'USD' AFTER `revenue`"); } catch (Exception $e) {}
+        }
+    } catch (Exception $e) {
+        // Silently continue if permissions restrict ALTER TABLE
     }
 }
 

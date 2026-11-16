@@ -417,7 +417,11 @@ if (!isset($modalOffersList)) {
                     try {
                         var parsed = JSON.parse(xhr.responseText);
                         if (parsed && parsed.error) errMsg = parsed.error;
-                    } catch (e) {}
+                    } catch (e) {
+                        if (xhr.responseText && xhr.responseText.length < 300) {
+                            errMsg = xhr.responseText;
+                        }
+                    }
                     $('#assignModalErrorText').text(errMsg);
                     $('#assignModalError').removeClass('d-none');
                 }

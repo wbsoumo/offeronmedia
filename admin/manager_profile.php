@@ -22,21 +22,41 @@ if ($managerId <= 0) {
 /* ===============================
    FETCH MANAGER RECORD
 ================================ */
+$userCols = [];
+try {
+    $userCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('skype', $userCols, true)) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN skype VARCHAR(100) DEFAULT NULL AFTER telegram_id");
+        $userCols[] = 'skype';
+    }
+} catch (Exception $e) {}
+
+$hasSkype = in_array('skype', $userCols, true);
+$hasTelegram = in_array('telegram_id', $userCols, true);
+$hasMobile = in_array('mobile', $userCols, true);
+$hasCompany = in_array('company', $userCols, true);
+
+$skypeSelect = $hasSkype ? "u.skype" : "COALESCE(am.skype, '') AS skype";
+$telegramSelect = $hasTelegram ? "u.telegram_id" : "COALESCE(am.telegram, '') AS telegram_id";
+$mobileSelect = $hasMobile ? "u.mobile" : "'' AS mobile";
+$companySelect = $hasCompany ? "u.company" : "'' AS company";
+
 $mgrStmt = $pdo->prepare("
     SELECT 
         u.user_id,
         u.name,
         u.email,
-        u.mobile,
-        u.company,
-        u.telegram_id,
-        u.skype,
+        $mobileSelect,
+        $companySelect,
+        $telegramSelect,
+        $skypeSelect,
         u.status,
         u.last_login_at,
         u.last_login_ip,
         u.created_at,
         u.updated_at
     FROM users u
+    LEFT JOIN account_managers am ON (am.user_id = u.user_id OR am.email = u.email)
     WHERE u.user_id = ? AND u.role_id = 2
     LIMIT 1
 ");
@@ -69,7 +89,7 @@ if (isset($_GET['toggle_status'])) {
 }
 
 // Update Permissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_permissions'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['save_permissions'])) {
     $submittedPerms = $_POST['perms'] ?? [];
     save_manager_permissions($managerId, $submittedPerms);
     admin_log_action('update_manager_permissions', 'manager', $managerId, $manager['name'], 'Updated granular permissions');
@@ -77,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_permissions'])) 
 }
 
 // Assign Affiliate to this Manager
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_affiliate'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['assign_affiliate'])) {
     $targetAffId = (int)($_POST['affiliate_id'] ?? 0);
     if ($targetAffId > 0) {
         $chk = $pdo->prepare("SELECT user_id, name FROM users WHERE user_id = ? AND role_id = 3 LIMIT 1");
@@ -109,7 +129,7 @@ if (isset($_GET['unassign_affiliate'])) {
 }
 
 // Update Profile Details
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['update_profile'])) {
     $name     = trim($_POST['name'] ?? '');
     $email    = trim($_POST['email'] ?? '');
     $mobile   = trim($_POST['mobile'] ?? '');
@@ -128,18 +148,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         if ($emailChk->fetch()) {
             $error = "This email is already in use by another user.";
         } else {
+            // Dynamic safe update for users table
+            $setParts = ["name = ?", "email = ?"];
+            $setVals = [$name, $email];
+            if ($hasMobile) { $setParts[] = "mobile = ?"; $setVals[] = $mobile; }
+            if ($hasTelegram) { $setParts[] = "telegram_id = ?"; $setVals[] = $telegram; }
+            if ($hasSkype) { $setParts[] = "skype = ?"; $setVals[] = $skype; }
             if (!empty($password)) {
-                $hash = password_hash($password, PASSWORD_DEFAULT);
-                $uStmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, mobile = ?, telegram_id = ?, skype = ?, password_hash = ?, updated_at = NOW() WHERE user_id = ? AND role_id = 2");
-                $uStmt->execute([$name, $email, $mobile, $telegram, $skype, $hash, $managerId]);
-            } else {
-                $uStmt = $pdo->prepare("UPDATE users SET name = ?, email = ?, mobile = ?, telegram_id = ?, skype = ?, updated_at = NOW() WHERE user_id = ? AND role_id = 2");
-                $uStmt->execute([$name, $email, $mobile, $telegram, $skype, $managerId]);
+                $setParts[] = "password_hash = ?";
+                $setVals[] = password_hash($password, PASSWORD_DEFAULT);
             }
+            $setParts[] = "updated_at = NOW()";
+            $setVals[] = $managerId;
+            $pdo->prepare("UPDATE users SET " . implode(', ', $setParts) . " WHERE user_id = ? AND role_id = 2")->execute($setVals);
 
             // Sync account_managers table if row exists
-            $pdo->prepare("UPDATE account_managers SET name = ?, email = ?, telegram = ?, skype = ? WHERE user_id = ? OR id = ?")
-                ->execute([$name, $email, $telegram, $skype, $managerId, $managerId]);
+            try {
+                $pdo->prepare("UPDATE account_managers SET name = ?, email = ?, telegram = ?, skype = ? WHERE user_id = ? OR id = ?")
+                    ->execute([$name, $email, $telegram, $skype, $managerId, $managerId]);
+            } catch (Exception $amEx) {}
 
             admin_log_action('update_manager_profile', 'manager', $managerId, $name, 'Updated profile details');
             $success = "Account Manager profile updated successfully!";
