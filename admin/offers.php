@@ -617,6 +617,43 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             color: #6c757d;
         }
         
+        .table-responsive {
+            overflow-y: visible !important;
+        }
+        @media (max-width: 991.98px) {
+            .table-responsive {
+                overflow-y: auto !important;
+            }
+        }
+        .action-dropdown-btn {
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 5px 12px;
+        }
+        .action-dropdown-menu {
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+            border: 1px solid #e2e8f0;
+            min-width: 220px;
+            padding: 6px 0;
+            z-index: 1060;
+        }
+        .action-dropdown-menu .dropdown-item {
+            font-size: 13px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+        }
+        .action-dropdown-menu .dropdown-item:hover {
+            background-color: #f1f5f9;
+        }
+        .action-dropdown-menu .dropdown-item i {
+            width: 18px;
+            text-align: center;
+            margin-right: 10px;
+        }
         .action-buttons {
             display: flex;
             gap: 10px;
@@ -1336,94 +1373,65 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="action-buttons">
-                                                        <?php if ($offer['status'] === 'pending'): ?>
-                                                        <a href="?action=approve&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-approve"
-                                                           title="Approve"
-                                                           onclick="return confirm('Approve this campaign?')">
-                                                            <i class="fas fa-check"></i>
-                                                        </a>
-                                                        <a href="?action=reject&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-reject"
-                                                           title="Reject"
-                                                           onclick="return confirm('Reject this campaign?')">
-                                                            <i class="fas fa-times"></i>
-                                                        </a>
-                                                        <?php endif; ?>
-                                                        
-                                                        <?php if ($offer['status'] === 'approved'): ?>
-                                                        <a href="?action=activate&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-activate"
-                                                           title="Activate"
-                                                           onclick="return confirm('Activate this campaign?')">
-                                                            <i class="fas fa-play"></i>
-                                                        </a>
-                                                        <?php endif; ?>
-                                                        
-                                                        <?php if ($offer['status'] === 'active'): ?>
-                                                        <a href="?action=pause&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-pause"
-                                                           title="Pause"
-                                                           onclick="return confirm('Pause this campaign?')">
-                                                            <i class="fas fa-pause"></i>
-                                                        </a>
-                                                        <?php endif; ?>
-                                                        
-                                                        <?php if ($offer['status'] === 'paused'): ?>
-                                                        <a href="?action=activate&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-activate"
-                                                           title="Activate"
-                                                           onclick="return confirm('Activate this campaign?')">
-                                                            <i class="fas fa-play"></i>
-                                                        </a>
-                                                        <?php endif; ?>
-                                                        
-                                                        <a href="offer_edit.php?id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-edit"
-                                                           title="Edit Campaign">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        
-                                                        <button type="button" 
-                                                                class="btn-action open-assign-modal" 
-                                                                data-offer-id="<?php echo $offer['offer_id']; ?>"
-                                                                data-offer-name="<?php echo htmlspecialchars($offer['offer_name'], ENT_QUOTES); ?>"
-                                                                data-payout="<?php echo htmlspecialchars($offer['payout']); ?>"
-                                                                data-currency="<?php echo htmlspecialchars($offer['currency'] ?: 'USD'); ?>"
-                                                                style="background: #e0f2fe; color: #0284c7; border: none; cursor: pointer;"
-                                                                title="Assign Offer & Generate Tracking Link">
-                                                            <i class="fas fa-link"></i>
+                                                    <div class="btn-group">
+                                                        <button type="button" class="btn btn-sm btn-primary action-dropdown-btn font-weight-bold" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                            <i class="fas fa-cog mr-1"></i> Action
                                                         </button>
-
-                                                        <a href="campaign_access.php?offer_id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-assign"
-                                                           style="background: #e0e7ff; color: #4338ca;"
-                                                           title="Bulk Publisher Access Rules">
-                                                            <i class="fas fa-user-plus"></i>
-                                                        </a>
-
-                                                        <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-view"
-                                                           title="View Details">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        
-                                                        <?php if ($offer['status'] === 'archived'): ?>
-                                                        <a href="?action=restore&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-activate"
-                                                           title="Restore Campaign (Unarchive to Paused)"
-                                                           onclick="return confirm('Restore campaign #<?php echo $offer['offer_id']; ?> to Paused status? Historical tracking records remain intact.')">
-                                                            <i class="fas fa-undo"></i>
-                                                        </a>
-                                                        <?php else: ?>
-                                                        <a href="?action=archive&id=<?php echo $offer['offer_id']; ?>" 
-                                                           class="btn-action btn-delete"
-                                                           title="Archive Campaign (Soft Delete)"
-                                                           onclick="return confirm('Archive campaign #<?php echo $offer['offer_id']; ?>? It will be removed from the active campaign list and can be restored at any time. Historical clicks and conversions are preserved.')">
-                                                            <i class="fas fa-archive"></i>
-                                                        </a>
-                                                        <?php endif; ?>
+                                                        <button type="button" class="btn btn-sm btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="All Actions">
+                                                            <span class="sr-only">Toggle Dropdown</span>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-right shadow-lg border-0 action-dropdown-menu">
+                                                            <a class="dropdown-item text-primary font-weight-bold open-assign-modal" href="javascript:void(0)"
+                                                               data-offer-id="<?php echo $offer['offer_id']; ?>"
+                                                               data-offer-name="<?php echo htmlspecialchars($offer['offer_name'], ENT_QUOTES); ?>"
+                                                               data-payout="<?php echo htmlspecialchars($offer['payout']); ?>"
+                                                               data-currency="<?php echo htmlspecialchars($offer['currency'] ?: 'USD'); ?>">
+                                                                <i class="fas fa-link text-primary"></i> Assign Offer & Link
+                                                            </a>
+                                                            <a class="dropdown-item text-info" href="offer_details.php?id=<?php echo $offer['offer_id']; ?>">
+                                                                <i class="fas fa-eye text-info"></i> View Details
+                                                            </a>
+                                                            <a class="dropdown-item text-secondary" href="offer_edit.php?id=<?php echo $offer['offer_id']; ?>">
+                                                                <i class="fas fa-edit text-secondary"></i> Edit Campaign
+                                                            </a>
+                                                            <a class="dropdown-item" href="campaign_access.php?offer_id=<?php echo $offer['offer_id']; ?>" style="color: #4338ca;">
+                                                                <i class="fas fa-user-shield" style="color: #6366f1;"></i> Access Control Rules
+                                                            </a>
+                                                            <div class="dropdown-divider my-1"></div>
+                                                            <?php if ($offer['status'] === 'pending'): ?>
+                                                            <a class="dropdown-item text-success font-weight-bold" href="?action=approve&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Approve this campaign?')">
+                                                                <i class="fas fa-check text-success"></i> Approve Campaign
+                                                            </a>
+                                                            <a class="dropdown-item text-danger" href="?action=reject&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Reject this campaign?')">
+                                                                <i class="fas fa-times text-danger"></i> Reject Campaign
+                                                            </a>
+                                                            <?php endif; ?>
+                                                            <?php if ($offer['status'] === 'approved'): ?>
+                                                            <a class="dropdown-item text-success font-weight-bold" href="?action=activate&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Activate this campaign?')">
+                                                                <i class="fas fa-play text-success"></i> Activate Campaign
+                                                            </a>
+                                                            <?php endif; ?>
+                                                            <?php if ($offer['status'] === 'active'): ?>
+                                                            <a class="dropdown-item text-warning font-weight-bold" href="?action=pause&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Pause this campaign?')">
+                                                                <i class="fas fa-pause text-warning"></i> Pause Campaign
+                                                            </a>
+                                                            <?php endif; ?>
+                                                            <?php if ($offer['status'] === 'paused'): ?>
+                                                            <a class="dropdown-item text-success font-weight-bold" href="?action=activate&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Activate this campaign?')">
+                                                                <i class="fas fa-play text-success"></i> Activate Campaign
+                                                            </a>
+                                                            <?php endif; ?>
+                                                            <div class="dropdown-divider my-1"></div>
+                                                            <?php if ($offer['status'] === 'archived'): ?>
+                                                            <a class="dropdown-item text-success font-weight-bold" href="?action=restore&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Restore campaign #<?php echo $offer['offer_id']; ?> to Paused status? Historical tracking records remain intact.')">
+                                                                <i class="fas fa-undo text-success"></i> Restore Campaign
+                                                            </a>
+                                                            <?php else: ?>
+                                                            <a class="dropdown-item text-danger font-weight-bold" href="?action=archive&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Archive campaign #<?php echo $offer['offer_id']; ?>? It will be removed from the active campaign list and can be restored at any time. Historical clicks and conversions are preserved.')">
+                                                                <i class="fas fa-archive text-danger"></i> Archive Campaign
+                                                            </a>
+                                                            <?php endif; ?>
+                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>
