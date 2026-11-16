@@ -46,7 +46,8 @@ if (empty($selectedSubCols)) {
 
 $sortBy = $_GET['sort'] ?? 'date_desc';
 $page = max(1, (int)($_GET['page'] ?? 1));
-$perPage = in_array((int)($_GET['per_page'] ?? 50), [25, 50, 100, 250], true) ? (int)$_GET['per_page'] : 50;
+$perPage = isset($_GET['per_page']) && in_array((int)$_GET['per_page'], [25, 50, 100, 250], true) ? (int)$_GET['per_page'] : 50;
+$perPage = max(1, $perPage);
 
 /* ===============================
    BUILD WHERE CLAUSE
