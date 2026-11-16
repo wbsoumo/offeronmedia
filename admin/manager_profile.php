@@ -26,8 +26,10 @@ $userCols = [];
 try {
     $userCols = $pdo->query("SHOW COLUMNS FROM users")->fetchAll(PDO::FETCH_COLUMN);
     if (!in_array('skype', $userCols, true)) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN skype VARCHAR(100) DEFAULT NULL AFTER telegram_id");
-        $userCols[] = 'skype';
+        try {
+            $pdo->exec("ALTER TABLE users ADD COLUMN skype VARCHAR(100) DEFAULT NULL");
+            $userCols[] = 'skype';
+        } catch (Exception $e) {}
     }
 } catch (Exception $e) {}
 
@@ -36,8 +38,8 @@ $hasTelegram = in_array('telegram_id', $userCols, true);
 $hasMobile = in_array('mobile', $userCols, true);
 $hasCompany = in_array('company', $userCols, true);
 
-$skypeSelect = $hasSkype ? "u.skype" : "COALESCE(am.skype, '') AS skype";
-$telegramSelect = $hasTelegram ? "u.telegram_id" : "COALESCE(am.telegram, '') AS telegram_id";
+$skypeSelect = $hasSkype ? "u.skype" : "'' AS skype";
+$telegramSelect = $hasTelegram ? "u.telegram_id" : "'' AS telegram_id";
 $mobileSelect = $hasMobile ? "u.mobile" : "'' AS mobile";
 $companySelect = $hasCompany ? "u.company" : "'' AS company";
 
@@ -56,7 +58,6 @@ $mgrStmt = $pdo->prepare("
         u.created_at,
         u.updated_at
     FROM users u
-    LEFT JOIN account_managers am ON (am.user_id = u.user_id OR am.email = u.email)
     WHERE u.user_id = ? AND u.role_id = 2
     LIMIT 1
 ");
@@ -162,10 +163,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['update_profil
             $setVals[] = $managerId;
             $pdo->prepare("UPDATE users SET " . implode(', ', $setParts) . " WHERE user_id = ? AND role_id = 2")->execute($setVals);
 
-            // Sync account_managers table if row exists
+            // Sync legacy account_managers table only if it exists and has matching columns
             try {
-                $pdo->prepare("UPDATE account_managers SET name = ?, email = ?, telegram = ?, skype = ? WHERE user_id = ? OR id = ?")
-                    ->execute([$name, $email, $telegram, $skype, $managerId, $managerId]);
+                $amCheck = $pdo->query("SHOW TABLES LIKE 'account_managers'")->fetchColumn();
+                if ($amCheck) {
+                    $amCols = $pdo->query("SHOW COLUMNS FROM `account_managers`")->fetchAll(PDO::FETCH_COLUMN);
+                    if (in_array('user_id', $amCols, true)) {
+                        $pdo->prepare("UPDATE `account_managers` SET `name` = ?, `email` = ? WHERE `user_id` = ?")->execute([$name, $email, $managerId]);
+                    } elseif (in_array('email', $amCols, true)) {
+                        $pdo->prepare("UPDATE `account_managers` SET `name` = ? WHERE `email` = ?")->execute([$name, $email]);
+                    }
+                }
             } catch (Exception $amEx) {}
 
             admin_log_action('update_manager_profile', 'manager', $managerId, $name, 'Updated profile details');
