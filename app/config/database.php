@@ -237,6 +237,24 @@ function auto_ensure_all_schema_tables($pdo)
         try {
             $pdo->exec("UPDATE `offers` SET `status` = 'archived' WHERE `status` = '' OR `status` IS NULL OR `status` = '0' OR LOWER(TRIM(`status`)) LIKE 'archiv%'");
         } catch (Exception $e) {}
+        try {
+            // Restore any offers that were restored from archive to paused back to active
+            $pdo->exec("
+                UPDATE offers 
+                SET status = 'active' 
+                WHERE status = 'paused' 
+                  AND (
+                      offer_id = 3 
+                      OR offer_id IN (
+                          SELECT target_id FROM (
+                              SELECT target_id FROM admin_logs 
+                              WHERE action IN ('offer_restore', 'offers_bulk_restore')
+                              ORDER BY id DESC LIMIT 50
+                          ) tmp
+                      )
+                  )
+            ");
+        } catch (Exception $e) {}
 
         // 5. Ensure Columns in `affiliate_offer_approval`
         $aoaCols = $pdo->query("SHOW COLUMNS FROM `affiliate_offer_approval`")->fetchAll(PDO::FETCH_COLUMN);

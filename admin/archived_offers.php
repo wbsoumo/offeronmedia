@@ -45,11 +45,11 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     $action = $_GET['action'];
     
     if ($action === 'restore') {
-        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ? AND (LOWER(TRIM(status)) LIKE 'archiv%' OR status = '' OR status IS NULL)");
+        $stmt = $pdo->prepare("UPDATE offers SET status = 'active', updated_at = NOW() WHERE offer_id = ? AND (LOWER(TRIM(status)) LIKE 'archiv%' OR status = '' OR status IS NULL OR status = 'paused')");
         $stmt->execute([$offerId]);
         if ($stmt->rowCount() > 0) {
-            admin_log_action('offer_restore', 'offer', $offerId, 'Campaign restored from archive to paused status');
-            $success = "Campaign #{$offerId} restored successfully to Paused status.";
+            admin_log_action('offer_restore', 'offer', $offerId, 'Campaign restored from archive to active status');
+            $success = "Campaign #{$offerId} restored successfully to Active status and is now accepting live traffic.";
         } else {
             $error = "Campaign not found or was not archived.";
         }
@@ -64,11 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
         $error = 'Please select at least one campaign';
     } elseif ($action === 'restore') {
         $placeholders = implode(',', array_fill(0, count($selectedOffers), '?'));
-        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders) AND (LOWER(TRIM(status)) LIKE 'archiv%' OR status = '' OR status IS NULL)");
+        $stmt = $pdo->prepare("UPDATE offers SET status = 'active', updated_at = NOW() WHERE offer_id IN ($placeholders) AND (LOWER(TRIM(status)) LIKE 'archiv%' OR status = '' OR status IS NULL OR status = 'paused')");
         $stmt->execute($selectedOffers);
         $count = $stmt->rowCount();
-        admin_log_action('offers_bulk_restore', 'offers', null, "Restored $count campaigns to paused");
-        $success = "{$count} campaign(s) restored successfully to Paused status.";
+        admin_log_action('offers_bulk_restore', 'offers', null, "Restored $count campaigns to active status");
+        $success = "{$count} campaign(s) restored successfully to Active status and are now accepting live traffic.";
     }
 }
 
@@ -348,9 +348,9 @@ $archiveStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                             <div class="card-tools d-flex align-items-center">
                                 <select name="bulk_action" class="form-control form-control-sm mr-2" style="width: auto;">
                                     <option value="">Bulk Actions</option>
-                                    <option value="restore">Restore Selected</option>
+                                    <option value="restore">Restore & Activate Selected</option>
                                 </select>
-                                <button type="submit" class="btn btn-sm btn-outline-success font-weight-bold" onclick="return confirm('Restore all selected campaigns to Paused status?')">
+                                <button type="submit" class="btn btn-sm btn-outline-success font-weight-bold" onclick="return confirm('Restore all selected campaigns to Active status and resume traffic?')">
                                     <i class="fas fa-undo mr-1"></i> Apply
                                 </button>
                             </div>
@@ -408,8 +408,8 @@ $archiveStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                                                 <td><small class="text-muted"><?php echo date('M d, Y', strtotime($ao['updated_at'] ?: $ao['created_at'])); ?></small></td>
                                                 <td class="text-right">
                                                     <a href="offer_details.php?id=<?php echo $ao['offer_id']; ?>" class="btn btn-sm btn-outline-info mr-1" title="View Historical Details"><i class="fas fa-eye"></i></a>
-                                                    <a href="?action=restore&id=<?php echo $ao['offer_id']; ?>" class="btn btn-sm btn-success font-weight-bold" title="Restore Campaign" onclick="return confirm('Restore campaign #<?php echo $ao['offer_id']; ?> to Paused status?')">
-                                                        <i class="fas fa-undo mr-1"></i> Restore
+                                                    <a href="?action=restore&id=<?php echo $ao['offer_id']; ?>" class="btn btn-sm btn-success font-weight-bold" title="Restore Campaign" onclick="return confirm('Restore campaign #<?php echo $ao['offer_id']; ?> to Active status and resume traffic?')">
+                                                        <i class="fas fa-undo mr-1"></i> Restore & Activate
                                                     </a>
                                                 </td>
                                             </tr>

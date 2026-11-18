@@ -73,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
                 $redirectUrl = "archived_offers.php?bulk_archived=" . count($selectedOffers);
                 break;
             case 'restore':
-                $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been restored to paused status';
+                $sql = "UPDATE offers SET status = 'active', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been restored and activated successfully';
                 $redirectUrl = "offers.php?success=" . urlencode(count($selectedOffers) . ' ' . $message);
                 break;
             default:
@@ -113,11 +113,11 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             header("Location: archived_offers.php?archived=1&id=" . $offerId);
             exit;
         } elseif ($action === 'restore') {
-            $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ?";
+            $sql = "UPDATE offers SET status = 'active', updated_at = NOW() WHERE offer_id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$offerId]);
-            admin_log_action('offer_restore', 'offer', $offerId, 'Offer restored from archive to paused');
-            header("Location: offers.php?restored=1");
+            admin_log_action('offer_restore', 'offer', $offerId, 'Offer restored from archive to active');
+            header("Location: offers.php?success=" . urlencode("Campaign #$offerId restored to Active status successfully."));
             exit;
         } else {
             $status = ($action === 'approve') ? 'approved' : 
@@ -1227,7 +1227,7 @@ foreach ($revBreakdown as $rb) {
                             <option value="pause">Pause Selected</option>
                             <option value="reject">Reject Selected</option>
                             <option value="archive">Archive Selected</option>
-                            <option value="restore">Restore Selected</option>
+                            <option value="restore">Restore & Activate Selected</option>
                         </select>
                         
                         <button type="submit" class="btn btn-outline-primary btn-sm" onclick="return confirmBulkAction()">
@@ -1446,8 +1446,8 @@ foreach ($revBreakdown as $rb) {
                                                             <?php endif; ?>
                                                             <div class="dropdown-divider my-1"></div>
                                                             <?php if ($offer['status'] === 'archived'): ?>
-                                                            <a class="dropdown-item text-success font-weight-bold" href="?action=restore&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Restore campaign #<?php echo $offer['offer_id']; ?> to Paused status? Historical tracking records remain intact.')">
-                                                                <i class="fas fa-undo text-success"></i> Restore Campaign
+                                                            <a class="dropdown-item text-success font-weight-bold" href="?action=restore&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Restore campaign #<?php echo $offer['offer_id']; ?> to Active status and resume live traffic? Historical tracking records remain intact.')">
+                                                                <i class="fas fa-undo text-success"></i> Restore & Activate Campaign
                                                             </a>
                                                             <?php else: ?>
                                                             <a class="dropdown-item text-danger font-weight-bold" href="?action=archive&id=<?php echo $offer['offer_id']; ?>" onclick="return confirm('Archive campaign #<?php echo $offer['offer_id']; ?>? It will be removed from the active campaign list and can be restored at any time. Historical clicks and conversions are preserved.')">

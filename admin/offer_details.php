@@ -34,14 +34,20 @@ if (!empty($_GET['action'])) {
         header("Location: offer_details.php?id=$offerId&success=Campaign paused successfully");
         exit;
     } elseif ($act === 'archive') {
+        try {
+            $pdo->exec("ALTER TABLE `offers` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'active'");
+        } catch (Exception $e) {}
         $pdo->exec("UPDATE offers SET status='archived', updated_at=NOW() WHERE offer_id=$offerId");
         admin_log_action('offer_archive', 'offer', $offerId, 'Campaign moved to archived status');
         header("Location: archived_offers.php?archived=1&id=$offerId");
         exit;
     } elseif ($act === 'restore') {
-        $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id=$offerId");
-        admin_log_action('offer_restore', 'offer', $offerId, 'Campaign restored from archive to paused');
-        header("Location: offer_details.php?id=$offerId&success=Campaign restored to Paused status successfully.");
+        try {
+            $pdo->exec("ALTER TABLE `offers` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'active'");
+        } catch (Exception $e) {}
+        $pdo->exec("UPDATE offers SET status='active', updated_at=NOW() WHERE offer_id=$offerId");
+        admin_log_action('offer_restore', 'offer', $offerId, 'Campaign restored from archive to active');
+        header("Location: offer_details.php?id=$offerId&success=" . urlencode("Campaign restored to Active status successfully and is now accepting traffic."));
         exit;
     }
 }
@@ -762,8 +768,8 @@ $notes = [
                                 <i class="fas fa-edit mr-1"></i> Edit Campaign
                             </a>
                             <?php if ($offer['status'] === 'archived'): ?>
-                                <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=restore" class="btn btn-success font-weight-bold mr-1" onclick="return confirm('Restore this archived campaign to Paused status?')">
-                                    <i class="fas fa-undo mr-1"></i> Restore Campaign
+                                <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=restore" class="btn btn-success font-weight-bold mr-1" onclick="return confirm('Restore this archived campaign to Active status and resume live traffic?')">
+                                    <i class="fas fa-undo mr-1"></i> Restore & Activate Campaign
                                 </a>
                             <?php else: ?>
                                 <?php if ($offer['status'] === 'active'): ?>
@@ -789,8 +795,8 @@ $notes = [
                         <i class="fas fa-archive mr-2 fa-lg text-secondary"></i>
                         <strong>Campaign Archived:</strong> This campaign is currently archived. All tracking link redirects are blocked (HTTP 403), and affiliates cannot open or run traffic to this offer. Historical logs and statistics are preserved.
                     </div>
-                    <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=restore" class="btn btn-sm btn-success font-weight-bold" onclick="return confirm('Restore this archived campaign to Paused status?')">
-                        <i class="fas fa-undo mr-1"></i> Restore Campaign
+                    <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=restore" class="btn btn-sm btn-success font-weight-bold" onclick="return confirm('Restore this archived campaign to Active status and resume live traffic?')">
+                        <i class="fas fa-undo mr-1"></i> Restore & Activate Campaign
                     </a>
                 </div>
                 <?php endif; ?>
