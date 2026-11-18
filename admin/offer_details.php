@@ -18,6 +18,19 @@ if (!$offerId) {
     exit;
 }
 
+// Handle Conversion Status Updates (Approve / Reject / Pending)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_conversion_status') {
+    $convId = (int)($_POST['conversion_id'] ?? 0);
+    $newStatus = $_POST['status'] ?? '';
+    if ($convId > 0 && in_array($newStatus, ['approved', 'pending', 'rejected'], true)) {
+        $stmt = $pdo->prepare("UPDATE conversions SET status = ? WHERE conversion_id = ? AND offer_id = ?");
+        $stmt->execute([$newStatus, $convId, $offerId]);
+        admin_log_action('conversion_status_update', 'conversion', $convId, "Conversion status changed to $newStatus");
+        header("Location: offer_details.php?id=$offerId&success=" . urlencode("Conversion #$convId updated to " . ucfirst($newStatus) . " successfully!"));
+        exit;
+    }
+}
+
 /* ===============================
    HANDLE ACTION REQUESTS (Activate, Pause, Approve, Archive, Restore)
 ================================ */
@@ -1320,6 +1333,7 @@ $notes = [
                                                 <th>Revenue</th>
                                                 <th>Payout</th>
                                                 <th>Status</th>
+                                                <th>Action</th>
                                                 <th>Date</th>
                                             </tr>
                                         </thead>
@@ -1338,6 +1352,22 @@ $notes = [
                                                     <span class="status-badge status-<?php echo $conv['status']; ?>" style="padding: 3px 8px;">
                                                         <?php echo ucfirst($conv['status']); ?>
                                                     </span>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown d-inline-block">
+                                                        <button class="btn btn-xs btn-outline-primary dropdown-toggle font-weight-bold" type="button" data-toggle="dropdown" style="padding: 2px 6px; font-size: 11px;">
+                                                            Rule
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-right shadow-sm p-1">
+                                                            <form method="post" class="d-inline">
+                                                                <input type="hidden" name="action" value="update_conversion_status">
+                                                                <input type="hidden" name="conversion_id" value="<?php echo $conv['conversion_id']; ?>">
+                                                                <button type="submit" name="status" value="approved" class="dropdown-item text-success py-1 small <?php echo $conv['status'] === 'approved' ? 'font-weight-bold' : ''; ?>"><i class="fas fa-check mr-2"></i> Approve</button>
+                                                                <button type="submit" name="status" value="pending" class="dropdown-item text-warning py-1 small <?php echo $conv['status'] === 'pending' ? 'font-weight-bold' : ''; ?>"><i class="fas fa-clock mr-2"></i> Mark Pending</button>
+                                                                <button type="submit" name="status" value="rejected" class="dropdown-item text-danger py-1 small <?php echo $conv['status'] === 'rejected' ? 'font-weight-bold' : ''; ?>" onclick="return confirm('Reject this conversion?')"><i class="fas fa-times mr-2"></i> Reject</button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td><?php echo date('M d, H:i', strtotime($conv['created_at'])); ?></td>
                                             </tr>

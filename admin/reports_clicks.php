@@ -10,6 +10,18 @@ require_any_role(['admin', 'manager']);
 
 $adminUserId = auth_user_id();
 $adminName   = $_SESSION['user_name'] ?? 'Admin';
+$success     = $error = null;
+
+// Conversion Status Update Handler (Approve / Reject / Pending)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_conversion_status') {
+    $convId = (int)($_POST['conversion_id'] ?? 0);
+    $newStatus = $_POST['status'] ?? '';
+    if ($convId > 0 && in_array($newStatus, ['approved', 'pending', 'rejected'], true)) {
+        $stmt = $pdo->prepare("UPDATE conversions SET status = ? WHERE conversion_id = ?");
+        $stmt->execute([$newStatus, $convId]);
+        $success = "Conversion #{$convId} status updated to " . ucfirst($newStatus) . " successfully!";
+    }
+}
 
 // Check permissions if manager
 if (auth_role() === 'manager' && !manager_can('click_reports')) {
@@ -161,7 +173,8 @@ if (isset($_GET['export'])) {
             am.name AS manager_name,
             c.sub1, c.sub2, c.sub3, c.sub4, c.sub5,
             INET6_NTOA(c.ip_address) AS ip_address,
-            c.country,
+            COALESCE(NULLIF(c.country, ''), NULLIF(o.country, ''), 'IN') AS country,
+            o.country AS offer_country,
             c.device,
             c.referer,
             cv.conversion_id,
@@ -330,7 +343,8 @@ $querySql = "
         am.name AS manager_name,
         c.sub1, c.sub2, c.sub3, c.sub4, c.sub5,
         INET6_NTOA(c.ip_address) AS ip_address,
-        c.country,
+        COALESCE(NULLIF(c.country, ''), NULLIF(o.country, ''), 'IN') AS country,
+        o.country AS offer_country,
         c.device,
         c.referer,
         c.user_agent,
@@ -502,6 +516,20 @@ $allManagers = $pdo->query("SELECT user_id, name FROM users WHERE role_id = 2 OR
 
         <div class="content">
             <div class="container-fluid">
+
+                <?php if ($success): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($success); ?>
+                    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($error): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle mr-2"></i><?php echo htmlspecialchars($error); ?>
+                    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                </div>
+                <?php endif; ?>
 
                 <!-- Summary Stat Cards -->
                 <div class="row mb-3">
@@ -811,13 +839,23 @@ $allManagers = $pdo->query("SELECT user_id, name FROM users WHERE role_id = 2 OR
                                     <?php endif; ?>
 
                                     <td>
-                                        <?php if ($cStatus === 'approved'): ?>
-                                            <span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i>Approved Lead</span>
-                                            <div class="small font-weight-bold text-success mt-1">Payout: <?php echo format_currency($c['conversion_payout'], $cur); ?></div>
-                                        <?php elseif ($cStatus === 'pending'): ?>
-                                            <span class="badge badge-warning px-2 py-1"><i class="fas fa-clock mr-1"></i>Pending</span>
-                                        <?php elseif ($cStatus === 'rejected'): ?>
-                                            <span class="badge badge-danger px-2 py-1"><i class="fas fa-times-circle mr-1"></i>Rejected</span>
+                                        <?php if (!empty($c['conversion_id'])): ?>
+                                            <div class="dropdown d-inline-block">
+                                                <button class="btn btn-xs btn-<?php echo $cStatus === 'approved' ? 'success' : ($cStatus === 'pending' ? 'warning' : 'danger'); ?> dropdown-toggle font-weight-bold" type="button" data-toggle="dropdown">
+                                                    <?php echo ucfirst($cStatus); ?> (<?php echo format_currency($c['conversion_payout'], $cur); ?>)
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right shadow-sm p-1">
+                                                    <span class="dropdown-header small font-weight-bold text-uppercase">Change Conversion Status</span>
+                                                    <form method="post" class="d-inline">
+                                                        <input type="hidden" name="action" value="update_conversion_status">
+                                                        <input type="hidden" name="conversion_id" value="<?php echo $c['conversion_id']; ?>">
+                                                        <button type="submit" name="status" value="approved" class="dropdown-item text-success py-1 small <?php echo $cStatus === 'approved' ? 'font-weight-bold' : ''; ?>"><i class="fas fa-check mr-2"></i> Approve</button>
+                                                        <button type="submit" name="status" value="pending" class="dropdown-item text-warning py-1 small <?php echo $cStatus === 'pending' ? 'font-weight-bold' : ''; ?>"><i class="fas fa-clock mr-2"></i> Mark Pending</button>
+                                                        <button type="submit" name="status" value="rejected" class="dropdown-item text-danger py-1 small <?php echo $cStatus === 'rejected' ? 'font-weight-bold' : ''; ?>" onclick="return confirm('Reject this conversion?')"><i class="fas fa-times mr-2"></i> Reject</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                            <div class="small text-muted mt-1">ID: #<?php echo $c['conversion_id']; ?></div>
                                         <?php else: ?>
                                             <span class="badge badge-secondary px-2 py-1">Click Only</span>
                                         <?php endif; ?>
@@ -828,11 +866,9 @@ $allManagers = $pdo->query("SELECT user_id, name FROM users WHERE role_id = 2 OR
                                                 <i class="fas fa-<?php echo $c['device'] === 'mobile' ? 'mobile-alt' : 'desktop'; ?> mr-1"></i>
                                                 <?php echo ucfirst($c['device']); ?>
                                             </span>
-                                            <?php if (!empty($c['country'])): ?>
-                                            <span class="badge badge-info ml-1"><?php echo htmlspecialchars($c['country']); ?></span>
-                                            <?php endif; ?>
+                                            <span class="badge badge-info ml-1"><?php echo htmlspecialchars($c['country'] ?: ($c['offer_country'] ?? 'IN')); ?></span>
                                         </div>
-                                        <small class="text-muted d-block mt-1 font-monospace"><?php echo htmlspecialchars($c['ip_address']); ?></small>
+                                        <small class="text-muted d-block mt-1 font-monospace"><?php echo htmlspecialchars($c['ip_address'] ?: '-'); ?></small>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>

@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $browserTargeting   = implode(',', $_POST['browser_targeting'] ?? []);
     $dailyCap           = (int)($_POST['daily_cap'] ?? 0);
     $totalCap           = (int)($_POST['total_cap'] ?? 0);
+    $capType            = in_array($_POST['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $_POST['cap_type'] : 'conversions';
     $startDate          = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
     $endDate            = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
     $visibility         = $_POST['visibility'] ?? 'public';
@@ -116,6 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     browser_targeting,
                     daily_cap,
                     total_cap,
+                    cap_type,
                     start_date,
                     end_date,
                     visibility,
@@ -149,6 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     :browser_targeting,
                     :daily_cap,
                     :total_cap,
+                    :cap_type,
                     :start_date,
                     :end_date,
                     :visibility,
@@ -185,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'browser_targeting'   => $browserTargeting,
                 'daily_cap'           => $dailyCap,
                 'total_cap'           => $totalCap,
+                'cap_type'            => $capType,
                 'start_date'          => $startDate,
                 'end_date'            => $endDate,
                 'visibility'          => $visibility,
@@ -647,15 +651,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
 
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-group mb-4">
-                                        <label class="font-weight-bold">Daily Conversion Cap (0 = Unlimited)</label>
+                                        <label class="font-weight-bold">Cap Enforcement Rule</label>
+                                        <select name="cap_type" class="custom-select font-weight-bold">
+                                            <option value="conversions">Conversions / Leads (Offer18 Standard)</option>
+                                            <option value="clicks">Clicks / Traffic (Daily Click Cap)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-4">
+                                        <label class="font-weight-bold">Daily Cap Limit (0 = Unlimited)</label>
                                         <input type="number" name="daily_cap" class="form-control" min="0" value="0">
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-group mb-4">
-                                        <label class="font-weight-bold">Total Offer Cap (0 = Unlimited)</label>
+                                        <label class="font-weight-bold">Total Lifetime Cap (0 = Unlimited)</label>
                                         <input type="number" name="total_cap" class="form-control" min="0" value="0">
                                     </div>
                                 </div>

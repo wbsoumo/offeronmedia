@@ -103,6 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $browserTargeting    = implode(',', $_POST['browser_targeting'] ?? []);
     $dailyCap            = (int)($_POST['daily_cap'] ?? 0);
     $totalCap            = (int)($_POST['total_cap'] ?? 0);
+    $capType             = in_array($_POST['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $_POST['cap_type'] : 'conversions';
     $startDate           = !empty($_POST['start_date']) ? $_POST['start_date'] : null;
     $endDate             = !empty($_POST['end_date']) ? $_POST['end_date'] : null;
     $visibility          = $_POST['visibility'] ?? 'public';
@@ -155,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 browser_targeting = :browser_targeting,
                 daily_cap = :daily_cap,
                 total_cap = :total_cap,
+                cap_type = :cap_type,
                 start_date = :start_date,
                 end_date = :end_date,
                 visibility = :visibility,
@@ -193,6 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'browser_targeting'   => $browserTargeting,
             'daily_cap'           => $dailyCap,
             'total_cap'           => $totalCap,
+            'cap_type'            => $capType,
             'start_date'          => $startDate,
             'end_date'            => $endDate,
             'visibility'          => $visibility,
@@ -550,16 +553,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group mb-0">
-                                    <label class="font-weight-bold">Daily Conversion Cap</label>
-                                    <input type="number" name="daily_cap" class="form-control" placeholder="0 = Unlimited" value="<?php echo (int)($offer['daily_cap'] ?? 0); ?>">
+                                    <label class="font-weight-bold">Cap Enforcement Rule</label>
+                                    <select name="cap_type" class="custom-select" style="font-weight: 600;">
+                                        <option value="conversions" <?php echo ($offer['cap_type'] ?? 'conversions') === 'conversions' ? 'selected' : ''; ?>>Conversions / Leads (Offer18 Standard)</option>
+                                        <option value="clicks" <?php echo ($offer['cap_type'] ?? '') === 'clicks' ? 'selected' : ''; ?>>Clicks / Traffic (Daily Click Cap)</option>
+                                    </select>
+                                    <small class="text-muted d-block mt-1">Choose whether limit applies to conversions or clicks.</small>
                                 </div>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group mb-0">
-                                    <label class="font-weight-bold">Total Conversion Cap</label>
+                                    <label class="font-weight-bold">Daily Cap Limit</label>
+                                    <input type="number" name="daily_cap" class="form-control" placeholder="0 = Unlimited" value="<?php echo (int)($offer['daily_cap'] ?? 0); ?>">
+                                    <small class="text-muted d-block mt-1">Max volume per 24h cycle (0 = unlimited).</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label class="font-weight-bold">Total Lifetime Cap</label>
                                     <input type="number" name="total_cap" class="form-control" placeholder="0 = Unlimited" value="<?php echo (int)($offer['total_cap'] ?? 0); ?>">
+                                    <small class="text-muted d-block mt-1">Total campaign limit (0 = unlimited).</small>
                                 </div>
                             </div>
                         </div>

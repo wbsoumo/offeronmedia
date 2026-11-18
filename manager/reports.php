@@ -20,6 +20,37 @@ $canAllReports = manager_can('all_reports');
 $canViewFinancials = manager_can('can_view_financials');
 $hasAnyReportPermission = $canAffReports || $canCampReports || $canClickReports || $canAdvReports || $canAllReports;
 
+$success = $error = null;
+
+// Conversion Status Update Handler (Approve / Reject / Pending)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_conversion_status') {
+    $convId = (int)($_POST['conversion_id'] ?? 0);
+    $newStatus = $_POST['status'] ?? '';
+    if ($convId > 0 && in_array($newStatus, ['approved', 'pending', 'rejected'], true)) {
+        $stmt = $pdo->prepare("UPDATE conversions SET status = ? WHERE conversion_id = ?");
+        $stmt->execute([$newStatus, $convId]);
+        $success = "Conversion #{$convId} updated to " . ucfirst($newStatus) . " successfully!";
+    }
+}
+
+// IP formatting helper to safely decode any packed binary network addresses
+if (!function_exists('format_click_ip')) {
+    function format_click_ip($rawIp) {
+        if (empty($rawIp)) return '-';
+        if (filter_var($rawIp, FILTER_VALIDATE_IP)) {
+            return $rawIp;
+        }
+        if (strlen($rawIp) === 4 || strlen($rawIp) === 16) {
+            $converted = @inet_ntop($rawIp);
+            if ($converted !== false) return $converted;
+        }
+        if (preg_match('/[^\x20-\x7E]/', $rawIp)) {
+            return '-';
+        }
+        return htmlspecialchars($rawIp);
+    }
+}
+
 // Determine active tab
 $defaultTab = 'campaigns';
 $activeTab  = $_GET['tab'] ?? $defaultTab;
@@ -217,7 +248,7 @@ if ($hasAnyReportPermission) {
             $clkParams[':device'] = "%$filterDevice%";
         }
         if ($search !== '') {
-            $clkWhere[] = "(c.click_id LIKE :s1 OR c.ip_address LIKE :s2 OR c.sub1 LIKE :s3 OR o.offer_name LIKE :s4 OR u.name LIKE :s5)";
+            $clkWhere[] = "(c.click_id LIKE :s1 OR INET6_NTOA(c.ip_address) LIKE :s2 OR c.sub1 LIKE :s3 OR o.offer_name LIKE :s4 OR u.name LIKE :s5)";
             $clkParams[':s1'] = "%$search%";
             $clkParams[':s2'] = "%$search%";
             $clkParams[':s3'] = "%$search%";
@@ -230,8 +261,8 @@ if ($hasAnyReportPermission) {
             SELECT 
                 c.click_id,
                 c.created_at,
-                c.ip_address,
-                c.country,
+                INET6_NTOA(c.ip_address) AS ip_address,
+                COALESCE(NULLIF(c.country, ''), NULLIF(o.country, ''), 'IN') AS country,
                 c.device,
                 c.sub1, c.sub2, c.sub3, c.sub4, c.sub5,
                 o.offer_id,
@@ -239,6 +270,7 @@ if ($hasAnyReportPermission) {
                 o.currency,
                 u.user_id as affiliate_id,
                 u.name as affiliate_name,
+                cv.conversion_id,
                 cv.status as conversion_status,
                 cv.payout as conversion_payout
             FROM clicks c
@@ -420,6 +452,20 @@ if ($hasAnyReportPermission) {
 
         <div class="content">
             <div class="container-fluid">
+
+                <?php if ($success): ?>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($success); ?>
+                    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($error): ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle mr-2"></i><?php echo htmlspecialchars($error); ?>
+                    <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                </div>
+                <?php endif; ?>
 
                 <?php if (!$hasAnyReportPermission): ?>
                 <div class="card card-custom p-5 text-center">
@@ -743,17 +789,29 @@ if ($hasAnyReportPermission) {
                                         <?php if (empty($cRow['sub1']) && empty($cRow['sub2']) && empty($cRow['sub3'])): ?><span class="text-muted small">-</span><?php endif; ?>
                                     </td>
                                     <td>
-                                        <span class="badge badge-info mr-1"><?php echo htmlspecialchars($cRow['country'] ?: 'Global'); ?></span>
-                                        <small class="text-muted"><?php echo htmlspecialchars($cRow['ip_address'] ?: '-'); ?></small>
+                                        <span class="badge badge-info mr-1"><?php echo htmlspecialchars($cRow['country'] ?: 'IN'); ?></span>
+                                        <small class="text-muted font-monospace"><?php echo htmlspecialchars(format_click_ip($cRow['ip_address'])); ?></small>
                                     </td>
                                     <td>
                                         <small class="text-muted"><?php echo htmlspecialchars($cRow['device'] ?: 'All'); ?></small>
                                     </td>
                                     <td>
-                                        <?php if ($cRow['conversion_status'] === 'approved'): ?>
-                                            <span class="badge badge-success p-2"><i class="fas fa-check-circle mr-1"></i>Approved (<?php echo format_currency((float)$cRow['conversion_payout'], $cRow['currency'] ?? 'USD'); ?>)</span>
-                                        <?php elseif ($cRow['conversion_status'] === 'pending'): ?>
-                                            <span class="badge badge-warning p-2"><i class="fas fa-clock mr-1"></i>Pending</span>
+                                        <?php if (!empty($cRow['conversion_id'])): ?>
+                                            <div class="dropdown d-inline-block">
+                                                <button class="btn btn-xs btn-<?php echo $cRow['conversion_status'] === 'approved' ? 'success' : ($cRow['conversion_status'] === 'pending' ? 'warning' : 'danger'); ?> dropdown-toggle font-weight-bold" type="button" data-toggle="dropdown">
+                                                    <?php echo ucfirst($cRow['conversion_status']); ?> (<?php echo format_currency((float)$cRow['conversion_payout'], $cRow['currency'] ?? 'USD'); ?>)
+                                                </button>
+                                                <div class="dropdown-menu dropdown-menu-right shadow-sm p-1">
+                                                    <span class="dropdown-header small font-weight-bold text-uppercase">Change Conversion Status</span>
+                                                    <form method="post" class="d-inline">
+                                                        <input type="hidden" name="action" value="update_conversion_status">
+                                                        <input type="hidden" name="conversion_id" value="<?php echo $cRow['conversion_id']; ?>">
+                                                        <button type="submit" name="status" value="approved" class="dropdown-item text-success py-1 small <?php echo $cRow['conversion_status'] === 'approved' ? 'font-weight-bold' : ''; ?>"><i class="fas fa-check mr-2"></i> Approve</button>
+                                                        <button type="submit" name="status" value="pending" class="dropdown-item text-warning py-1 small <?php echo $cRow['conversion_status'] === 'pending' ? 'font-weight-bold' : ''; ?>"><i class="fas fa-clock mr-2"></i> Mark Pending</button>
+                                                        <button type="submit" name="status" value="rejected" class="dropdown-item text-danger py-1 small <?php echo $cRow['conversion_status'] === 'rejected' ? 'font-weight-bold' : ''; ?>" onclick="return confirm('Reject this conversion?')"><i class="fas fa-times mr-2"></i> Reject</button>
+                                                    </form>
+                                                </div>
+                                            </div>
                                         <?php else: ?>
                                             <span class="badge badge-light border text-muted">Clicked</span>
                                         <?php endif; ?>

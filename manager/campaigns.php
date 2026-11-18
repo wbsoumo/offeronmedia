@@ -434,22 +434,38 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                                             <?php echo ucfirst($o['status']); ?>
                                         </span>
                                     </td>
-                                    <td class="text-right">
-                                        <?php if (manager_can('assign_offers')): ?>
-                                        <button type="button" 
-                                                class="btn btn-sm btn-primary font-weight-bold shadow-sm btn-open-assign"
-                                                data-offer-id="<?php echo (int)$o['offer_id']; ?>"
-                                                data-offer-name="<?php echo htmlspecialchars($o['offer_name'], ENT_QUOTES); ?>"
-                                                data-visibility="<?php echo htmlspecialchars($o['visibility'] ?? 'public', ENT_QUOTES); ?>"
-                                                data-payout="<?php echo (float)($o['payout'] ?? 0); ?>"
-                                                onclick="openAssignModal(<?php echo (int)$o['offer_id']; ?>, <?php echo json_encode($o['offer_name']); ?>, <?php echo json_encode($o['visibility'] ?? 'public'); ?>, <?php echo (float)($o['payout'] ?? 0); ?>)">
-                                            <i class="fas fa-user-plus mr-1"></i> Assign
-                                        </button>
-                                        <?php else: ?>
-                                        <button type="button" class="btn btn-sm btn-light border text-muted" disabled title="Assignment permission disabled by Administrator">
-                                            <i class="fas fa-lock mr-1"></i> Locked
-                                        </button>
-                                        <?php endif; ?>
+                                    <td class="text-right" style="white-space: nowrap;">
+                                        <div class="btn-group">
+                                            <?php if (manager_can('assign_offers')): ?>
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-primary font-weight-bold shadow-sm btn-open-assign"
+                                                    data-offer-id="<?php echo (int)$o['offer_id']; ?>"
+                                                    data-offer-name="<?php echo htmlspecialchars($o['offer_name'], ENT_QUOTES); ?>"
+                                                    data-visibility="<?php echo htmlspecialchars($o['visibility'] ?? 'public', ENT_QUOTES); ?>"
+                                                    data-payout="<?php echo (float)($o['payout'] ?? 0); ?>"
+                                                    onclick="openAssignModal(<?php echo (int)$o['offer_id']; ?>, <?php echo json_encode($o['offer_name']); ?>, <?php echo json_encode($o['visibility'] ?? 'public'); ?>, <?php echo (float)($o['payout'] ?? 0); ?>)">
+                                                <i class="fas fa-user-plus mr-1"></i> Assign
+                                            </button>
+                                            <?php else: ?>
+                                            <button type="button" class="btn btn-sm btn-light border text-muted" disabled title="Assignment permission disabled by Administrator">
+                                                <i class="fas fa-lock mr-1"></i> Locked
+                                            </button>
+                                            <?php endif; ?>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <span class="sr-only">Toggle Dropdown</span>
+                                            </button>
+                                            <div class="dropdown-menu dropdown-menu-right shadow-sm p-1">
+                                                <a class="dropdown-item py-1 small" href="campaign_access.php?offer_id=<?php echo $o['offer_id']; ?>">
+                                                    <i class="fas fa-shield-alt text-primary mr-2"></i> Access Rules & Publisher Caps
+                                                </a>
+                                                <a class="dropdown-item py-1 small" href="reports.php?tab=campaigns&offer_id=<?php echo $o['offer_id']; ?>">
+                                                    <i class="fas fa-chart-line text-info mr-2"></i> Campaign Performance Report
+                                                </a>
+                                                <a class="dropdown-item py-1 small" href="reports_clicks.php?offer_id=<?php echo $o['offer_id']; ?>">
+                                                    <i class="fas fa-mouse-pointer text-warning mr-2"></i> View Live Click Traffic
+                                                </a>
+                                            </div>
+                                        </div>
                                     </td>
 
 

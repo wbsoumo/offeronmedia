@@ -199,13 +199,29 @@ if ($pubDailyCap !== null && $pubDailyCap > 0) {
 $clickId = bin2hex(random_bytes(16));
 
 /* -------------------------------------------------
-   7. Collect environment data
+   7. Collect environment data (IP, Geo & Device)
 -------------------------------------------------- */
-$ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+$rawIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+$ipAddress = trim(explode(',', $rawIp)[0]);
+if (!filter_var($ipAddress, FILTER_VALIDATE_IP)) {
+    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+}
+
 $userAgent = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
 $referer   = substr($_SERVER['HTTP_REFERER'] ?? '', 0, 500);
 
 $device = preg_match('/mobile|android|iphone/i', $userAgent) ? 'mobile' : 'desktop';
+
+// Detect Country (Cloudflare, Proxy Headers, or Offer Target Geo)
+$country = strtoupper(trim($_SERVER['HTTP_CF_IPCOUNTRY'] ?? $_SERVER['HTTP_X_COUNTRY_CODE'] ?? $_SERVER['GEOIP_COUNTRY_CODE'] ?? $_SERVER['HTTP_GEOIP_COUNTRY_CODE'] ?? ''));
+if (empty($country) || $country === 'XX' || $country === 'T1' || strlen($country) > 10) {
+    $offerCountry = strtoupper(trim($offer['country'] ?? ''));
+    if (!empty($offerCountry) && $offerCountry !== 'ALL' && $offerCountry !== 'GLOBAL') {
+        $country = substr($offerCountry, 0, 10);
+    } else {
+        $country = 'IN'; // Primary network operating market
+    }
+}
 
 /* -------------------------------------------------
    8. Insert click
@@ -220,6 +236,7 @@ $insert = $pdo->prepare("
         user_agent,
         referer,
         device,
+        country,
         created_at
     ) VALUES (
         :click_id,
@@ -230,6 +247,7 @@ $insert = $pdo->prepare("
         :ua,
         :ref,
         :device,
+        :country,
         NOW()
     )
 ");
@@ -246,7 +264,8 @@ $insert->execute([
     'ip'           => $ipAddress,
     'ua'           => $userAgent,
     'ref'          => $referer,
-    'device'       => $device
+    'device'       => $device,
+    'country'      => $country
 ]);
 
 /* -------------------------------------------------
@@ -284,7 +303,7 @@ $macroValues = [
     'source'          => rawurlencode((string)($sub1 ?? '')),
     'ip_address'      => rawurlencode($ipAddress),
     'ip'              => rawurlencode($ipAddress),
-    'country'         => rawurlencode($_SERVER['HTTP_CF_IPCOUNTRY'] ?? ''),
+    'country'         => rawurlencode($country),
     'gaid'            => rawurlencode((string)($incomingParams['gaid'] ?? '')),
     'idfa'            => rawurlencode((string)($incomingParams['idfa'] ?? '')),
     'gp_id'           => rawurlencode((string)$gpId),

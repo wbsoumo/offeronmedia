@@ -663,6 +663,28 @@ $adminOfferRequests = file_get_contents(__DIR__ . '/admin/offer_requests.php');
 assertTest("admin/offer_requests.php cleanly redirects to pending queue", strpos($adminOfferRequests, 'campaign_access.php#pending-queue') !== false);
 
 // ---------------------------------------------------------
+// TEST 15: Clean IP, Country Geo Detection & Conversion Rule Controls
+// ---------------------------------------------------------
+echo "\n--- TEST 15: Clean IP, Country Geo Detection & Conversion Rule Controls ---\n";
+$clickPhpContent = file_get_contents(__DIR__ . '/click.php');
+assertTest("click.php extracts clean client IP via proxy headers", strpos($clickPhpContent, 'HTTP_CF_CONNECTING_IP') !== false);
+assertTest("click.php inserts country into clicks table", strpos($clickPhpContent, ':country') !== false);
+
+$mgrReportsContent = file_get_contents(__DIR__ . '/manager/reports.php');
+assertTest("manager/reports.php converts ip_address with INET6_NTOA", strpos($mgrReportsContent, 'INET6_NTOA(c.ip_address)') !== false);
+assertTest("manager/reports.php contains format_click_ip safeguard", strpos($mgrReportsContent, 'format_click_ip') !== false);
+assertTest("manager/reports.php supports conversion status update", strpos($mgrReportsContent, 'update_conversion_status') !== false);
+
+$adminOfferEdit = file_get_contents(__DIR__ . '/admin/offer_edit.php');
+assertTest("admin/offer_edit.php contains cap_type (conversions vs clicks) enforcement rule", strpos($adminOfferEdit, 'cap_type') !== false);
+
+$adminCreateCamp = file_get_contents(__DIR__ . '/admin/create_campaign.php');
+assertTest("admin/create_campaign.php contains cap_type (conversions vs clicks) enforcement rule", strpos($adminCreateCamp, 'cap_type') !== false);
+
+$mgrCampaigns = file_get_contents(__DIR__ . '/manager/campaigns.php');
+assertTest("manager/campaigns.php provides direct Access Rules & Publisher Caps link", strpos($mgrCampaigns, 'campaign_access.php?offer_id=') !== false);
+
+// ---------------------------------------------------------
 // SUMMARY
 // ---------------------------------------------------------
 echo "\n========================================================\n";
