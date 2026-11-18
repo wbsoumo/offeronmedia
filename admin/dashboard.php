@@ -121,6 +121,14 @@ $recentUsers = $pdo->query("
     ORDER BY created_at DESC
     LIMIT 5
 ")->fetchAll(PDO::FETCH_ASSOC);
+
+/* -------------------------------------------------
+   5. PENDING OFFER APPLICATIONS COUNT
+-------------------------------------------------- */
+$pendingOfferCount = 0;
+try {
+    $pendingOfferCount = (int)$pdo->query("SELECT COUNT(*) FROM affiliate_offer_approval WHERE status = 'pending'")->fetchColumn();
+} catch (Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -234,11 +242,33 @@ $recentUsers = $pdo->query("
                         </div>
                         <div class="mt-3 mt-md-0">
                             <a href="create_campaign.php" class="btn btn-primary font-weight-bold mr-1"><i class="fas fa-plus-circle mr-1"></i> New Campaign</a>
+                            <a href="campaign_access.php" class="btn btn-info font-weight-bold mr-1"><i class="fas fa-key mr-1"></i> Offer Approvals<?php if ($pendingOfferCount > 0): ?> <span class="badge badge-warning text-dark ml-1"><?php echo $pendingOfferCount; ?></span><?php endif; ?></a>
                             <a href="pending_kyc.php" class="btn btn-warning font-weight-bold mr-1"><i class="fas fa-id-card mr-1"></i> KYC Approvals</a>
                             <a href="settings.php" class="btn btn-light font-weight-bold"><i class="fas fa-cogs mr-1"></i> Settings</a>
                         </div>
                     </div>
                 </div>
+
+                <!-- Pending Offer Requests Alert Banner -->
+                <?php if ($pendingOfferCount > 0): ?>
+                <div class="alert alert-warning alert-dismissible fade show shadow-sm mb-4" role="alert" style="border-left: 5px solid #d97706; background-color: #fffbeb;">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                        <div>
+                            <h5 class="alert-heading font-weight-bold mb-1 text-dark">
+                                <i class="fas fa-bell mr-2 text-warning"></i><?php echo $pendingOfferCount; ?> Pending Campaign Offer Application(s) Awaiting Review
+                            </h5>
+                            <p class="mb-0 text-muted">
+                                Publishers have submitted requests for private/restricted offers that require administrator approval before tracking links are activated.
+                            </p>
+                        </div>
+                        <div class="mt-2 mt-md-0">
+                            <a href="campaign_access.php" class="btn btn-warning font-weight-bold shadow-sm text-dark">
+                                <i class="fas fa-check-circle mr-1"></i> Review & Approve Requests (<?php echo $pendingOfferCount; ?>)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- 2x2 Mobile Stat Grid (Financials & Traffic) -->
                 <div class="row mb-4 stat-boxes-row">

@@ -177,14 +177,46 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 
-    // Individual action
-    if (isset($_POST['update_status'])) {
-        $approvalId = (int)($_POST['approval_id'] ?? 0);
-        $newStatus = $_POST['status'] ?? '';
+    // Individual action (supports quick approval with custom payout and daily caps)
+    if (isset($_POST['update_status']) || isset($_POST['update_access_status'])) {
+        $approvalId   = (int)($_POST['approval_id'] ?? 0);
+        $newStatus    = $_POST['status'] ?? '';
+        $customPayout = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
+        $dailyCap     = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
+        $capType      = in_array($_POST['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $_POST['cap_type'] : 'conversions';
+
         if ($approvalId && in_array($newStatus, ['approved', 'rejected'], true)) {
-            $stmt = $pdo->prepare("UPDATE affiliate_offer_approval SET status = ?, approved_at = NOW() WHERE id = ?");
-            $stmt->execute([$newStatus, $approvalId]);
-            $success = 'Access status updated to ' . ucfirst($newStatus);
+            $aoaCols = [];
+            try {
+                $aoaCols = $pdo->query("SHOW COLUMNS FROM affiliate_offer_approval")->fetchAll(PDO::FETCH_COLUMN);
+            } catch (Exception $e) {}
+
+            $updFields = ["status = :status"];
+            $updParams = [':status' => $newStatus, ':id' => $approvalId];
+
+            if (in_array('approved_at', $aoaCols, true)) {
+                $updFields[] = "approved_at = NOW()";
+            }
+            if (in_array('approved_by', $aoaCols, true)) {
+                $updFields[] = "approved_by = :approved_by";
+                $updParams[':approved_by'] = auth_user_id();
+            }
+            if ($customPayout !== null && in_array('custom_payout', $aoaCols, true)) {
+                $updFields[] = "custom_payout = :custom_payout";
+                $updParams[':custom_payout'] = $customPayout;
+            }
+            if ($dailyCap !== null && in_array('daily_cap', $aoaCols, true)) {
+                $updFields[] = "daily_cap = :daily_cap";
+                $updParams[':daily_cap'] = $dailyCap;
+            }
+            if (in_array('cap_type', $aoaCols, true)) {
+                $updFields[] = "cap_type = :cap_type";
+                $updParams[':cap_type'] = $capType;
+            }
+
+            $stmt = $pdo->prepare("UPDATE affiliate_offer_approval SET " . implode(', ', $updFields) . " WHERE id = :id");
+            $stmt->execute($updParams);
+            $success = 'Offer access request updated to ' . ucfirst($newStatus) . ' successfully!';
         }
     }
 }
@@ -228,25 +260,32 @@ $sql = "
 ";
 $assignments = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 
-// Totals
+// Totals & Pending Queue Extraction
 $stats = [
     'total' => count($assignments),
     'approved' => 0,
     'pending' => 0,
     'rejected' => 0
 ];
+$pendingRequests = [];
 foreach ($assignments as $as) {
-    if ($as['status'] === 'approved') $stats['approved']++;
-    elseif ($as['status'] === 'pending') $stats['pending']++;
-    elseif ($as['status'] === 'rejected') $stats['rejected']++;
+    if ($as['status'] === 'approved') {
+        $stats['approved']++;
+    } elseif ($as['status'] === 'pending') {
+        $stats['pending']++;
+        $pendingRequests[] = $as;
+    } elseif ($as['status'] === 'rejected') {
+        $stats['rejected']++;
+    }
 }
+$pendingOfferCount = count($pendingRequests);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Campaign Access Permissions | Admin Panel</title>
+    <title>Offer Approvals & Campaign Access | Admin Panel</title>
     
     <!-- Google Font -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,600,700&display=fallback">
@@ -374,7 +413,7 @@ foreach ($assignments as $as) {
             </li>
             <li class="nav-item d-none d-sm-inline-block"><a href="dashboard.php" class="nav-link">Dashboard</a></li>
             <li class="nav-item d-none d-sm-inline-block"><a href="offers.php" class="nav-link">Campaigns</a></li>
-            <li class="nav-item d-none d-sm-inline-block"><a href="campaign_access.php" class="nav-link active">Offer Approval Rules</a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="campaign_access.php" class="nav-link active font-weight-bold">Offer Approvals</a></li>
         </ul>
     </nav>
 
@@ -387,12 +426,12 @@ foreach ($assignments as $as) {
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1 class="m-0 font-weight-bold">Campaign Access Permissions & Tracking Links</h1>
+                        <h1 class="m-0 font-weight-bold">Offer Approvals & Campaign Access Permissions</h1>
                     </div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
                             <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
-                            <li class="breadcrumb-item active">Campaign Access</li>
+                            <li class="breadcrumb-item active">Offer Approvals</li>
                         </ol>
                     </div>
                 </div>
@@ -433,10 +472,17 @@ foreach ($assignments as $as) {
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="stat-card-custom">
-                            <div class="stat-number text-warning"><?php echo number_format($stats['pending']); ?></div>
-                            <div class="stat-label">Pending Review</div>
-                        </div>
+                        <a href="#pending-queue" style="text-decoration: none; color: inherit;">
+                            <div class="stat-card-custom" style="<?php if ($stats['pending'] > 0): ?>border: 2px solid #f59e0b; background-color: #fffbeb;<?php endif; ?>">
+                                <div class="stat-number text-warning">
+                                    <?php echo number_format($stats['pending']); ?>
+                                    <?php if ($stats['pending'] > 0): ?>
+                                        <small class="badge badge-warning text-dark font-weight-bold" style="font-size: 0.65rem; vertical-align: middle;">ACTION NEEDED</small>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="stat-label font-weight-bold">Pending Review</div>
+                            </div>
+                        </a>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
@@ -445,6 +491,86 @@ foreach ($assignments as $as) {
                         </div>
                     </div>
                 </div>
+
+                <!-- Pending Offer Applications Queue -->
+                <?php if (!empty($pendingRequests)): ?>
+                <div class="card card-warning card-outline shadow-sm mb-4" id="pending-queue" style="border-radius: 12px; border-top: 4px solid #f59e0b;">
+                    <div class="card-header bg-warning py-3 d-flex justify-content-between align-items-center flex-wrap">
+                        <h5 class="card-title font-weight-bold mb-0 text-dark">
+                            <i class="fas fa-clock mr-2"></i>Pending Offer Applications Queue (<?php echo count($pendingRequests); ?>)
+                        </h5>
+                        <span class="badge badge-dark px-3 py-2"><?php echo count($pendingRequests); ?> Awaiting Approval</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Publisher</th>
+                                        <th>Campaign Offer</th>
+                                        <th>Default Payout</th>
+                                        <th>Custom Payout</th>
+                                        <th>Daily Cap & Rule</th>
+                                        <th>Applied Date</th>
+                                        <th class="text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($pendingRequests as $pReq): ?>
+                                    <tr>
+                                        <td>
+                                            <strong class="text-dark">#<?php echo $pReq['affiliate_id']; ?> - <?php echo htmlspecialchars($pReq['affiliate_name']); ?></strong>
+                                            <small class="d-block text-muted"><?php echo htmlspecialchars($pReq['affiliate_email']); ?></small>
+                                            <?php if (!empty($pReq['manager_name'])): ?>
+                                                <small class="badge badge-light border text-primary mt-1"><i class="fas fa-user-tie mr-1"></i>AM: <?php echo htmlspecialchars($pReq['manager_name']); ?></small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <strong class="text-primary">#<?php echo $pReq['offer_id']; ?> - <?php echo htmlspecialchars($pReq['offer_name']); ?></strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-light border font-weight-bold"><?php echo format_currency($pReq['original_payout'], $pReq['currency'] ?? 'USD'); ?></span>
+                                        </td>
+                                        <form method="post">
+                                            <input type="hidden" name="update_access_status" value="1">
+                                            <input type="hidden" name="approval_id" value="<?php echo $pReq['id']; ?>">
+                                            <td>
+                                                <div class="input-group input-group-sm" style="width: 120px;">
+                                                    <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                                                    <input type="number" step="0.01" min="0" name="custom_payout" class="form-control" placeholder="<?php echo number_format($pReq['original_payout'], 2); ?>" value="<?php echo $pReq['custom_payout'] ?? ''; ?>">
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="input-group input-group-sm" style="width: 190px;">
+                                                    <input type="number" step="1" min="1" name="daily_cap" class="form-control" placeholder="Unlimited" value="<?php echo $pReq['daily_cap'] ?? ''; ?>">
+                                                    <div class="input-group-append">
+                                                        <select name="cap_type" class="custom-select form-control-sm">
+                                                            <option value="conversions" <?php echo ($pReq['cap_type'] ?? '') === 'conversions' ? 'selected' : ''; ?>>Leads</option>
+                                                            <option value="clicks" <?php echo ($pReq['cap_type'] ?? '') === 'clicks' ? 'selected' : ''; ?>>Clicks</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted"><i class="far fa-clock mr-1"></i><?php echo date('M d, H:i', strtotime($pReq['created_at'])); ?></small>
+                                            </td>
+                                            <td class="text-right" style="white-space: nowrap;">
+                                                <button type="submit" name="status" value="approved" class="btn btn-sm btn-success font-weight-bold mr-1">
+                                                    <i class="fas fa-check mr-1"></i> Approve
+                                                </button>
+                                                <button type="submit" name="status" value="rejected" class="btn btn-sm btn-outline-danger font-weight-bold" onclick="return confirm('Reject offer application for this publisher?')">
+                                                    <i class="fas fa-times mr-1"></i> Reject
+                                                </button>
+                                            </td>
+                                        </form>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- Granted Links Output Box -->
                 <?php if (!empty($grantedLinks)): ?>

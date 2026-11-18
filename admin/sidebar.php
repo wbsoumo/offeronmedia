@@ -6,6 +6,24 @@
 $currentPage = basename($_SERVER['PHP_SELF'] ?? '');
 $currentStatus = $_GET['status'] ?? '';
 $adminUserName = $_SESSION['user_name'] ?? 'Admin';
+
+// Dynamic pending counts for badges
+if (!isset($pendingOfferCount) && isset($pdo)) {
+    try {
+        $pocStmt = $pdo->query("SELECT COUNT(*) FROM affiliate_offer_approval WHERE status = 'pending'");
+        $pendingOfferCount = (int)$pocStmt->fetchColumn();
+    } catch (Exception $e) {
+        $pendingOfferCount = 0;
+    }
+}
+if (!isset($pendingKycCount) && isset($pdo)) {
+    try {
+        $pkcStmt = $pdo->query("SELECT COUNT(*) FROM users WHERE kyc_status = 'pending'");
+        $pendingKycCount = (int)$pkcStmt->fetchColumn();
+    } catch (Exception $e) {
+        $pendingKycCount = 0;
+    }
+}
 ?>
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <a href="dashboard.php" class="brand-link text-center">
@@ -44,9 +62,14 @@ $adminUserName = $_SESSION['user_name'] ?? 'Admin';
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="campaign_access.php" class="nav-link <?php echo ($currentPage === 'campaign_access.php') ? 'active' : ''; ?>">
+                    <a href="campaign_access.php" class="nav-link <?php echo ($currentPage === 'campaign_access.php' || $currentPage === 'offer_requests.php') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-key"></i>
-                        <p>Campaign Access Rules</p>
+                        <p>
+                            Offer Approvals
+                            <?php if (!empty($pendingOfferCount) && $pendingOfferCount > 0): ?>
+                                <span class="badge badge-warning right font-weight-bold"><?php echo $pendingOfferCount; ?></span>
+                            <?php endif; ?>
+                        </p>
                     </a>
                 </li>
 
@@ -78,7 +101,12 @@ $adminUserName = $_SESSION['user_name'] ?? 'Admin';
                 <li class="nav-item">
                     <a href="pending_kyc.php" class="nav-link <?php echo ($currentPage === 'pending_kyc.php') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-id-card"></i>
-                        <p>Pending KYC Approvals</p>
+                        <p>
+                            Pending KYC Approvals
+                            <?php if (!empty($pendingKycCount) && $pendingKycCount > 0): ?>
+                                <span class="badge badge-warning right font-weight-bold"><?php echo $pendingKycCount; ?></span>
+                            <?php endif; ?>
+                        </p>
                     </a>
                 </li>
 

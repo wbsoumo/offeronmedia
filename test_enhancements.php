@@ -644,6 +644,25 @@ assertTest("manager/reports_postbacks.php contains Publisher filter", strpos($po
 assertTest("manager/reports_subid.php contains quick date presets", strpos($subidFileContent, 'Today') !== false && strpos($subidFileContent, 'This Month') !== false);
 
 // ---------------------------------------------------------
+// TEST 14: Admin Offer Approvals Queue & Navigation
+// ---------------------------------------------------------
+echo "\n--- TEST 14: Admin Offer Approvals Queue & Navigation ---\n";
+$adminSidebar = file_get_contents(__DIR__ . '/admin/sidebar.php');
+assertTest("admin/sidebar.php includes Offer Approvals link", strpos($adminSidebar, 'Offer Approvals') !== false);
+assertTest("admin/sidebar.php contains pendingOfferCount badge logic", strpos($adminSidebar, '$pendingOfferCount') !== false);
+
+$adminDashboard = file_get_contents(__DIR__ . '/admin/dashboard.php');
+assertTest("admin/dashboard.php includes Offer Approvals quick action button", strpos($adminDashboard, 'Offer Approvals') !== false);
+assertTest("admin/dashboard.php checks pendingOfferCount for alert banner", strpos($adminDashboard, '$pendingOfferCount') !== false);
+
+$adminCampaignAccess = file_get_contents(__DIR__ . '/admin/campaign_access.php');
+assertTest("admin/campaign_access.php has Pending Offer Applications Queue", strpos($adminCampaignAccess, 'Pending Offer Applications Queue') !== false);
+assertTest("admin/campaign_access.php supports update_access_status with custom payout and daily cap", strpos($adminCampaignAccess, 'update_access_status') !== false);
+
+$adminOfferRequests = file_get_contents(__DIR__ . '/admin/offer_requests.php');
+assertTest("admin/offer_requests.php cleanly redirects to pending queue", strpos($adminOfferRequests, 'campaign_access.php#pending-queue') !== false);
+
+// ---------------------------------------------------------
 // SUMMARY
 // ---------------------------------------------------------
 echo "\n========================================================\n";
