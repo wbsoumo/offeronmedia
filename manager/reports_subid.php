@@ -445,6 +445,23 @@ $affiliatesList = $pdo->query("SELECT user_id, name FROM users $affScopeSql ORDE
                 <!-- Filters & Search Form -->
                 <div class="card card-custom p-3">
                     <form method="get" action="reports_subid.php" id="filterForm">
+                        <!-- Quick Date Presets -->
+                        <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <div class="btn-group btn-group-sm mb-2 mb-md-0" role="group">
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-d'), 'to' => date('Y-m-d')])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d') && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">Today</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-d', strtotime('-1 day')), 'to' => date('Y-m-d', strtotime('-1 day'))])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d', strtotime('-1 day')) && $dateTo === date('Y-m-d', strtotime('-1 day'))) ? 'active font-weight-bold' : ''; ?>">Yesterday</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-d', strtotime('-7 days')), 'to' => date('Y-m-d')])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d', strtotime('-7 days')) && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">Last 7 Days</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-01'), 'to' => date('Y-m-d')])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-01') && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">This Month</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-01', strtotime('first day of last month')), 'to' => date('Y-m-t', strtotime('last month'))])); ?>" class="btn btn-outline-secondary">Last Month</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => '', 'to' => ''])); ?>" class="btn btn-outline-secondary <?php echo (empty($dateFrom) && empty($dateTo)) ? 'active font-weight-bold' : ''; ?>">All Time</a>
+                            </div>
+                            <div>
+                                <span class="badge badge-light border text-muted px-2 py-1">
+                                    <i class="fas fa-calendar-alt mr-1 text-primary"></i><?php echo $dateFrom ? date('M d, Y', strtotime($dateFrom)) : 'All Time'; ?> - <?php echo $dateTo ? date('M d, Y', strtotime($dateTo)) : 'Now'; ?>
+                                </span>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-2 col-sm-6 mb-2">
                                 <label class="small font-weight-bold">From Date</label>

@@ -24,6 +24,41 @@ $hasAnyReportPermission = $canAffReports || $canCampReports || $canClickReports 
 $defaultTab = 'campaigns';
 $activeTab  = $_GET['tab'] ?? $defaultTab;
 
+// Filter Parameters
+$dateFrom = trim($_GET['from'] ?? date('Y-m-01'));
+$dateTo   = trim($_GET['to'] ?? date('Y-m-d'));
+$search   = trim($_GET['search'] ?? '');
+$filterOffer = isset($_GET['offer_id']) && $_GET['offer_id'] !== 'all' ? (int)$_GET['offer_id'] : 'all';
+$filterAffiliate = isset($_GET['affiliate_id']) && $_GET['affiliate_id'] !== 'all' ? (int)$_GET['affiliate_id'] : 'all';
+$filterStatus = trim($_GET['status'] ?? 'all');
+$filterDevice = trim($_GET['device'] ?? 'all');
+$filterCategory = trim($_GET['category'] ?? 'all');
+$filterAdvertiser = isset($_GET['advertiser_id']) && $_GET['advertiser_id'] !== 'all' ? (int)$_GET['advertiser_id'] : 'all';
+$subFilter1 = trim($_GET['sub1'] ?? '');
+
+// Helper to build URLs preserving or modifying filter params
+function build_filter_url($overrides = []) {
+    $current = $_GET;
+    foreach ($overrides as $k => $v) {
+        if ($v === '' || $v === null) {
+            unset($current[$k]);
+        } else {
+            $current[$k] = $v;
+        }
+    }
+    return '?' . http_build_query($current);
+}
+
+// Fetch Dropdown options for filters
+$offersList = $pdo->query("SELECT offer_id, offer_name FROM offers ORDER BY offer_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+$affScopeSql = !$canAllReports ? "WHERE role_id = 3 AND account_manager_id = " . (int)$managerId : "WHERE role_id = 3";
+$affiliatesList = $pdo->query("SELECT user_id, name, company FROM users $affScopeSql ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+$categoriesList = $pdo->query("SELECT DISTINCT category FROM offers WHERE category IS NOT NULL AND category != '' ORDER BY category ASC")->fetchAll(PDO::FETCH_COLUMN);
+
+$advertisersList = $pdo->query("SELECT user_id, name, company FROM users WHERE role_id = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
 $affiliateReports = [];
 $advertiserReports = [];
 $campaignReports   = [];
@@ -32,6 +67,39 @@ $clickReports      = [];
 
 if ($hasAnyReportPermission) {
     // 1. Fetch Campaign Performance Reports
+    $campWhere = ["aff.role_id = 3"];
+    $campParams = [];
+    if (!$canAllReports) {
+        $campWhere[] = "aff.account_manager_id = :mid";
+        $campParams[':mid'] = $managerId;
+    }
+    if ($dateFrom) {
+        $campWhere[] = "DATE(c.created_at) >= :dfrom";
+        $campParams[':dfrom'] = $dateFrom;
+    }
+    if ($dateTo) {
+        $campWhere[] = "DATE(c.created_at) <= :dto";
+        $campParams[':dto'] = $dateTo;
+    }
+    if ($filterOffer !== 'all') {
+        $campWhere[] = "o.offer_id = :oid";
+        $campParams[':oid'] = $filterOffer;
+    }
+    if ($filterAffiliate !== 'all') {
+        $campWhere[] = "aff.user_id = :affid";
+        $campParams[':affid'] = $filterAffiliate;
+    }
+    if ($filterCategory !== 'all') {
+        $campWhere[] = "o.category = :cat";
+        $campParams[':cat'] = $filterCategory;
+    }
+    if ($search !== '') {
+        $campWhere[] = "(o.offer_name LIKE :s1 OR o.offer_id = :s_id)";
+        $campParams[':s1'] = "%$search%";
+        $campParams[':s_id'] = is_numeric($search) ? (int)$search : 0;
+    }
+    $campWhereSql = 'WHERE ' . implode(' AND ', $campWhere);
+
     $stmtCamp = $pdo->prepare("
         SELECT 
             o.offer_id,
@@ -42,18 +110,53 @@ if ($hasAnyReportPermission) {
             SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS conversions,
             IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS total_revenue,
             IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS total_payout
-        FROM users aff
-        INNER JOIN clicks c ON c.affiliate_id = aff.user_id
+        FROM clicks c
+        INNER JOIN users aff ON aff.user_id = c.affiliate_id
         INNER JOIN offers o ON o.offer_id = c.offer_id
         LEFT JOIN conversions cv ON cv.click_id = c.click_id
-        WHERE aff.role_id = 3 AND aff.account_manager_id = ?
+        $campWhereSql
         GROUP BY o.offer_id
         ORDER BY clicks DESC
     ");
-    $stmtCamp->execute([$managerId]);
+    $stmtCamp->execute($campParams);
     $campaignReports = $stmtCamp->fetchAll(PDO::FETCH_ASSOC);
 
     // 2. Fetch Affiliate / Publisher Reports
+    $affWhere = ["u.role_id = 3"];
+    $affParams = [];
+    if (!$canAllReports) {
+        $affWhere[] = "u.account_manager_id = :mid";
+        $affParams[':mid'] = $managerId;
+    }
+    if ($dateFrom) {
+        $affWhere[] = "DATE(c.created_at) >= :dfrom";
+        $affParams[':dfrom'] = $dateFrom;
+    }
+    if ($dateTo) {
+        $affWhere[] = "DATE(c.created_at) <= :dto";
+        $affParams[':dto'] = $dateTo;
+    }
+    if ($filterOffer !== 'all') {
+        $affWhere[] = "o.offer_id = :oid";
+        $affParams[':oid'] = $filterOffer;
+    }
+    if ($filterAffiliate !== 'all') {
+        $affWhere[] = "u.user_id = :affid";
+        $affParams[':affid'] = $filterAffiliate;
+    }
+    if ($filterStatus !== 'all') {
+        $affWhere[] = "u.status = :aff_status";
+        $affParams[':aff_status'] = $filterStatus;
+    }
+    if ($search !== '') {
+        $affWhere[] = "(u.name LIKE :s1 OR u.email LIKE :s2 OR u.company LIKE :s3 OR o.offer_name LIKE :s4)";
+        $affParams[':s1'] = "%$search%";
+        $affParams[':s2'] = "%$search%";
+        $affParams[':s3'] = "%$search%";
+        $affParams[':s4'] = "%$search%";
+    }
+    $affWhereSql = 'WHERE ' . implode(' AND ', $affWhere);
+
     $stmtAff = $pdo->prepare("
         SELECT 
             o.offer_id,
@@ -71,15 +174,58 @@ if ($hasAnyReportPermission) {
         INNER JOIN clicks c ON c.affiliate_id = u.user_id
         INNER JOIN offers o ON o.offer_id = c.offer_id
         LEFT JOIN conversions cv ON cv.click_id = c.click_id
-        WHERE u.role_id = 3 AND u.account_manager_id = ?
+        $affWhereSql
         GROUP BY o.offer_id, u.user_id
         ORDER BY clicks DESC
     ");
-    $stmtAff->execute([$managerId]);
+    $stmtAff->execute($affParams);
     $affiliateReports = $stmtAff->fetchAll(PDO::FETCH_ASSOC);
 
     // 3. Fetch Click Reports (Raw Click Logs scoped to manager)
     if ($activeTab === 'clicks' || $canClickReports) {
+        $clkWhere = ["u.role_id = 3"];
+        $clkParams = [];
+        if (!$canAllReports) {
+            $clkWhere[] = "u.account_manager_id = :mid";
+            $clkParams[':mid'] = $managerId;
+        }
+        if ($dateFrom) {
+            $clkWhere[] = "DATE(c.created_at) >= :dfrom";
+            $clkParams[':dfrom'] = $dateFrom;
+        }
+        if ($dateTo) {
+            $clkWhere[] = "DATE(c.created_at) <= :dto";
+            $clkParams[':dto'] = $dateTo;
+        }
+        if ($filterOffer !== 'all') {
+            $clkWhere[] = "o.offer_id = :oid";
+            $clkParams[':oid'] = $filterOffer;
+        }
+        if ($filterAffiliate !== 'all') {
+            $clkWhere[] = "u.user_id = :affid";
+            $clkParams[':affid'] = $filterAffiliate;
+        }
+        if ($filterStatus === 'approved') {
+            $clkWhere[] = "cv.status = 'approved'";
+        } elseif ($filterStatus === 'pending') {
+            $clkWhere[] = "cv.status = 'pending'";
+        } elseif ($filterStatus === 'clicked') {
+            $clkWhere[] = "(cv.status IS NULL OR cv.status = '')";
+        }
+        if ($filterDevice !== 'all') {
+            $clkWhere[] = "c.device LIKE :device";
+            $clkParams[':device'] = "%$filterDevice%";
+        }
+        if ($search !== '') {
+            $clkWhere[] = "(c.click_id LIKE :s1 OR c.ip_address LIKE :s2 OR c.sub1 LIKE :s3 OR o.offer_name LIKE :s4 OR u.name LIKE :s5)";
+            $clkParams[':s1'] = "%$search%";
+            $clkParams[':s2'] = "%$search%";
+            $clkParams[':s3'] = "%$search%";
+            $clkParams[':s4'] = "%$search%";
+            $clkParams[':s5'] = "%$search%";
+        }
+        $clkWhereSql = 'WHERE ' . implode(' AND ', $clkWhere);
+
         $clicksQuery = $pdo->prepare("
             SELECT 
                 c.click_id,
@@ -99,16 +245,54 @@ if ($hasAnyReportPermission) {
             INNER JOIN users u ON u.user_id = c.affiliate_id
             INNER JOIN offers o ON o.offer_id = c.offer_id
             LEFT JOIN conversions cv ON cv.click_id = c.click_id
-            WHERE u.role_id = 3 AND u.account_manager_id = ?
+            $clkWhereSql
             ORDER BY c.created_at DESC
-            LIMIT 250
+            LIMIT 300
         ");
-        $clicksQuery->execute([$managerId]);
+        $clicksQuery->execute($clkParams);
         $clickReports = $clicksQuery->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // 4. Fetch SubID Reports (Breakdown of Sub1 through Sub5)
     if ($activeTab === 'subid' || $canAllReports) {
+        $subWhere = ["aff.role_id = 3"];
+        $subParams = [];
+        if (!$canAllReports) {
+            $subWhere[] = "aff.account_manager_id = :mid";
+            $subParams[':mid'] = $managerId;
+        }
+        if ($dateFrom) {
+            $subWhere[] = "DATE(c.created_at) >= :dfrom";
+            $subParams[':dfrom'] = $dateFrom;
+        }
+        if ($dateTo) {
+            $subWhere[] = "DATE(c.created_at) <= :dto";
+            $subParams[':dto'] = $dateTo;
+        }
+        if ($filterOffer !== 'all') {
+            $subWhere[] = "o.offer_id = :oid";
+            $subParams[':oid'] = $filterOffer;
+        }
+        if ($filterAffiliate !== 'all') {
+            $subWhere[] = "aff.user_id = :affid";
+            $subParams[':affid'] = $filterAffiliate;
+        }
+        if ($subFilter1 !== '') {
+            $subWhere[] = "c.sub1 LIKE :sub1_val";
+            $subParams[':sub1_val'] = "%$subFilter1%";
+        }
+        if ($search !== '') {
+            $subWhere[] = "(c.sub1 LIKE :s1 OR c.sub2 LIKE :s2 OR c.sub3 LIKE :s3 OR c.sub4 LIKE :s4 OR c.sub5 LIKE :s5 OR o.offer_name LIKE :s6 OR aff.name LIKE :s7)";
+            $subParams[':s1'] = "%$search%";
+            $subParams[':s2'] = "%$search%";
+            $subParams[':s3'] = "%$search%";
+            $subParams[':s4'] = "%$search%";
+            $subParams[':s5'] = "%$search%";
+            $subParams[':s6'] = "%$search%";
+            $subParams[':s7'] = "%$search%";
+        }
+        $subWhereSql = 'WHERE ' . implode(' AND ', $subWhere);
+
         $stmtSub = $pdo->prepare("
             SELECT 
                 c.sub1, c.sub2, c.sub3, c.sub4, c.sub5,
@@ -123,18 +307,43 @@ if ($hasAnyReportPermission) {
             INNER JOIN clicks c ON c.affiliate_id = aff.user_id
             INNER JOIN offers o ON o.offer_id = c.offer_id
             LEFT JOIN conversions cv ON cv.click_id = c.click_id
-            WHERE aff.role_id = 3 AND aff.account_manager_id = ? 
-              AND ((c.sub1 IS NOT NULL AND c.sub1 != '') OR (c.sub2 IS NOT NULL AND c.sub2 != '') OR (c.sub3 IS NOT NULL AND c.sub3 != '') OR (c.sub4 IS NOT NULL AND c.sub4 != '') OR (c.sub5 IS NOT NULL AND c.sub5 != ''))
+            $subWhereSql
             GROUP BY c.sub1, c.sub2, c.sub3, c.sub4, c.sub5, o.offer_id, aff.user_id
             ORDER BY clicks DESC
-            LIMIT 250
+            LIMIT 300
         ");
-        $stmtSub->execute([$managerId]);
+        $stmtSub->execute($subParams);
         $subIdReports = $stmtSub->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // 5. Fetch Advertiser Reports
     if ($canAdvReports) {
+        $advWhere = ["aff.role_id = 3"];
+        $advParams = [];
+        if (!$canAllReports) {
+            $advWhere[] = "aff.account_manager_id = :mid";
+            $advParams[':mid'] = $managerId;
+        }
+        if ($dateFrom) {
+            $advWhere[] = "DATE(c.created_at) >= :dfrom";
+            $advParams[':dfrom'] = $dateFrom;
+        }
+        if ($dateTo) {
+            $advWhere[] = "DATE(c.created_at) <= :dto";
+            $advParams[':dto'] = $dateTo;
+        }
+        if ($filterAdvertiser !== 'all') {
+            $advWhere[] = "adv.user_id = :advid";
+            $advParams[':advid'] = $filterAdvertiser;
+        }
+        if ($search !== '') {
+            $advWhere[] = "(adv.name LIKE :s1 OR adv.company LIKE :s2 OR o.offer_name LIKE :s3)";
+            $advParams[':s1'] = "%$search%";
+            $advParams[':s2'] = "%$search%";
+            $advParams[':s3'] = "%$search%";
+        }
+        $advWhereSql = 'WHERE ' . implode(' AND ', $advWhere);
+
         $stmtAdv = $pdo->prepare("
             SELECT 
                 IFNULL(adv.user_id, 0) AS advertiser_id,
@@ -150,11 +359,11 @@ if ($hasAnyReportPermission) {
             INNER JOIN offers o ON o.offer_id = c.offer_id
             LEFT JOIN users adv ON adv.user_id = o.advertiser_id
             LEFT JOIN conversions cv ON cv.click_id = c.click_id
-            WHERE aff.role_id = 3 AND aff.account_manager_id = ?
+            $advWhereSql
             GROUP BY adv.user_id
             ORDER BY total_revenue DESC
         ");
-        $stmtAdv->execute([$managerId]);
+        $stmtAdv->execute($advParams);
         $advertiserReports = $stmtAdv->fetchAll(PDO::FETCH_ASSOC);
     }
 }
@@ -226,28 +435,28 @@ if ($hasAnyReportPermission) {
                 <!-- Report Type Navigation Tabs -->
                 <ul class="nav nav-pills mb-3" id="reportTabs">
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $activeTab === 'campaigns' ? 'active' : ''; ?>" href="?tab=campaigns">
+                        <a class="nav-link <?php echo $activeTab === 'campaigns' ? 'active font-weight-bold' : ''; ?>" href="<?php echo build_filter_url(['tab' => 'campaigns']); ?>">
                             <i class="fas fa-bullhorn mr-1"></i> Campaign Performance
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $activeTab === 'affiliates' ? 'active' : ''; ?>" href="?tab=affiliates">
+                        <a class="nav-link <?php echo $activeTab === 'affiliates' ? 'active font-weight-bold' : ''; ?>" href="<?php echo build_filter_url(['tab' => 'affiliates']); ?>">
                             <i class="fas fa-users mr-1"></i> Publishers Report
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $activeTab === 'clicks' ? 'active' : ''; ?>" href="?tab=clicks">
+                        <a class="nav-link <?php echo $activeTab === 'clicks' ? 'active font-weight-bold' : ''; ?>" href="<?php echo build_filter_url(['tab' => 'clicks']); ?>">
                             <i class="fas fa-mouse-pointer mr-1"></i> Click Reports
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $activeTab === 'subid' ? 'active' : ''; ?>" href="?tab=subid">
+                        <a class="nav-link <?php echo $activeTab === 'subid' ? 'active font-weight-bold' : ''; ?>" href="<?php echo build_filter_url(['tab' => 'subid']); ?>">
                             <i class="fas fa-tags mr-1"></i> SubID Breakdown
                         </a>
                     </li>
                     <?php if ($canAdvReports): ?>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $activeTab === 'advertisers' ? 'active' : ''; ?>" href="?tab=advertisers">
+                        <a class="nav-link <?php echo $activeTab === 'advertisers' ? 'active font-weight-bold' : ''; ?>" href="<?php echo build_filter_url(['tab' => 'advertisers']); ?>">
                             <i class="fas fa-briefcase mr-1"></i> Advertisers Report
                         </a>
                     </li>
@@ -258,6 +467,134 @@ if ($hasAnyReportPermission) {
                         </a>
                     </li>
                 </ul>
+
+                <!-- Comprehensive Filter Bar -->
+                <div class="card card-custom p-3 mb-4">
+                    <form method="get" id="reportFilterForm">
+                        <input type="hidden" name="tab" value="<?php echo htmlspecialchars($activeTab); ?>">
+
+                        <!-- Quick Date Presets -->
+                        <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <div class="btn-group btn-group-sm mb-2 mb-md-0" role="group">
+                                <a href="<?php echo build_filter_url(['from' => date('Y-m-d'), 'to' => date('Y-m-d')]); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d') && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">Today</a>
+                                <a href="<?php echo build_filter_url(['from' => date('Y-m-d', strtotime('-1 day')), 'to' => date('Y-m-d', strtotime('-1 day'))]); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d', strtotime('-1 day')) && $dateTo === date('Y-m-d', strtotime('-1 day'))) ? 'active font-weight-bold' : ''; ?>">Yesterday</a>
+                                <a href="<?php echo build_filter_url(['from' => date('Y-m-d', strtotime('-7 days')), 'to' => date('Y-m-d')]); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d', strtotime('-7 days')) && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">Last 7 Days</a>
+                                <a href="<?php echo build_filter_url(['from' => date('Y-m-01'), 'to' => date('Y-m-d')]); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-01') && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">This Month</a>
+                                <a href="<?php echo build_filter_url(['from' => date('Y-m-01', strtotime('first day of last month')), 'to' => date('Y-m-t', strtotime('last month'))]); ?>" class="btn btn-outline-secondary">Last Month</a>
+                                <a href="<?php echo build_filter_url(['from' => '', 'to' => '']); ?>" class="btn btn-outline-secondary <?php echo (empty($dateFrom) && empty($dateTo)) ? 'active font-weight-bold' : ''; ?>">All Time</a>
+                            </div>
+                            <div>
+                                <span class="badge badge-light border text-muted px-2 py-1">
+                                    <i class="fas fa-calendar-alt mr-1 text-primary"></i><?php echo $dateFrom ? date('M d, Y', strtotime($dateFrom)) : 'All Time'; ?> - <?php echo $dateTo ? date('M d, Y', strtotime($dateTo)) : 'Now'; ?>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Filter Fields Row -->
+                        <div class="row align-items-end">
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">From Date</label>
+                                <input type="date" name="from" class="form-control form-control-sm" value="<?php echo htmlspecialchars($dateFrom); ?>">
+                            </div>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">To Date</label>
+                                <input type="date" name="to" class="form-control form-control-sm" value="<?php echo htmlspecialchars($dateTo); ?>">
+                            </div>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Campaign Offer</label>
+                                <select name="offer_id" class="form-control form-control-sm">
+                                    <option value="all">All Campaigns</option>
+                                    <?php foreach ($offersList as $off): ?>
+                                        <option value="<?php echo $off['offer_id']; ?>" <?php echo (string)$filterOffer === (string)$off['offer_id'] ? 'selected' : ''; ?>>
+                                            #<?php echo $off['offer_id']; ?> - <?php echo htmlspecialchars($off['offer_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Publisher</label>
+                                <select name="affiliate_id" class="form-control form-control-sm">
+                                    <option value="all">All Publishers</option>
+                                    <?php foreach ($affiliatesList as $aff): ?>
+                                        <option value="<?php echo $aff['user_id']; ?>" <?php echo (string)$filterAffiliate === (string)$aff['user_id'] ? 'selected' : ''; ?>>
+                                            #<?php echo $aff['user_id']; ?> - <?php echo htmlspecialchars($aff['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Contextual Filters by Tab -->
+                            <?php if ($activeTab === 'clicks'): ?>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Status</label>
+                                <select name="status" class="form-control form-control-sm">
+                                    <option value="all" <?php echo $filterStatus === 'all' ? 'selected' : ''; ?>>All Statuses</option>
+                                    <option value="approved" <?php echo $filterStatus === 'approved' ? 'selected' : ''; ?>>Approved Leads</option>
+                                    <option value="pending" <?php echo $filterStatus === 'pending' ? 'selected' : ''; ?>>Pending Leads</option>
+                                    <option value="clicked" <?php echo $filterStatus === 'clicked' ? 'selected' : ''; ?>>Clicked Only</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Device</label>
+                                <select name="device" class="form-control form-control-sm">
+                                    <option value="all" <?php echo $filterDevice === 'all' ? 'selected' : ''; ?>>All Devices</option>
+                                    <option value="mobile" <?php echo $filterDevice === 'mobile' ? 'selected' : ''; ?>>Mobile</option>
+                                    <option value="desktop" <?php echo $filterDevice === 'desktop' ? 'selected' : ''; ?>>Desktop</option>
+                                    <option value="tablet" <?php echo $filterDevice === 'tablet' ? 'selected' : ''; ?>>Tablet</option>
+                                </select>
+                            </div>
+                            <?php elseif ($activeTab === 'campaigns'): ?>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Category</label>
+                                <select name="category" class="form-control form-control-sm">
+                                    <option value="all">All Categories</option>
+                                    <?php foreach ($categoriesList as $cat): ?>
+                                        <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $filterCategory === $cat ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($cat); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php elseif ($activeTab === 'affiliates'): ?>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Account Status</label>
+                                <select name="status" class="form-control form-control-sm">
+                                    <option value="all" <?php echo $filterStatus === 'all' ? 'selected' : ''; ?>>All Statuses</option>
+                                    <option value="active" <?php echo $filterStatus === 'active' ? 'selected' : ''; ?>>Active Only</option>
+                                    <option value="pending" <?php echo $filterStatus === 'pending' ? 'selected' : ''; ?>>Pending Only</option>
+                                    <option value="blocked" <?php echo $filterStatus === 'blocked' ? 'selected' : ''; ?>>Blocked</option>
+                                </select>
+                            </div>
+                            <?php elseif ($activeTab === 'advertisers'): ?>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Advertiser</label>
+                                <select name="advertiser_id" class="form-control form-control-sm">
+                                    <option value="all">All Advertisers</option>
+                                    <?php foreach ($advertisersList as $adv): ?>
+                                        <option value="<?php echo $adv['user_id']; ?>" <?php echo (string)$filterAdvertiser === (string)$adv['user_id'] ? 'selected' : ''; ?>>
+                                            #<?php echo $adv['user_id']; ?> - <?php echo htmlspecialchars($adv['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <?php endif; ?>
+
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="small font-weight-bold text-muted text-uppercase">Search Keyword</label>
+                                <input type="text" name="search" class="form-control form-control-sm" placeholder="Search..." value="<?php echo htmlspecialchars($search); ?>">
+                            </div>
+
+                            <div class="col-lg-2 col-md-3 col-12 mb-2 d-flex">
+                                <button type="submit" class="btn btn-sm btn-primary btn-block font-weight-bold mr-1">
+                                    <i class="fas fa-filter mr-1"></i> Apply Filter
+                                </button>
+                                <a href="?tab=<?php echo htmlspecialchars($activeTab); ?>" class="btn btn-sm btn-outline-secondary" title="Reset Filters">
+                                    <i class="fas fa-undo"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
 
                 <!-- Tab 1: Campaign Performance -->
                 <?php if ($activeTab === 'campaigns'): ?>

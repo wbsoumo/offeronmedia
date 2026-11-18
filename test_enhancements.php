@@ -631,6 +631,17 @@ assertTest("manager/reports_subid.php groups by all 5 sub IDs", strpos($subidFil
 
 $mgrReportsContent = file_get_contents(__DIR__ . '/manager/reports.php');
 assertTest("manager/reports.php contains Sub ID 1-5 columns in subid tab", strpos($mgrReportsContent, '<th>Sub ID 5</th>') !== false);
+assertTest("manager/reports.php contains date filters (from & to)", strpos($mgrReportsContent, 'name="from"') !== false && strpos($mgrReportsContent, 'name="to"') !== false);
+assertTest("manager/reports.php contains Campaign Offer filter", strpos($mgrReportsContent, 'name="offer_id"') !== false);
+assertTest("manager/reports.php contains Publisher filter", strpos($mgrReportsContent, 'name="affiliate_id"') !== false);
+assertTest("manager/reports.php contains quick date presets", strpos($mgrReportsContent, 'Today') !== false && strpos($mgrReportsContent, 'This Month') !== false);
+
+$postbacksFileContent = file_get_contents(__DIR__ . '/manager/reports_postbacks.php');
+assertTest("manager/reports_postbacks.php contains date filters and presets", strpos($postbacksFileContent, 'name="from"') !== false && strpos($postbacksFileContent, 'Today') !== false);
+assertTest("manager/reports_postbacks.php contains Campaign Offer filter", strpos($postbacksFileContent, 'name="offer_id"') !== false);
+assertTest("manager/reports_postbacks.php contains Publisher filter", strpos($postbacksFileContent, 'name="affiliate_id"') !== false);
+
+assertTest("manager/reports_subid.php contains quick date presets", strpos($subidFileContent, 'Today') !== false && strpos($subidFileContent, 'This Month') !== false);
 
 // ---------------------------------------------------------
 // SUMMARY

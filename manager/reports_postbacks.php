@@ -16,6 +16,11 @@ $search     = trim($_GET['search'] ?? '');
 $dateFrom   = $_GET['from'] ?? date('Y-m-d', strtotime('-30 days'));
 $dateTo     = $_GET['to']   ?? date('Y-m-d');
 $httpFilter = $_GET['http_code'] ?? 'all';
+$filterOffer = isset($_GET['offer_id']) && $_GET['offer_id'] !== 'all' ? (int)$_GET['offer_id'] : 'all';
+$filterAffiliate = isset($_GET['affiliate_id']) && $_GET['affiliate_id'] !== 'all' ? (int)$_GET['affiliate_id'] : 'all';
+
+$offersList = $pdo->query("SELECT offer_id, offer_name FROM offers ORDER BY offer_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$affiliatesList = $pdo->query("SELECT user_id, name FROM users WHERE role_id = 3 AND account_manager_id = " . (int)$managerId . " ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 /* =====================================================
    1. FETCH OUTGOING PUBLISHER POSTBACK LOGS (Scoped to Manager)
@@ -30,6 +35,15 @@ $outParams = [
     ':dfrom'  => $dateFrom,
     ':dto'    => $dateTo
 ];
+
+if ($filterOffer !== 'all') {
+    $outWhere[] = "apl.offer_id = :oid";
+    $outParams[':oid'] = $filterOffer;
+}
+if ($filterAffiliate !== 'all') {
+    $outWhere[] = "apl.affiliate_id = :aid";
+    $outParams[':aid'] = $filterAffiliate;
+}
 
 if ($search !== '') {
     $outWhere[] = "(u.name LIKE :s1 OR u.email LIKE :s2 OR o.offer_name LIKE :s3 OR apl.postback_url LIKE :s4)";
@@ -117,6 +131,15 @@ if ($hasCreatedAt) {
     $inWhere[] = "DATE(pl.created_at) <= :idto";
     $inParams[':idfrom'] = $dateFrom;
     $inParams[':idto']   = $dateTo;
+}
+
+if ($filterOffer !== 'all') {
+    $inWhere[] = "c.offer_id = :in_oid";
+    $inParams[':in_oid'] = $filterOffer;
+}
+if ($filterAffiliate !== 'all') {
+    $inWhere[] = "c.affiliate_id = :in_aid";
+    $inParams[':in_aid'] = $filterAffiliate;
 }
 
 if ($search !== '') {
@@ -283,31 +306,73 @@ $totalIncoming   = count($incomingLogs);
                 <!-- Search & Filters -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-body">
+                        <!-- Quick Date Presets -->
+                        <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                            <div class="btn-group btn-group-sm mb-2 mb-md-0" role="group">
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-d'), 'to' => date('Y-m-d')])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d') && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">Today</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-d', strtotime('-1 day')), 'to' => date('Y-m-d', strtotime('-1 day'))])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d', strtotime('-1 day')) && $dateTo === date('Y-m-d', strtotime('-1 day'))) ? 'active font-weight-bold' : ''; ?>">Yesterday</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-d', strtotime('-7 days')), 'to' => date('Y-m-d')])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-d', strtotime('-7 days')) && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">Last 7 Days</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-01'), 'to' => date('Y-m-d')])); ?>" class="btn btn-outline-secondary <?php echo ($dateFrom === date('Y-m-01') && $dateTo === date('Y-m-d')) ? 'active font-weight-bold' : ''; ?>">This Month</a>
+                                <a href="?<?php echo http_build_query(array_merge($_GET, ['from' => date('Y-m-d', strtotime('-30 days')), 'to' => date('Y-m-d')])); ?>" class="btn btn-outline-secondary">Last 30 Days</a>
+                            </div>
+                            <div>
+                                <span class="badge badge-light border text-muted px-2 py-1">
+                                    <i class="fas fa-calendar-alt mr-1 text-primary"></i><?php echo $dateFrom ? date('M d, Y', strtotime($dateFrom)) : 'All'; ?> - <?php echo $dateTo ? date('M d, Y', strtotime($dateTo)) : 'Now'; ?>
+                                </span>
+                            </div>
+                        </div>
+
                         <form method="get" class="row align-items-end">
                             <input type="hidden" name="tab" value="<?php echo htmlspecialchars($activeTab); ?>">
-                            <div class="col-md-4 mb-2 mb-md-0">
-                                <label class="font-weight-bold small text-muted text-uppercase">Keyword Search</label>
-                                <input type="text" name="search" class="form-control" placeholder="Search by Click ID, Publisher, Offer, URL..." value="<?php echo htmlspecialchars($search); ?>">
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="font-weight-bold small text-muted text-uppercase">From Date</label>
+                                <input type="date" name="from" class="form-control form-control-sm" value="<?php echo htmlspecialchars($dateFrom); ?>">
                             </div>
-                            <div class="col-md-3 mb-2 mb-md-0">
-                                <label class="font-weight-bold small text-muted text-uppercase">Date Range</label>
-                                <div class="input-group">
-                                    <input type="date" name="from" class="form-control" value="<?php echo htmlspecialchars($dateFrom); ?>">
-                                    <input type="date" name="to" class="form-control" value="<?php echo htmlspecialchars($dateTo); ?>">
-                                </div>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="font-weight-bold small text-muted text-uppercase">To Date</label>
+                                <input type="date" name="to" class="form-control form-control-sm" value="<?php echo htmlspecialchars($dateTo); ?>">
                             </div>
-                            <div class="col-md-3 mb-2 mb-md-0">
-                                <label class="font-weight-bold small text-muted text-uppercase">Delivery Status</label>
-                                <select name="http_code" class="form-control">
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="font-weight-bold small text-muted text-uppercase">Campaign Offer</label>
+                                <select name="offer_id" class="form-control form-control-sm">
+                                    <option value="all">All Campaigns</option>
+                                    <?php foreach ($offersList as $off): ?>
+                                        <option value="<?php echo $off['offer_id']; ?>" <?php echo (string)$filterOffer === (string)$off['offer_id'] ? 'selected' : ''; ?>>
+                                            #<?php echo $off['offer_id']; ?> - <?php echo htmlspecialchars($off['offer_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="font-weight-bold small text-muted text-uppercase">Publisher</label>
+                                <select name="affiliate_id" class="form-control form-control-sm">
+                                    <option value="all">All Publishers</option>
+                                    <?php foreach ($affiliatesList as $aff): ?>
+                                        <option value="<?php echo $aff['user_id']; ?>" <?php echo (string)$filterAffiliate === (string)$aff['user_id'] ? 'selected' : ''; ?>>
+                                            #<?php echo $aff['user_id']; ?> - <?php echo htmlspecialchars($aff['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="font-weight-bold small text-muted text-uppercase">Status</label>
+                                <select name="http_code" class="form-control form-control-sm">
                                     <option value="all" <?php echo $httpFilter === 'all' ? 'selected' : ''; ?>>All Status Codes</option>
                                     <option value="200" <?php echo $httpFilter === '200' ? 'selected' : ''; ?>>HTTP 200 OK Only</option>
                                     <option value="errors" <?php echo $httpFilter === 'errors' ? 'selected' : ''; ?>>Errors & Timeouts Only</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-primary btn-block font-weight-bold">
-                                    <i class="fas fa-filter mr-1"></i> Filter
+                            <div class="col-lg-2 col-md-3 col-6 mb-2">
+                                <label class="font-weight-bold small text-muted text-uppercase">Keyword Search</label>
+                                <input type="text" name="search" class="form-control form-control-sm" placeholder="Search..." value="<?php echo htmlspecialchars($search); ?>">
+                            </div>
+                            <div class="col-lg-12 d-flex justify-content-end mt-2">
+                                <button type="submit" class="btn btn-sm btn-primary font-weight-bold mr-2 px-3">
+                                    <i class="fas fa-filter mr-1"></i> Apply Filter
                                 </button>
+                                <a href="?tab=<?php echo htmlspecialchars($activeTab); ?>" class="btn btn-sm btn-outline-secondary px-3" title="Reset Filters">
+                                    <i class="fas fa-undo mr-1"></i> Reset
+                                </a>
                             </div>
                         </form>
                     </div>
