@@ -131,14 +131,33 @@ if (!isset($modalOffersList)) {
                             <small class="form-text text-muted">Custom payout rate. Defaults to campaign's standard payout.</small>
                         </div>
 
+                        <!-- Publisher Daily Cap & Rule -->
+                        <div class="col-md-6 mb-3">
+                            <label class="font-weight-bold text-dark">
+                                Publisher Daily Cap & Rule <span class="text-muted small">(Optional)</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" step="1" min="1" id="modalDailyCap" class="form-control font-weight-bold" placeholder="Unlimited">
+                                <div class="input-group-append">
+                                    <select id="modalCapType" class="custom-select font-weight-bold" style="max-width: 140px;">
+                                        <option value="conversions">Leads / Day</option>
+                                        <option value="clicks">Clicks / Day</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Daily limit based on Conversions or Clicks (Offer18 Rule).</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <!-- Sub ID 1 (Optional) -->
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label class="font-weight-bold text-dark small text-uppercase">Sub ID 1 <span class="text-muted">(Optional)</span></label>
                             <input type="text" id="modalSub1" class="form-control" placeholder="e.g. facebook">
                         </div>
 
                         <!-- Sub ID 2 (Optional) -->
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-6 mb-3">
                             <label class="font-weight-bold text-dark small text-uppercase">Sub ID 2 <span class="text-muted">(Optional)</span></label>
                             <input type="text" id="modalSub2" class="form-control" placeholder="e.g. adset_01">
                         </div>
@@ -328,6 +347,8 @@ if (!isset($modalOffersList)) {
             var offerId = $('#modalOfferSelect').val();
             var publisherId = $('#modalPublisherSelect').val();
             var customPayout = $('#modalCustomPayout').val();
+            var dailyCap = $('#modalDailyCap').val();
+            var capType = $('#modalCapType').val();
             var sub1 = $('#modalSub1').val().trim();
             var sub2 = $('#modalSub2').val().trim();
             var notes = $('#modalNotes').val().trim();
@@ -360,6 +381,8 @@ if (!isset($modalOffersList)) {
                     offer_id: offerId,
                     publisher_id: publisherId,
                     custom_payout: customPayout,
+                    daily_cap: dailyCap,
+                    cap_type: capType,
                     sub1: sub1,
                     sub2: sub2,
                     notes: notes

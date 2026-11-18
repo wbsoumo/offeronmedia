@@ -152,6 +152,7 @@ function auto_ensure_all_schema_tables($pdo)
                 `offer_id` INT DEFAULT NULL,
                 `click_id` VARCHAR(100) DEFAULT NULL,
                 `status` VARCHAR(50) DEFAULT 'success',
+                `raw_request` TEXT DEFAULT NULL,
                 `url` TEXT DEFAULT NULL,
                 `response_code` INT DEFAULT NULL,
                 `response_body` TEXT DEFAULT NULL,
@@ -161,6 +162,22 @@ function auto_ensure_all_schema_tables($pdo)
                 INDEX `idx_offer` (`offer_id`),
                 INDEX `idx_click` (`click_id`),
                 INDEX `idx_status` (`status`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+            CREATE TABLE IF NOT EXISTS `affiliate_postback_logs` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `affiliate_id` INT NOT NULL,
+                `offer_id` INT DEFAULT NULL,
+                `conversion_id` INT DEFAULT NULL,
+                `postback_url` TEXT NOT NULL,
+                `http_code` INT DEFAULT NULL,
+                `response` TEXT DEFAULT NULL,
+                `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_aff` (`affiliate_id`),
+                INDEX `idx_offer` (`offer_id`),
+                INDEX `idx_conv` (`conversion_id`),
+                INDEX `idx_http_code` (`http_code`),
+                INDEX `idx_created` (`created_at`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
             CREATE TABLE IF NOT EXISTS `error_logs` (
@@ -211,6 +228,9 @@ function auto_ensure_all_schema_tables($pdo)
         if (!in_array('currency', $offCols, true)) {
             try { $pdo->exec("ALTER TABLE `offers` ADD COLUMN `currency` VARCHAR(10) NOT NULL DEFAULT 'USD' AFTER `revenue`"); } catch (Exception $e) {}
         }
+        if (!in_array('cap_type', $offCols, true)) {
+            try { $pdo->exec("ALTER TABLE `offers` ADD COLUMN `cap_type` VARCHAR(20) NOT NULL DEFAULT 'conversions' AFTER `daily_cap`"); } catch (Exception $e) {}
+        }
 
         // 5. Ensure Columns in `affiliate_offer_approval`
         $aoaCols = $pdo->query("SHOW COLUMNS FROM `affiliate_offer_approval`")->fetchAll(PDO::FETCH_COLUMN);
@@ -223,6 +243,9 @@ function auto_ensure_all_schema_tables($pdo)
         if (!in_array('daily_cap', $aoaCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `daily_cap` INT DEFAULT NULL AFTER `custom_payout`"); } catch (Exception $e) {}
         }
+        if (!in_array('cap_type', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `cap_type` VARCHAR(20) NOT NULL DEFAULT 'conversions' AFTER `daily_cap`"); } catch (Exception $e) {}
+        }
         if (!in_array('notes', $aoaCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `notes` TEXT DEFAULT NULL"); } catch (Exception $e) {}
         }
@@ -234,6 +257,12 @@ function auto_ensure_all_schema_tables($pdo)
         }
         if (!in_array('created_by', $aoaCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `created_by` VARCHAR(100) DEFAULT NULL AFTER `notes`"); } catch (Exception $e) {}
+        }
+
+        // 6. Ensure Columns in `postback_logs`
+        $pblCols = $pdo->query("SHOW COLUMNS FROM `postback_logs`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('raw_request', $pblCols, true)) {
+            try { $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `raw_request` TEXT DEFAULT NULL AFTER `status`"); } catch (Exception $e) {}
         }
 
         // 6. Ensure Columns in `affiliate_postbacks`

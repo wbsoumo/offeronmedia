@@ -67,7 +67,7 @@ $sub5 = $incomingParams['sub5'] ?? $incomingParams['aff_sub5'] ?? $incomingParam
    3. Fetch & validate offer
 -------------------------------------------------- */
 $offerStmt = $pdo->prepare("
-    SELECT offer_id, offer_url, status, daily_cap, visibility
+    SELECT offer_id, offer_url, status, daily_cap, cap_type, visibility
     FROM offers
     WHERE offer_id = :oid
     LIMIT 1
@@ -93,7 +93,7 @@ if (empty($offer['offer_url'])) {
    4. Check affiliate offer permission / approval status & custom cap
 -------------------------------------------------- */
 $approvalStmt = $pdo->prepare("
-    SELECT status, daily_cap
+    SELECT status, daily_cap, cap_type
     FROM affiliate_offer_approval
     WHERE affiliate_id = :aff
       AND offer_id = :oid
@@ -108,6 +108,7 @@ $approvalStatus = strtolower((string)($approvalRow['status'] ?? ''));
 $pubDailyCap    = (isset($approvalRow['daily_cap']) && $approvalRow['daily_cap'] !== null && $approvalRow['daily_cap'] !== '') 
                 ? (int)$approvalRow['daily_cap'] 
                 : null;
+$pubCapType     = strtolower((string)($approvalRow['cap_type'] ?? 'conversions'));
 
 // 1. If explicitly rejected, blocked, or suspended for this offer, deny immediately regardless of visibility
 if (in_array($approvalStatus, ['rejected', 'blocked', 'suspended'], true)) {
@@ -124,38 +125,70 @@ if ($visibility !== 'public' && $approvalStatus !== 'approved') {
 
 /* -------------------------------------------------
    5. Daily cap check (Global offer cap + Individual publisher cap)
+      Supports rules based on:
+      - 'conversions' (Default: approved leads / conversions)
+      - 'clicks'      (Traffic volume limit)
 -------------------------------------------------- */
 // 5.1 Global offer daily cap
 if (!empty($offer['daily_cap']) && (int)$offer['daily_cap'] > 0) {
-    $capStmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM conversions
-        WHERE offer_id = :oid
-          AND status = 'approved'
-          AND DATE(created_at) = CURDATE()
-    ");
-    $capStmt->execute(['oid' => $offerId]);
-
-    if ((int)$capStmt->fetchColumn() >= (int)$offer['daily_cap']) {
-        exit('DAILY_CAP_REACHED');
+    $offerCapType = strtolower((string)($offer['cap_type'] ?? 'conversions'));
+    
+    if ($offerCapType === 'clicks') {
+        $capStmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM clicks
+            WHERE offer_id = :oid
+              AND DATE(created_at) = CURDATE()
+        ");
+        $capStmt->execute(['oid' => $offerId]);
+        if ((int)$capStmt->fetchColumn() >= (int)$offer['daily_cap']) {
+            http_response_code(429);
+            exit('OFFER_DAILY_CLICK_CAP_REACHED: Daily click cap reached for this campaign.');
+        }
+    } else {
+        $capStmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM conversions
+            WHERE offer_id = :oid
+              AND status = 'approved'
+              AND DATE(created_at) = CURDATE()
+        ");
+        $capStmt->execute(['oid' => $offerId]);
+        if ((int)$capStmt->fetchColumn() >= (int)$offer['daily_cap']) {
+            exit('DAILY_CAP_REACHED');
+        }
     }
 }
 
-// 5.2 Individual publisher custom daily cap (Offer18 Feature)
+// 5.2 Individual publisher custom daily cap (Offer18 Feature: Clicks vs Conversions)
 if ($pubDailyCap !== null && $pubDailyCap > 0) {
-    $pubCapStmt = $pdo->prepare("
-        SELECT COUNT(*)
-        FROM conversions
-        WHERE offer_id = :oid
-          AND affiliate_id = :aff
-          AND status = 'approved'
-          AND DATE(created_at) = CURDATE()
-    ");
-    $pubCapStmt->execute(['oid' => $offerId, 'aff' => $affiliateId]);
-
-    if ((int)$pubCapStmt->fetchColumn() >= $pubDailyCap) {
-        http_response_code(403);
-        exit('PUBLISHER_DAILY_CAP_REACHED: Your individual daily conversion limit for this campaign has been reached.');
+    if ($pubCapType === 'clicks') {
+        $pubCapStmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM clicks
+            WHERE offer_id = :oid
+              AND affiliate_id = :aff
+              AND DATE(created_at) = CURDATE()
+        ");
+        $pubCapStmt->execute(['oid' => $offerId, 'aff' => $affiliateId]);
+        if ((int)$pubCapStmt->fetchColumn() >= $pubDailyCap) {
+            http_response_code(403);
+            exit('PUBLISHER_DAILY_CLICK_CAP_REACHED: Your individual daily click limit for this campaign has been reached.');
+        }
+    } else {
+        $pubCapStmt = $pdo->prepare("
+            SELECT COUNT(*)
+            FROM conversions
+            WHERE offer_id = :oid
+              AND affiliate_id = :aff
+              AND status = 'approved'
+              AND DATE(created_at) = CURDATE()
+        ");
+        $pubCapStmt->execute(['oid' => $offerId, 'aff' => $affiliateId]);
+        if ((int)$pubCapStmt->fetchColumn() >= $pubDailyCap) {
+            http_response_code(403);
+            exit('PUBLISHER_DAILY_CAP_REACHED: Your individual daily conversion limit for this campaign has been reached.');
+        }
     }
 }
 

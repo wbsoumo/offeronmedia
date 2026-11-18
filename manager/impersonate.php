@@ -70,3 +70,4 @@ session_write_close();
 
 header('Location: /affiliate/dashboard.php');
 exit;
+

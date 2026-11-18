@@ -19,7 +19,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     $action = $_GET['action'];
     
     if ($action === 'restore') {
-        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ? AND status = 'archived'");
+        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ? AND LOWER(TRIM(status)) = 'archived'");
         $stmt->execute([$offerId]);
         if ($stmt->rowCount() > 0) {
             admin_log_action('offer_restore', 'offer', $offerId, 'Campaign restored from archive to paused status');
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
         $error = 'Please select at least one campaign';
     } elseif ($action === 'restore') {
         $placeholders = implode(',', array_fill(0, count($selectedOffers), '?'));
-        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders) AND status = 'archived'");
+        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders) AND LOWER(TRIM(status)) = 'archived'");
         $stmt->execute($selectedOffers);
         $count = $stmt->rowCount();
         admin_log_action('offers_bulk_restore', 'offers', null, "Restored $count campaigns to paused");
@@ -53,7 +53,7 @@ $search = trim($_GET['search'] ?? '');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 20;
 
-$where = ["o.status = 'archived'"];
+$where = ["(LOWER(TRIM(o.status)) = 'archived' OR o.status = 'archived')"];
 $params = [];
 
 if ($search !== '') {
@@ -78,7 +78,7 @@ $totalOffers = (int)$countStmt->fetchColumn();
 $totalPages = max(1, ceil($totalOffers / $perPage));
 $offset = ($page - 1) * $perPage;
 
-// Fetch records with historical stats
+// Fetch records with historical stats (Derived tables prevent ONLY_FULL_GROUP_BY issues and Cartesian explosion)
 $stmt = $pdo->prepare("
     SELECT 
         o.offer_id,
@@ -92,19 +92,31 @@ $stmt = $pdo->prepare("
         o.category,
         o.created_at,
         o.updated_at,
-        u.name AS advertiser_name,
-        u.email AS advertiser_email,
-        COUNT(DISTINCT c.click_id) AS total_clicks,
-        COUNT(DISTINCT cv.conversion_id) AS total_conversions,
-        SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS approved_conversions,
-        IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS earned_revenue,
-        IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS paid_payout
+        IFNULL(u.name, 'No Advertiser') AS advertiser_name,
+        IFNULL(u.email, '') AS advertiser_email,
+        IFNULL(c.total_clicks, 0) AS total_clicks,
+        IFNULL(cv.total_conversions, 0) AS total_conversions,
+        IFNULL(cv.approved_conversions, 0) AS approved_conversions,
+        IFNULL(cv.earned_revenue, 0) AS earned_revenue,
+        IFNULL(cv.paid_payout, 0) AS paid_payout
     FROM offers o
     LEFT JOIN users u ON u.user_id = o.advertiser_id
-    LEFT JOIN clicks c ON c.offer_id = o.offer_id
-    LEFT JOIN conversions cv ON cv.offer_id = o.offer_id
+    LEFT JOIN (
+        SELECT offer_id, COUNT(*) AS total_clicks 
+        FROM clicks 
+        GROUP BY offer_id
+    ) c ON c.offer_id = o.offer_id
+    LEFT JOIN (
+        SELECT 
+            offer_id,
+            COUNT(*) AS total_conversions,
+            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_conversions,
+            IFNULL(SUM(CASE WHEN status = 'approved' THEN revenue ELSE 0 END), 0) AS earned_revenue,
+            IFNULL(SUM(CASE WHEN status = 'approved' THEN payout ELSE 0 END), 0) AS paid_payout
+        FROM conversions
+        GROUP BY offer_id
+    ) cv ON cv.offer_id = o.offer_id
     $whereSql
-    GROUP BY o.offer_id
     ORDER BY o.updated_at DESC
     LIMIT :offset, :per_page
 ");
@@ -121,10 +133,10 @@ $archivedOffers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $statsStmt = $pdo->query("
     SELECT 
         COUNT(*) as total_archived,
-        (SELECT COUNT(*) FROM clicks c JOIN offers o ON o.offer_id = c.offer_id WHERE o.status = 'archived') as archived_clicks,
-        (SELECT COUNT(*) FROM conversions cv JOIN offers o ON o.offer_id = cv.offer_id WHERE o.status = 'archived') as archived_conversions
+        IFNULL((SELECT COUNT(*) FROM clicks c JOIN offers o ON o.offer_id = c.offer_id WHERE LOWER(TRIM(o.status)) = 'archived'), 0) as archived_clicks,
+        IFNULL((SELECT COUNT(*) FROM conversions cv JOIN offers o ON o.offer_id = cv.offer_id WHERE LOWER(TRIM(o.status)) = 'archived'), 0) as archived_conversions
     FROM offers 
-    WHERE status = 'archived'
+    WHERE LOWER(TRIM(status)) = 'archived'
 ");
 $archiveStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 ?>

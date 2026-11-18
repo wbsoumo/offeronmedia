@@ -188,8 +188,14 @@ try {
                     <li class="nav-item">
                         <a href="campaigns.php" class="nav-link">
                             <i class="nav-icon fas fa-bullhorn"></i>
+                            <p>Campaigns</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="campaign_access.php" class="nav-link">
+                            <i class="nav-icon fas fa-key"></i>
                             <p>
-                                Campaigns
+                                Offer Approvals
                                 <?php if ($pendingOfferCount > 0): ?>
                                     <span class="badge badge-warning right font-weight-bold"><?php echo $pendingOfferCount; ?></span>
                                 <?php endif; ?>
@@ -199,6 +205,7 @@ try {
                     <?php if (manager_can('affiliate_reports') || manager_can('advertiser_reports') || manager_can('all_reports')): ?>
                     <li class="nav-item"><a href="reports.php" class="nav-link"><i class="nav-icon fas fa-chart-bar"></i><p>Performance Reports</p></a></li>
                     <?php endif; ?>
+                    <li class="nav-item"><a href="reports_postbacks.php" class="nav-link"><i class="nav-icon fas fa-exchange-alt"></i><p>Postback Logs</p></a></li>
                     <?php if (manager_can('link_tester')): ?>
                     <li class="nav-item"><a href="link_tester.php" class="nav-link"><i class="nav-icon fas fa-vial"></i><p>Link Tester</p></a></li>
                     <?php endif; ?>

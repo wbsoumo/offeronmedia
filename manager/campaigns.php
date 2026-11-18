@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_offer'])) {
         $publisherIds = $_POST['publisher_ids'] ?? [];
         $customPayout = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
         $dailyCap     = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
+        $capType      = in_array($_POST['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $_POST['cap_type'] : 'conversions';
         $notes        = trim($_POST['notes'] ?? '');
 
         if ($offerId <= 0 || empty($publisherIds)) {
@@ -56,22 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_offer'])) {
                         continue;
                     }
 
-                    // Insert or update approval with custom payout and daily cap
+                    // Insert or update approval with custom payout, daily cap, and cap type
                     $chk = $pdo->prepare("SELECT id FROM affiliate_offer_approval WHERE affiliate_id = ? AND offer_id = ? LIMIT 1");
                     $chk->execute([$pubId, $offerId]);
                     $existing = $chk->fetch(PDO::FETCH_ASSOC);
 
                     if ($existing) {
-                        $upd = $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved', custom_payout = ?, daily_cap = ?, notes = ?, approved_at = NOW() WHERE id = ?");
-                        $upd->execute([$customPayout, $dailyCap, $notes, $existing['id']]);
+                        $upd = $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved', custom_payout = ?, daily_cap = ?, cap_type = ?, notes = ?, approved_at = NOW() WHERE id = ?");
+                        $upd->execute([$customPayout, $dailyCap, $capType, $notes, $existing['id']]);
                     } else {
                         $ins = $pdo->prepare("
                             INSERT INTO affiliate_offer_approval 
-                                (affiliate_id, offer_id, status, custom_payout, daily_cap, notes, created_by, approved_at)
+                                (affiliate_id, offer_id, status, custom_payout, daily_cap, cap_type, notes, created_by, approved_at)
                             VALUES 
-                                (?, ?, 'approved', ?, ?, ?, ?, NOW())
+                                (?, ?, 'approved', ?, ?, ?, ?, ?, NOW())
                         ");
-                        $ins->execute([$pubId, $offerId, $customPayout, $dailyCap, $notes, $managerName]);
+                        $ins->execute([$pubId, $offerId, $customPayout, $dailyCap, $capType, $notes, $managerName]);
                     }
                     $assignedCount++;
                 }
@@ -88,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_access_status'
     $newStatus    = $_POST['status'] ?? '';
     $customPayout = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
     $dailyCap     = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
+    $capType      = in_array($_POST['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $_POST['cap_type'] : 'conversions';
 
     if ($approvalId > 0 && in_array($newStatus, ['approved', 'rejected'], true)) {
         // Validate that this approval record belongs to a publisher assigned to this manager
@@ -114,6 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_access_status'
                 $updSets[] = "daily_cap = ?";
                 $updParams[] = $dailyCap;
             }
+            $updSets[] = "cap_type = ?";
+            $updParams[] = $capType;
 
             $updParams[] = $approvalId;
             $updStmt = $pdo->prepare("UPDATE affiliate_offer_approval SET " . implode(', ', $updSets) . " WHERE id = ?");
@@ -264,8 +268,14 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                     <li class="nav-item">
                         <a href="campaigns.php" class="nav-link active">
                             <i class="nav-icon fas fa-bullhorn"></i>
+                            <p>Campaigns</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="campaign_access.php" class="nav-link">
+                            <i class="nav-icon fas fa-key"></i>
                             <p>
-                                Campaigns
+                                Offer Approvals
                                 <?php if (!empty($pendingOfferRequests)): ?>
                                     <span class="badge badge-warning right font-weight-bold"><?php echo count($pendingOfferRequests); ?></span>
                                 <?php endif; ?>
@@ -275,6 +285,7 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                     <?php if (manager_can('affiliate_reports') || manager_can('advertiser_reports') || manager_can('all_reports')): ?>
                     <li class="nav-item"><a href="reports.php" class="nav-link"><i class="nav-icon fas fa-chart-bar"></i><p>Performance Reports</p></a></li>
                     <?php endif; ?>
+                    <li class="nav-item"><a href="reports_postbacks.php" class="nav-link"><i class="nav-icon fas fa-exchange-alt"></i><p>Postback Logs</p></a></li>
                     <?php if (manager_can('link_tester')): ?>
                     <li class="nav-item"><a href="link_tester.php" class="nav-link"><i class="nav-icon fas fa-vial"></i><p>Link Tester</p></a></li>
                     <?php endif; ?>
@@ -640,18 +651,50 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="form-group mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <label class="font-weight-bold mb-0">Select Publisher(s) <span class="text-danger">*</span></label>
-                                    <button type="button" class="btn btn-xs btn-link text-primary p-0" onclick="toggleSelectAllPublishers()">Select All</button>
+                                    <div>
+                                        <button type="button" class="btn btn-xs btn-outline-primary mr-1" id="btnSelectAllPubs">Select All</button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary" id="btnClearAllPubs">Clear Selection</button>
+                                    </div>
                                 </div>
-                                <div class="pub-checkbox-list">
+                                
+                                <!-- Live Search Bar -->
+                                <div class="mb-2">
+                                    <div class="input-group input-group-sm">
+                                        <div class="input-group-prepend"><span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span></div>
+                                        <input type="text" id="pubSearchInput" class="form-control" placeholder="Search by name, ID, email, or company...">
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-outline-secondary" id="btnClearPubSearch" title="Clear search"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Scrollable Publisher Checkbox List -->
+                                <div class="pub-checkbox-list border rounded p-2" style="max-height: 200px; overflow-y: auto; background: #ffffff;">
                                     <?php foreach ($myPublishers as $pub): ?>
-                                    <div class="custom-control custom-checkbox mb-2">
-                                        <input type="checkbox" name="publisher_ids[]" value="<?php echo $pub['user_id']; ?>" class="custom-control-input pub-checkbox" id="pub_<?php echo $pub['user_id']; ?>">
-                                        <label class="custom-control-label font-weight-normal text-dark" for="pub_<?php echo $pub['user_id']; ?>">
+                                    <div class="custom-control custom-checkbox mb-2 pub-item-wrapper" 
+                                         data-id="<?php echo $pub['user_id']; ?>" 
+                                         data-name="<?php echo htmlspecialchars($pub['name'], ENT_QUOTES); ?>"
+                                         data-search="<?php echo strtolower(htmlspecialchars($pub['user_id'] . ' ' . $pub['name'] . ' ' . $pub['email'] . ' ' . ($pub['company'] ?? ''))); ?>">
+                                        <input type="checkbox" name="publisher_ids[]" value="<?php echo $pub['user_id']; ?>" 
+                                               class="custom-control-input pub-checkbox" id="pub_<?php echo $pub['user_id']; ?>"
+                                               data-id="<?php echo $pub['user_id']; ?>"
+                                               data-name="<?php echo htmlspecialchars($pub['name'], ENT_QUOTES); ?>">
+                                        <label class="custom-control-label font-weight-normal text-dark cursor-pointer" for="pub_<?php echo $pub['user_id']; ?>" style="cursor: pointer;">
                                             <strong>#<?php echo $pub['user_id']; ?> - <?php echo htmlspecialchars($pub['name']); ?></strong>
                                             <small class="text-muted d-block"><?php echo htmlspecialchars($pub['email']); ?> <?php echo $pub['company'] ? '('.htmlspecialchars($pub['company']).')' : ''; ?></small>
                                         </label>
                                     </div>
                                     <?php endforeach; ?>
+                                </div>
+
+                                <!-- Selected Publishers Tags Container -->
+                                <div class="mt-2 p-2 bg-light rounded border">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted font-weight-bold text-uppercase">Selected Publishers (<span id="selectedPubCount">0</span>):</small>
+                                    </div>
+                                    <div id="selectedPublishersContainer" class="d-flex flex-wrap" style="gap: 5px; min-height: 28px;">
+                                        <span class="text-muted small font-italic" id="noPubsSelectedMsg">No publishers selected yet.</span>
+                                    </div>
                                 </div>
                                 <small class="text-muted">The selected publisher(s) will instantly see this campaign in their offer list.</small>
                             </div>
@@ -659,19 +702,24 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                             <div class="form-group mb-3">
                                 <label class="font-weight-bold">Custom Payout Override (Optional)</label>
                                 <div class="input-group">
-                                    <div class="input-group-prepend"><span class="input-group-text">$</span></div>
-                                    <input type="number" step="0.01" min="0" name="custom_payout" id="modalCustomPayout" class="form-control" placeholder="Leave empty for default payout">
+                                    <div class="input-group-prepend"><span class="input-group-text font-weight-bold">$</span></div>
+                                    <input type="number" step="0.01" min="0" name="custom_payout" id="modalCustomPayout" class="form-control font-weight-bold" placeholder="Leave empty for default payout">
                                 </div>
                                 <small class="text-muted">Overrides the default offer payout for the selected publishers.</small>
                             </div>
 
                             <div class="form-group mb-3">
-                                <label class="font-weight-bold">Publisher Daily Cap (Optional)</label>
+                                <label class="font-weight-bold">Publisher Daily Cap & Rule (Optional)</label>
                                 <div class="input-group">
                                     <input type="number" step="1" min="1" name="daily_cap" id="modalDailyCap" class="form-control" placeholder="Leave empty for unlimited">
-                                    <div class="input-group-append"><span class="input-group-text">leads / day</span></div>
+                                    <div class="input-group-append">
+                                        <select name="cap_type" id="modalCapType" class="custom-select" style="max-width: 180px; font-weight: 600;">
+                                            <option value="conversions">Conversions / Leads</option>
+                                            <option value="clicks">Clicks / Traffic</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <small class="text-muted">Maximum approved conversions per day for this publisher (Offer18 cap feature).</small>
+                                <small class="text-muted">Choose whether daily limit applies to <strong>Conversions</strong> or <strong>Clicks</strong> (Offer18 Rule).</small>
                             </div>
 
                             <div class="form-group mb-0">
@@ -737,12 +785,79 @@ function openAssignModal(offerId, offerName, visibility, defaultPayout) {
         }
     }
 
-    // Uncheck all checkboxes by default
-    var cbs = document.querySelectorAll('.pub-checkbox');
-    cbs.forEach(function(cb) { cb.checked = false; });
+    // Uncheck all checkboxes and reset tags
+    $('.pub-checkbox').prop('checked', false);
+    $('#pubSearchInput').val('');
+    $('.pub-item-wrapper').show();
+    updateSelectedPublishersTags();
 
     $('#assignOfferModal').modal('show');
 }
+
+// Live search for publishers
+$('#pubSearchInput').on('input', function() {
+    var term = $(this).val().toLowerCase().trim();
+    $('.pub-item-wrapper').each(function() {
+        var searchTxt = $(this).data('search') || '';
+        if (term === '' || searchTxt.indexOf(term) !== -1) {
+            $(this).show();
+        } else {
+            $(this).hide();
+        }
+    });
+});
+
+$('#btnClearPubSearch').on('click', function() {
+    $('#pubSearchInput').val('').trigger('input');
+});
+
+// Update dynamic tag chips when checkboxes change
+function updateSelectedPublishersTags() {
+    var container = $('#selectedPublishersContainer');
+    var checkedBoxes = $('.pub-checkbox:checked');
+    var count = checkedBoxes.length;
+
+    $('#selectedPubCount').text(count);
+
+    if (count === 0) {
+        container.html('<span class="text-muted small font-italic" id="noPubsSelectedMsg">No publishers selected yet.</span>');
+        return;
+    }
+
+    var html = '';
+    checkedBoxes.each(function() {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        html += '<span class="badge badge-primary p-2 d-inline-flex align-items-center" style="font-size: 12px; border-radius: 6px;">' +
+                '#' + id + ' - ' + $('<div>').text(name).html() +
+                '<button type="button" class="btn btn-xs text-white p-0 ml-2 btn-remove-tag" data-id="' + id + '" style="background:none; border:none; font-weight:bold; font-size:14px; line-height:1;">&times;</button>' +
+                '</span>';
+    });
+    container.html(html);
+}
+
+$(document).on('change', '.pub-checkbox', function() {
+    updateSelectedPublishersTags();
+});
+
+// Remove publisher tag on click of 'x'
+$(document).on('click', '.btn-remove-tag', function(e) {
+    e.preventDefault();
+    var id = $(this).data('id');
+    $('#pub_' + id).prop('checked', false).trigger('change');
+});
+
+// Select all visible publishers
+$('#btnSelectAllPubs').on('click', function() {
+    $('.pub-item-wrapper:visible .pub-checkbox').prop('checked', true);
+    updateSelectedPublishersTags();
+});
+
+// Clear all selected publishers
+$('#btnClearAllPubs').on('click', function() {
+    $('.pub-checkbox').prop('checked', false);
+    updateSelectedPublishersTags();
+});
 
 $(document).on('click', '.btn-open-assign', function(e) {
     e.preventDefault();

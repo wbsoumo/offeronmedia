@@ -27,6 +27,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $payoutType    = $_POST['payout_type'] ?? 'default';
         $customPayout  = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
         $dailyCap      = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
+        $capType       = in_array($_POST['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $_POST['cap_type'] : 'conversions';
         $notes         = trim($_POST['notes'] ?? '');
 
         if (empty($publisherIds) || !$offerId) {
@@ -70,6 +71,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                             $updFields[] = "daily_cap = :daily_cap";
                             $updParams[':daily_cap'] = $dailyCap;
                         }
+                        if (in_array('cap_type', $aoaCols, true)) {
+                            $updFields[] = "cap_type = :cap_type";
+                            $updParams[':cap_type'] = $capType;
+                        }
                         if ($notes !== '' && in_array('notes', $aoaCols, true)) {
                             $updFields[] = "notes = :notes";
                             $updParams[':notes'] = $notes;
@@ -102,6 +107,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                             $insCols[] = 'daily_cap';
                             $insVals[] = ':daily_cap';
                             $insParams[':daily_cap'] = $dailyCap;
+                        }
+                        if (in_array('cap_type', $aoaCols, true)) {
+                            $insCols[] = 'cap_type';
+                            $insVals[] = ':cap_type';
+                            $insParams[':cap_type'] = $capType;
                         }
                         if (in_array('notes', $aoaCols, true)) {
                             $insCols[] = 'notes';
@@ -197,6 +207,8 @@ $sql = "
         aoa.status,
         {$payoutTypeCol},
         aoa.custom_payout,
+        aoa.daily_cap,
+        aoa.cap_type,
         aoa.notes,
         aoa.created_at,
         u.user_id as affiliate_id,
@@ -467,25 +479,41 @@ foreach ($assignments as $as) {
                 <!-- Grant New Access Card -->
                 <div class="card card-custom p-4">
                     <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-key mr-2"></i>Grant Private Offer Access & Generate Tracking Links</h4>
-                    <form method="post">
+                    <form method="post" id="adminGrantAccessForm">
                         <input type="hidden" name="assign_offer" value="1">
                         <div class="row">
-                            <div class="col-md-5">
+                            <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label class="font-weight-bold">Select Publisher(s) <span class="text-danger">*</span> <small class="text-muted">(Multiple Selection Enabled)</small></label>
-                                    <select name="affiliate_ids[]" class="form-control select2" multiple="multiple" data-placeholder="Choose Publisher(s)..." required>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="font-weight-bold mb-0">Select Publisher(s) <span class="text-danger">*</span></label>
+                                        <div>
+                                            <button type="button" class="btn btn-xs btn-outline-primary" id="btnAdminSelectAllPubs">Select All</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary ml-1" id="btnAdminClearAllPubs">Clear</button>
+                                        </div>
+                                    </div>
+                                    <select name="affiliate_ids[]" id="adminPublisherSelect" class="form-control select2" multiple="multiple" data-placeholder="Search and choose publisher(s)..." required>
                                         <?php foreach ($affiliates as $aff): ?>
-                                        <option value="<?php echo $aff['user_id']; ?>">
-                                            <?php echo htmlspecialchars($aff['name']); ?> (<?php echo htmlspecialchars($aff['email']); ?><?php if ($aff['company']) echo ' • ' . htmlspecialchars($aff['company']); ?>)
+                                        <option value="<?php echo $aff['user_id']; ?>" data-name="<?php echo htmlspecialchars($aff['name'], ENT_QUOTES); ?>">
+                                            #<?php echo $aff['user_id']; ?> - <?php echo htmlspecialchars($aff['name']); ?> (<?php echo htmlspecialchars($aff['email']); ?><?php if ($aff['company']) echo ' • ' . htmlspecialchars($aff['company']); ?>)
                                         </option>
                                         <?php endforeach; ?>
                                     </select>
+                                    
+                                    <!-- Selected Publisher Chips Container -->
+                                    <div class="mt-2 p-2 bg-light rounded border">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="text-muted font-weight-bold text-uppercase">Selected Publishers (<span id="adminPubCount">0</span>):</small>
+                                        </div>
+                                        <div id="adminSelectedPubsContainer" class="d-flex flex-wrap" style="gap: 5px; min-height: 28px;">
+                                            <span class="text-muted small font-italic" id="noAdminPubsMsg">No publishers selected yet.</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-5">
+                            <div class="col-md-6">
                                 <div class="form-group mb-3">
                                     <label class="font-weight-bold">Select Campaign Offer <span class="text-danger">*</span></label>
-                                    <select name="offer_id" class="form-control select2" data-placeholder="Choose Campaign Offer..." required>
+                                    <select name="offer_id" id="adminOfferSelect" class="form-control select2" data-placeholder="Choose Campaign Offer..." required>
                                         <option value=""></option>
                                         <?php 
                                             $preOfferId = (int)($_GET['offer_id'] ?? 0);
@@ -497,10 +525,40 @@ foreach ($assignments as $as) {
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end mb-3">
-                                <button type="submit" class="btn btn-success btn-block font-weight-bold shadow-sm" style="height: 46px; border-radius: 8px; font-size: 14px; white-space: nowrap;">
-                                    <i class="fas fa-check-circle mr-1"></i> Grant & Generate
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="font-weight-bold">Custom Payout Override</label>
+                                            <div class="input-group">
+                                                <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                                                <input type="number" step="0.01" min="0" name="custom_payout" class="form-control" placeholder="Default Payout">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-3">
+                                            <label class="font-weight-bold">Daily Cap & Rule</label>
+                                            <div class="input-group">
+                                                <input type="number" step="1" min="1" name="daily_cap" class="form-control" placeholder="Unlimited">
+                                                <div class="input-group-append">
+                                                    <select name="cap_type" class="custom-select" style="max-width: 140px; font-weight: 600;">
+                                                        <option value="conversions">Leads / Day</option>
+                                                        <option value="clicks">Clicks / Day</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Admin Note (Optional)</label>
+                                    <input type="text" name="notes" class="form-control" placeholder="e.g. VIP deal, high volume approval">
+                                </div>
+
+                                <button type="submit" class="btn btn-success btn-block font-weight-bold shadow-sm" style="height: 44px; border-radius: 8px; font-size: 15px;">
+                                    <i class="fas fa-check-circle mr-1"></i> Grant Access & Generate Links
                                 </button>
                             </div>
                         </div>
@@ -519,6 +577,7 @@ foreach ($assignments as $as) {
                                     <th>Publisher</th>
                                     <th>Campaign Offer</th>
                                     <th>Payout Rate</th>
+                                    <th>Daily Cap Rule</th>
                                     <th>Tracking Link</th>
                                     <th>Status</th>
                                     <th>Actions</th>
@@ -545,6 +604,17 @@ foreach ($assignments as $as) {
                                     </td>
                                     <td>
                                         <strong class="text-success"><?php echo format_currency($as['custom_payout'] ?? $as['original_payout'], $as['currency']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($as['daily_cap']) && (int)$as['daily_cap'] > 0): ?>
+                                            <?php if (($as['cap_type'] ?? '') === 'clicks'): ?>
+                                                <span class="badge badge-info p-2"><i class="fas fa-mouse-pointer mr-1"></i><?php echo number_format($as['daily_cap']); ?> clicks/day</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-primary p-2"><i class="fas fa-bullseye mr-1"></i><?php echo number_format($as['daily_cap']); ?> leads/day</span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge badge-light border text-muted">Unlimited</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <div class="input-group input-group-sm" style="min-width: 240px;">
@@ -615,6 +685,52 @@ $(document).ready(function() {
         theme: 'bootstrap4',
         width: '100%',
         allowClear: true
+    });
+
+    // Dynamic Publisher Chips sync
+    function updateAdminPublisherChips() {
+        var selectedData = $('#adminPublisherSelect').select2('data') || [];
+        var count = selectedData.length;
+        $('#adminPubCount').text(count);
+
+        var container = $('#adminSelectedPubsContainer');
+        if (count === 0) {
+            container.html('<span class="text-muted small font-italic" id="noAdminPubsMsg">No publishers selected yet.</span>');
+            return;
+        }
+
+        var html = '';
+        selectedData.forEach(function(item) {
+            html += '<span class="badge badge-primary p-2 d-inline-flex align-items-center" style="font-size: 12px; border-radius: 6px;">' +
+                    $('<div>').text(item.text).html() +
+                    '<button type="button" class="btn btn-xs text-white p-0 ml-2 btn-remove-admin-tag" data-id="' + item.id + '" style="background:none; border:none; font-weight:bold; font-size:14px; line-height:1;">&times;</button>' +
+                    '</span>';
+        });
+        container.html(html);
+    }
+
+    $('#adminPublisherSelect').on('change', function() {
+        updateAdminPublisherChips();
+    });
+
+    $(document).on('click', '.btn-remove-admin-tag', function(e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        var currentVals = $('#adminPublisherSelect').val() || [];
+        var newVals = currentVals.filter(function(v) { return String(v) !== String(id); });
+        $('#adminPublisherSelect').val(newVals).trigger('change');
+    });
+
+    $('#btnAdminSelectAllPubs').on('click', function() {
+        var allIds = [];
+        $('#adminPublisherSelect option').each(function() {
+            if ($(this).val()) allIds.push($(this).val());
+        });
+        $('#adminPublisherSelect').val(allIds).trigger('change');
+    });
+
+    $('#btnAdminClearAllPubs').on('click', function() {
+        $('#adminPublisherSelect').val([]).trigger('change');
     });
 
     $('#accessDataTable').DataTable({

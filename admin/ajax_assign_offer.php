@@ -69,6 +69,7 @@ $offerId = isset($input['offer_id']) ? (int)$input['offer_id'] : 0;
 $publisherId = isset($input['publisher_id']) ? (int)$input['publisher_id'] : 0;
 $customPayout = isset($input['custom_payout']) && $input['custom_payout'] !== '' ? (float)$input['custom_payout'] : null;
 $dailyCap     = isset($input['daily_cap']) && $input['daily_cap'] !== '' ? (int)$input['daily_cap'] : null;
+$capType      = in_array($input['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $input['cap_type'] : 'conversions';
 $sub1 = trim($input['sub1'] ?? '');
 $sub2 = trim($input['sub2'] ?? '');
 $sub3 = trim($input['sub3'] ?? '');
@@ -174,6 +175,10 @@ try {
             $updSets[] = "daily_cap = :daily_cap";
             $updParams[':daily_cap'] = $dailyCap;
         }
+        if (in_array('cap_type', $appCols, true)) {
+            $updSets[] = "cap_type = :cap_type";
+            $updParams[':cap_type'] = $capType;
+        }
         if (in_array('notes', $appCols, true)) {
             $updSets[] = "notes = :notes";
             $updParams[':notes'] = $notes;
@@ -205,6 +210,12 @@ try {
             $insertCols[] = 'daily_cap';
             $insertVals[] = ':daily_cap';
             $bindParams[':daily_cap'] = $dailyCap;
+        }
+
+        if (in_array('cap_type', $appCols, true)) {
+            $insertCols[] = 'cap_type';
+            $insertVals[] = ':cap_type';
+            $bindParams[':cap_type'] = $capType;
         }
 
         if (in_array('notes', $appCols, true)) {

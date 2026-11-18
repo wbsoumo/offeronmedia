@@ -114,6 +114,12 @@ $adminUserName = $_SESSION['user_name'] ?? 'Admin';
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="reports_postbacks.php" class="nav-link <?php echo ($currentPage === 'reports_postbacks.php') ? 'active' : ''; ?>">
+                        <i class="nav-icon fas fa-exchange-alt"></i>
+                        <p>Postback Logs & Reports</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="fraud_dashboard.php" class="nav-link <?php echo ($currentPage === 'fraud_dashboard.php') ? 'active' : ''; ?>">
                         <i class="nav-icon fas fa-shield-alt"></i>
                         <p>Anti-Fraud Security</p>

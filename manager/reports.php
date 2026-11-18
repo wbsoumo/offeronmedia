@@ -12,55 +12,128 @@ $managerId   = auth_user_id();
 $managerName = $_SESSION['user_name'] ?? 'Account Manager';
 
 // Permission checks for reporting
-$canAffReports = manager_can('affiliate_reports');
+$canAffReports = manager_can('affiliate_reports') || manager_can('can_view_affiliates');
+$canCampReports = manager_can('campaign_reports') || manager_can('can_view_campaigns');
+$canClickReports = manager_can('click_reports');
 $canAdvReports = manager_can('advertiser_reports');
 $canAllReports = manager_can('all_reports');
 $canViewFinancials = manager_can('can_view_financials');
-$hasAnyReportPermission = $canAffReports || $canAdvReports || $canAllReports;
+$hasAnyReportPermission = $canAffReports || $canCampReports || $canClickReports || $canAdvReports || $canAllReports;
 
 // Determine active tab
-$defaultTab = $canAffReports ? 'affiliates' : ($canAdvReports ? 'advertisers' : ($canAllReports ? 'all' : 'none'));
+$defaultTab = 'campaigns';
 $activeTab  = $_GET['tab'] ?? $defaultTab;
-
-// Validate active tab with permissions
-if ($activeTab === 'affiliates' && !$canAffReports) $activeTab = $defaultTab;
-if ($activeTab === 'advertisers' && !$canAdvReports) $activeTab = $defaultTab;
-if ($activeTab === 'all' && !$canAllReports) $activeTab = $defaultTab;
 
 $affiliateReports = [];
 $advertiserReports = [];
 $campaignReports   = [];
 $subIdReports      = [];
+$clickReports      = [];
 
 if ($hasAnyReportPermission) {
-    // 1. Fetch Affiliate Reports
-    if ($canAffReports) {
-        $stmt = $pdo->prepare("
+    // 1. Fetch Campaign Performance Reports
+    $stmtCamp = $pdo->prepare("
+        SELECT 
+            o.offer_id,
+            o.offer_name,
+            o.category,
+            o.currency,
+            COUNT(DISTINCT c.click_id) AS clicks,
+            SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS conversions,
+            IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS total_revenue,
+            IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS total_payout
+        FROM users aff
+        INNER JOIN clicks c ON c.affiliate_id = aff.user_id
+        INNER JOIN offers o ON o.offer_id = c.offer_id
+        LEFT JOIN conversions cv ON cv.click_id = c.click_id
+        WHERE aff.role_id = 3 AND aff.account_manager_id = ?
+        GROUP BY o.offer_id
+        ORDER BY clicks DESC
+    ");
+    $stmtCamp->execute([$managerId]);
+    $campaignReports = $stmtCamp->fetchAll(PDO::FETCH_ASSOC);
+
+    // 2. Fetch Affiliate / Publisher Reports
+    $stmtAff = $pdo->prepare("
+        SELECT 
+            o.offer_id,
+            o.offer_name,
+            o.currency,
+            u.user_id AS affiliate_id,
+            u.name AS affiliate_name,
+            u.company AS affiliate_company,
+            u.status AS affiliate_status,
+            COUNT(DISTINCT c.click_id) AS clicks,
+            SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS approved_conversions,
+            IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS total_payout,
+            IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS total_revenue
+        FROM users u
+        INNER JOIN clicks c ON c.affiliate_id = u.user_id
+        INNER JOIN offers o ON o.offer_id = c.offer_id
+        LEFT JOIN conversions cv ON cv.click_id = c.click_id
+        WHERE u.role_id = 3 AND u.account_manager_id = ?
+        GROUP BY o.offer_id, u.user_id
+        ORDER BY clicks DESC
+    ");
+    $stmtAff->execute([$managerId]);
+    $affiliateReports = $stmtAff->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. Fetch Click Reports (Raw Click Logs scoped to manager)
+    if ($activeTab === 'clicks' || $canClickReports) {
+        $clicksQuery = $pdo->prepare("
             SELECT 
+                c.click_id,
+                c.created_at,
+                c.ip_address,
+                c.country,
+                c.device,
+                c.sub1, c.sub2, c.sub3, c.sub4, c.sub5,
                 o.offer_id,
                 o.offer_name,
                 o.currency,
-                u.user_id AS affiliate_id,
-                u.name AS affiliate_name,
-                u.company AS affiliate_company,
-                u.status AS affiliate_status,
-                COUNT(DISTINCT c.click_id) AS clicks,
-                SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS approved_conversions,
-                IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS total_payout,
-                IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS total_revenue
-            FROM users u
-            INNER JOIN clicks c ON c.affiliate_id = u.user_id
+                u.user_id as affiliate_id,
+                u.name as affiliate_name,
+                cv.status as conversion_status,
+                cv.payout as conversion_payout
+            FROM clicks c
+            INNER JOIN users u ON u.user_id = c.affiliate_id
             INNER JOIN offers o ON o.offer_id = c.offer_id
             LEFT JOIN conversions cv ON cv.click_id = c.click_id
             WHERE u.role_id = 3 AND u.account_manager_id = ?
-            GROUP BY o.offer_id, u.user_id
-            ORDER BY total_payout DESC
+            ORDER BY c.created_at DESC
+            LIMIT 250
         ");
-        $stmt->execute([$managerId]);
-        $affiliateReports = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $clicksQuery->execute([$managerId]);
+        $clickReports = $clicksQuery->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // 2. Fetch Advertiser Reports
+    // 4. Fetch SubID Reports (Breakdown of Sub1 through Sub5)
+    if ($activeTab === 'subid' || $canAllReports) {
+        $stmtSub = $pdo->prepare("
+            SELECT 
+                c.sub1, c.sub2, c.sub3,
+                o.offer_id,
+                o.offer_name,
+                o.currency,
+                aff.name AS affiliate_name,
+                COUNT(DISTINCT c.click_id) AS clicks,
+                SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS conversions,
+                IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS total_payout
+            FROM users aff
+            INNER JOIN clicks c ON c.affiliate_id = aff.user_id
+            INNER JOIN offers o ON o.offer_id = c.offer_id
+            LEFT JOIN conversions cv ON cv.click_id = c.click_id
+            WHERE aff.role_id = 3 AND aff.account_manager_id = ? 
+              AND ((c.sub1 IS NOT NULL AND c.sub1 != '') OR (c.sub2 IS NOT NULL AND c.sub2 != ''))
+            GROUP BY c.sub1, c.sub2, o.offer_id, aff.user_id
+            ORDER BY clicks DESC
+            LIMIT 150
+        ");
+        $stmtSub->execute([$managerId]);
+        $subIdReports = $stmtSub->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // 5. Fetch Advertiser Reports
     if ($canAdvReports) {
         $stmtAdv = $pdo->prepare("
             SELECT 
@@ -83,51 +156,6 @@ if ($hasAnyReportPermission) {
         ");
         $stmtAdv->execute([$managerId]);
         $advertiserReports = $stmtAdv->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // 3. Fetch All Reports (Campaigns & SubIDs)
-    if ($canAllReports) {
-        $stmtCamp = $pdo->prepare("
-            SELECT 
-                o.offer_id,
-                o.offer_name,
-                o.category,
-                o.currency,
-                COUNT(DISTINCT c.click_id) AS clicks,
-                SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS conversions,
-                IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.revenue ELSE 0 END), 0) AS total_revenue,
-                IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS total_payout
-            FROM users aff
-            INNER JOIN clicks c ON c.affiliate_id = aff.user_id
-            INNER JOIN offers o ON o.offer_id = c.offer_id
-            LEFT JOIN conversions cv ON cv.click_id = c.click_id
-            WHERE aff.role_id = 3 AND aff.account_manager_id = ?
-            GROUP BY o.offer_id
-            ORDER BY total_revenue DESC
-        ");
-        $stmtCamp->execute([$managerId]);
-        $campaignReports = $stmtCamp->fetchAll(PDO::FETCH_ASSOC);
-
-        $stmtSub = $pdo->prepare("
-            SELECT 
-                c.sub1,
-                o.offer_id,
-                o.offer_name,
-                aff.name AS affiliate_name,
-                COUNT(DISTINCT c.click_id) AS clicks,
-                SUM(CASE WHEN cv.status = 'approved' THEN 1 ELSE 0 END) AS conversions,
-                IFNULL(SUM(CASE WHEN cv.status = 'approved' THEN cv.payout ELSE 0 END), 0) AS total_payout
-            FROM users aff
-            INNER JOIN clicks c ON c.affiliate_id = aff.user_id
-            INNER JOIN offers o ON o.offer_id = c.offer_id
-            LEFT JOIN conversions cv ON cv.click_id = c.click_id
-            WHERE aff.role_id = 3 AND aff.account_manager_id = ? AND c.sub1 IS NOT NULL AND c.sub1 != ''
-            GROUP BY c.sub1, o.offer_id, aff.user_id
-            ORDER BY conversions DESC
-            LIMIT 100
-        ");
-        $stmtSub->execute([$managerId]);
-        $subIdReports = $stmtSub->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 ?>
@@ -176,9 +204,9 @@ if ($hasAnyReportPermission) {
                     <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard</p></a></li>
                     <li class="nav-item"><a href="publishers.php" class="nav-link"><i class="nav-icon fas fa-user-friends"></i><p>My Publishers</p></a></li>
                     <li class="nav-item"><a href="campaigns.php" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Campaigns</p></a></li>
-                    <?php if ($hasAnyReportPermission): ?>
+                    <li class="nav-item"><a href="campaign_access.php" class="nav-link"><i class="nav-icon fas fa-key"></i><p>Offer Approvals</p></a></li>
                     <li class="nav-item"><a href="reports.php" class="nav-link active"><i class="nav-icon fas fa-chart-bar"></i><p>Performance Reports</p></a></li>
-                    <?php endif; ?>
+                    <li class="nav-item"><a href="reports_postbacks.php" class="nav-link"><i class="nav-icon fas fa-exchange-alt"></i><p>Postback Logs</p></a></li>
                     <?php if (manager_can('link_tester')): ?>
                     <li class="nav-item"><a href="link_tester.php" class="nav-link"><i class="nav-icon fas fa-vial"></i><p>Link Tester</p></a></li>
                     <?php endif; ?>
@@ -193,7 +221,7 @@ if ($hasAnyReportPermission) {
         <div class="content-header">
             <div class="container-fluid">
                 <div class="row mb-2">
-                    <div class="col-sm-6"><h1 class="m-0 font-weight-bold">Performance Analytics Report</h1></div>
+                    <div class="col-sm-6"><h1 class="m-0 font-weight-bold">Performance Analytics & Reports</h1></div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
                             <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
@@ -220,14 +248,26 @@ if ($hasAnyReportPermission) {
 
                 <!-- Report Type Navigation Tabs -->
                 <ul class="nav nav-pills mb-3" id="reportTabs">
-                    <?php if ($canAffReports): ?>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $activeTab === 'affiliates' ? 'active' : ''; ?>" href="?tab=affiliates">
-                            <i class="fas fa-users mr-1"></i> Affiliate Reports
+                        <a class="nav-link <?php echo $activeTab === 'campaigns' ? 'active' : ''; ?>" href="?tab=campaigns">
+                            <i class="fas fa-bullhorn mr-1"></i> Campaign Performance
                         </a>
                     </li>
-                    <?php endif; ?>
-
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeTab === 'affiliates' ? 'active' : ''; ?>" href="?tab=affiliates">
+                            <i class="fas fa-users mr-1"></i> Publishers Report
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeTab === 'clicks' ? 'active' : ''; ?>" href="?tab=clicks">
+                            <i class="fas fa-mouse-pointer mr-1"></i> Click Reports
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeTab === 'subid' ? 'active' : ''; ?>" href="?tab=subid">
+                            <i class="fas fa-tags mr-1"></i> SubID Breakdown
+                        </a>
+                    </li>
                     <?php if ($canAdvReports): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo $activeTab === 'advertisers' ? 'active' : ''; ?>" href="?tab=advertisers">
@@ -235,18 +275,60 @@ if ($hasAnyReportPermission) {
                         </a>
                     </li>
                     <?php endif; ?>
-
-                    <?php if ($canAllReports): ?>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo $activeTab === 'all' ? 'active' : ''; ?>" href="?tab=all">
-                            <i class="fas fa-layer-group mr-1"></i> All Reports (Campaigns & SubIDs)
-                        </a>
-                    </li>
-                    <?php endif; ?>
                 </ul>
 
-                <!-- Tab 1: Affiliate Reports -->
-                <?php if ($activeTab === 'affiliates' && $canAffReports): ?>
+                <!-- Tab 1: Campaign Performance -->
+                <?php if ($activeTab === 'campaigns'): ?>
+                <div class="card card-custom p-4 mb-4">
+                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-bullhorn mr-2"></i>Campaign Performance Report</h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle reportTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Offer ID</th>
+                                    <th>Campaign Name</th>
+                                    <th>Category</th>
+                                    <th class="text-center">Clicks</th>
+                                    <th class="text-center">Conversions</th>
+                                    <th class="text-center">CR %</th>
+                                    <th class="text-center">Total Revenue</th>
+                                    <th class="text-center">Total Payout</th>
+                                    <th class="text-center">Net Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($campaignReports as $camp): 
+                                    $cr = !empty($camp['clicks']) ? round(($camp['conversions'] / $camp['clicks']) * 100, 2) : 0;
+                                    $campNet = (float)$camp['total_revenue'] - (float)$camp['total_payout'];
+                                ?>
+                                <tr>
+                                    <td><strong>#<?php echo (int)$camp['offer_id']; ?></strong></td>
+                                    <td><strong class="text-dark"><?php echo htmlspecialchars($camp['offer_name']); ?></strong></td>
+                                    <td><span class="badge badge-light border"><?php echo htmlspecialchars($camp['category'] ?: 'General'); ?></span></td>
+                                    <td class="text-center font-weight-bold"><?php echo number_format((int)$camp['clicks']); ?></td>
+                                    <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$camp['conversions']); ?></td>
+                                    <td class="text-center font-weight-bold text-muted"><?php echo $cr; ?>%</td>
+                                    <?php if ($canViewFinancials): ?>
+                                    <td class="text-center font-weight-bold text-success"><?php echo format_currency((float)$camp['total_revenue'], $camp['currency'] ?? 'USD'); ?></td>
+                                    <td class="text-center font-weight-bold text-primary"><?php echo format_currency((float)$camp['total_payout'], $camp['currency'] ?? 'USD'); ?></td>
+                                    <td class="text-center font-weight-bold text-<?php echo $campNet >= 0 ? 'success' : 'danger'; ?>">
+                                        <?php echo format_currency($campNet, $camp['currency'] ?? 'USD'); ?>
+                                    </td>
+                                    <?php else: ?>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
+                                    <?php endif; ?>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Tab 2: Affiliate Reports -->
+                <?php if ($activeTab === 'affiliates'): ?>
                 <div class="card card-custom p-4">
                     <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-chart-line mr-2"></i>Assigned Publishers Breakdown</h4>
                     <div class="table-responsive">
@@ -305,7 +387,106 @@ if ($hasAnyReportPermission) {
                 </div>
                 <?php endif; ?>
 
-                <!-- Tab 2: Advertiser Reports -->
+                <!-- Tab 3: Click Reports -->
+                <?php if ($activeTab === 'clicks'): ?>
+                <div class="card card-custom p-4">
+                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-mouse-pointer mr-2"></i>Live Click Reports (Recent Traffic)</h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle reportTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Click ID / Time</th>
+                                    <th>Publisher</th>
+                                    <th>Campaign Offer</th>
+                                    <th>Sub IDs</th>
+                                    <th>IP / Country</th>
+                                    <th>Device</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($clickReports as $cRow): ?>
+                                <tr>
+                                    <td>
+                                        <span class="badge badge-secondary px-2 py-1 font-monospace" style="font-size: 11px;"><?php echo htmlspecialchars(substr($cRow['click_id'], 0, 16)); ?>...</span>
+                                        <small class="d-block text-muted mt-1"><?php echo date('M d, H:i:s', strtotime($cRow['created_at'])); ?></small>
+                                    </td>
+                                    <td>
+                                        <strong class="text-dark">#<?php echo $cRow['affiliate_id']; ?> - <?php echo htmlspecialchars($cRow['affiliate_name']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <strong class="text-primary">#<?php echo $cRow['offer_id']; ?> - <?php echo htmlspecialchars($cRow['offer_name']); ?></strong>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($cRow['sub1'])): ?><span class="badge badge-light border mr-1">s1: <?php echo htmlspecialchars($cRow['sub1']); ?></span><?php endif; ?>
+                                        <?php if (!empty($cRow['sub2'])): ?><span class="badge badge-light border mr-1">s2: <?php echo htmlspecialchars($cRow['sub2']); ?></span><?php endif; ?>
+                                        <?php if (!empty($cRow['sub3'])): ?><span class="badge badge-light border">s3: <?php echo htmlspecialchars($cRow['sub3']); ?></span><?php endif; ?>
+                                        <?php if (empty($cRow['sub1']) && empty($cRow['sub2']) && empty($cRow['sub3'])): ?><span class="text-muted small">-</span><?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-info mr-1"><?php echo htmlspecialchars($cRow['country'] ?: 'Global'); ?></span>
+                                        <small class="text-muted"><?php echo htmlspecialchars($cRow['ip_address'] ?: '-'); ?></small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted"><?php echo htmlspecialchars($cRow['device'] ?: 'All'); ?></small>
+                                    </td>
+                                    <td>
+                                        <?php if ($cRow['conversion_status'] === 'approved'): ?>
+                                            <span class="badge badge-success p-2"><i class="fas fa-check-circle mr-1"></i>Approved (<?php echo format_currency((float)$cRow['conversion_payout'], $cRow['currency'] ?? 'USD'); ?>)</span>
+                                        <?php elseif ($cRow['conversion_status'] === 'pending'): ?>
+                                            <span class="badge badge-warning p-2"><i class="fas fa-clock mr-1"></i>Pending</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-light border text-muted">Clicked</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Tab 4: SubID Breakdown Report -->
+                <?php if ($activeTab === 'subid'): ?>
+                <div class="card card-custom p-4">
+                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-tags mr-2"></i>SubID (sub1 - sub5) Analytics Report</h4>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle reportTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Sub ID 1</th>
+                                    <th>Sub ID 2</th>
+                                    <th>Campaign Offer</th>
+                                    <th>Publisher</th>
+                                    <th class="text-center">Clicks</th>
+                                    <th class="text-center">Conversions</th>
+                                    <th class="text-center">CR %</th>
+                                    <th class="text-center">Total Payout</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($subIdReports as $sub): 
+                                    $cr = !empty($sub['clicks']) ? round(($sub['conversions'] / $sub['clicks']) * 100, 2) : 0;
+                                ?>
+                                <tr>
+                                    <td><span class="badge badge-secondary px-2 py-1" style="font-family: monospace; font-size: 13px;"><?php echo htmlspecialchars($sub['sub1'] ?: '-'); ?></span></td>
+                                    <td><span class="badge badge-light border px-2 py-1" style="font-family: monospace; font-size: 12px;"><?php echo htmlspecialchars($sub['sub2'] ?: '-'); ?></span></td>
+                                    <td>#<?php echo (int)$sub['offer_id']; ?> ~ <?php echo htmlspecialchars($sub['offer_name']); ?></td>
+                                    <td><strong class="text-dark"><?php echo htmlspecialchars($sub['affiliate_name']); ?></strong></td>
+                                    <td class="text-center font-weight-bold"><?php echo number_format((int)$sub['clicks']); ?></td>
+                                    <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$sub['conversions']); ?></td>
+                                    <td class="text-center font-weight-bold text-muted"><?php echo $cr; ?>%</td>
+                                    <td class="text-center font-weight-bold text-primary"><?php echo format_currency((float)$sub['total_payout'], $sub['currency'] ?? 'USD'); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- Tab 5: Advertiser Reports -->
                 <?php if ($activeTab === 'advertisers' && $canAdvReports): ?>
                 <div class="card card-custom p-4">
                     <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-briefcase mr-2"></i>Advertiser Performance Report</h4>
@@ -345,90 +526,6 @@ if ($hasAnyReportPermission) {
                                     <?php else: ?>
                                     <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
                                     <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
-                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
-                                    <?php endif; ?>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <?php endif; ?>
-
-                <!-- Tab 3: All Reports (Campaign Summary & SubID Breakdown) -->
-                <?php if ($activeTab === 'all' && $canAllReports): ?>
-                <div class="card card-custom p-4 mb-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-bullhorn mr-2"></i>Comprehensive Campaign Report</h4>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle reportTable">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Offer ID</th>
-                                    <th>Campaign Name</th>
-                                    <th>Category</th>
-                                    <th class="text-center">Clicks</th>
-                                    <th class="text-center">Conversions</th>
-                                    <th class="text-center">CR %</th>
-                                    <th class="text-center">Total Revenue</th>
-                                    <th class="text-center">Total Payout</th>
-                                    <th class="text-center">Net Margin</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($campaignReports as $camp): 
-                                    $cr = !empty($camp['clicks']) ? round(($camp['conversions'] / $camp['clicks']) * 100, 2) : 0;
-                                    $campNet = (float)$camp['total_revenue'] - (float)$camp['total_payout'];
-                                ?>
-                                <tr>
-                                    <td><strong>#<?php echo (int)$camp['offer_id']; ?></strong></td>
-                                    <td><strong class="text-dark"><?php echo htmlspecialchars($camp['offer_name']); ?></strong></td>
-                                    <td><span class="badge badge-light border"><?php echo htmlspecialchars($camp['category'] ?: 'General'); ?></span></td>
-                                    <td class="text-center font-weight-bold"><?php echo number_format((int)$camp['clicks']); ?></td>
-                                    <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$camp['conversions']); ?></td>
-                                    <td class="text-center font-weight-bold text-muted"><?php echo $cr; ?>%</td>
-                                    <?php if ($canViewFinancials): ?>
-                                    <td class="text-center font-weight-bold text-success"><?php echo format_currency((float)$camp['total_revenue'], $camp['currency'] ?? 'USD'); ?></td>
-                                    <td class="text-center font-weight-bold text-primary"><?php echo format_currency((float)$camp['total_payout'], $camp['currency'] ?? 'USD'); ?></td>
-                                    <td class="text-center font-weight-bold text-<?php echo $campNet >= 0 ? 'success' : 'danger'; ?>">
-                                        <?php echo format_currency($campNet, $camp['currency'] ?? 'USD'); ?>
-                                    </td>
-                                    <?php else: ?>
-                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
-                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
-                                    <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
-                                    <?php endif; ?>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="card card-custom p-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-tags mr-2"></i>Sub-Affiliate (SubID) Analytics Report</h4>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle reportTable">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>SubID (sub1 / sub_aff_id)</th>
-                                    <th>Campaign Offer</th>
-                                    <th>Publisher</th>
-                                    <th class="text-center">Clicks</th>
-                                    <th class="text-center">Conversions</th>
-                                    <th class="text-center">Payout</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($subIdReports as $sub): ?>
-                                <tr>
-                                    <td><span class="badge badge-secondary px-2 py-1" style="font-family: monospace; font-size: 13px;"><?php echo htmlspecialchars($sub['sub1']); ?></span></td>
-                                    <td>#<?php echo (int)$sub['offer_id']; ?> ~ <?php echo htmlspecialchars($sub['offer_name']); ?></td>
-                                    <td><strong class="text-dark"><?php echo htmlspecialchars($sub['affiliate_name']); ?></strong></td>
-                                    <td class="text-center font-weight-bold"><?php echo number_format((int)$sub['clicks']); ?></td>
-                                    <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$sub['conversions']); ?></td>
-                                    <?php if ($canViewFinancials): ?>
-                                    <td class="text-center font-weight-bold text-primary">$<?php echo number_format((float)$sub['total_payout'], 2); ?></td>
-                                    <?php else: ?>
                                     <td class="text-center text-muted"><span class="badge badge-light border"><i class="fas fa-lock mr-1"></i>Hidden</span></td>
                                     <?php endif; ?>
                                 </tr>

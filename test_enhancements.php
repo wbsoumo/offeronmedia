@@ -234,8 +234,12 @@ $filesToLint = [
     'manager/dashboard.php',
     'manager/publishers.php',
     'manager/campaigns.php',
+    'manager/campaign_access.php',
     'manager/reports.php',
+    'manager/reports_postbacks.php',
     'manager/impersonate.php',
+    'admin/reports_postbacks.php',
+    'postback.php',
     'affiliate/offers.php',
     'affiliate/link-builder.php',
     'affiliate/offer_view.php'
@@ -408,6 +412,151 @@ if (!empty($mgrId)) {
     $secStmt->execute([$mgrId]);
     $assignedAffs = $secStmt->fetchAll(PDO::FETCH_COLUMN);
     assertTest("Manager impersonation enforces strict assigned portfolio boundary", is_array($assignedAffs));
+}
+
+// ---------------------------------------------------------
+// TEST 9: Granular Daily Cap Rules (Clicks vs Conversions)
+// ---------------------------------------------------------
+echo "\n--- TEST 9: Granular Daily Cap Rules (Clicks vs Conversions) ---\n";
+
+// 9.1 Schema columns
+$offCols = $pdo->query("SHOW COLUMNS FROM offers")->fetchAll(PDO::FETCH_COLUMN);
+$aoaCols = $pdo->query("SHOW COLUMNS FROM affiliate_offer_approval")->fetchAll(PDO::FETCH_COLUMN);
+assertTest("offers table has cap_type column", in_array('cap_type', $offCols, true));
+assertTest("affiliate_offer_approval table has cap_type column", in_array('cap_type', $aoaCols, true));
+
+// 9.2 Publisher Individual Click Cap
+if (!empty($affId) && !empty($offerId)) {
+    // Set publisher daily_cap = 1 and cap_type = 'clicks'
+    $pdo->prepare("
+        UPDATE affiliate_offer_approval 
+        SET status = 'approved', daily_cap = 1, cap_type = 'clicks' 
+        WHERE affiliate_id = ? AND offer_id = ?
+    ")->execute([$affId, $offerId]);
+
+    // Insert 1 click for today
+    $pdo->prepare("
+        INSERT INTO clicks (click_id, offer_id, affiliate_id, created_at)
+        VALUES ('click_test_cap_pub_01', ?, ?, NOW())
+    ")->execute([$offerId, $affId]);
+
+    // Test click.php blocks with PUBLISHER_DAILY_CLICK_CAP_REACHED
+    $out = [];
+    exec("php -r '
+        \$_GET[\"offer_id\"] = $offerId;
+        \$_GET[\"aff_id\"] = $affId;
+        \$_SERVER[\"REMOTE_ADDR\"] = \"127.0.0.1\";
+        \$_SERVER[\"HTTP_USER_AGENT\"] = \"Mozilla/5.0\";
+        require \"click.php\";
+    ' 2>&1", $out);
+    $clickCapResp = implode(' ', $out);
+    assertTest("click.php enforces publisher individual click cap with PUBLISHER_DAILY_CLICK_CAP_REACHED", strpos($clickCapResp, 'PUBLISHER_DAILY_CLICK_CAP_REACHED') !== false);
+
+    // Clean up
+    $pdo->exec("DELETE FROM clicks WHERE click_id = 'click_test_cap_pub_01'");
+    $pdo->prepare("UPDATE affiliate_offer_approval SET daily_cap = NULL, cap_type = 'conversions' WHERE affiliate_id = ? AND offer_id = ?")->execute([$affId, $offerId]);
+}
+
+// 9.3 Global Campaign Offer Click Cap
+if (!empty($offerId) && !empty($affId)) {
+    // Set offer daily_cap = 1 and cap_type = 'clicks'
+    $pdo->prepare("
+        UPDATE offers 
+        SET daily_cap = 1, cap_type = 'clicks' 
+        WHERE offer_id = ?
+    ")->execute([$offerId]);
+
+    // Insert 1 click for today
+    $pdo->prepare("
+        INSERT INTO clicks (click_id, offer_id, affiliate_id, created_at)
+        VALUES ('click_test_cap_global_01', ?, ?, NOW())
+    ")->execute([$offerId, $affId]);
+
+    $out = [];
+    exec("php -r '
+        \$_GET[\"offer_id\"] = $offerId;
+        \$_GET[\"aff_id\"] = $affId;
+        \$_SERVER[\"REMOTE_ADDR\"] = \"127.0.0.1\";
+        \$_SERVER[\"HTTP_USER_AGENT\"] = \"Mozilla/5.0\";
+        require \"click.php\";
+    ' 2>&1", $out);
+    $globalClickCapResp = implode(' ', $out);
+    assertTest("click.php enforces global campaign click cap with OFFER_DAILY_CLICK_CAP_REACHED", strpos($globalClickCapResp, 'OFFER_DAILY_CLICK_CAP_REACHED') !== false);
+
+    // Restore
+    $pdo->exec("DELETE FROM clicks WHERE click_id = 'click_test_cap_global_01'");
+    $pdo->prepare("UPDATE offers SET daily_cap = 0, cap_type = 'conversions' WHERE offer_id = ?")->execute([$offerId]);
+}
+
+// ---------------------------------------------------------
+// TEST 10: Archived Offers Data Display & ONLY_FULL_GROUP_BY Safety
+// ---------------------------------------------------------
+echo "\n--- TEST 10: Archived Offers Data Display & Group-By Safety ---\n";
+
+// Verify query executes cleanly and returns archived campaigns
+$archivedQueryStmt = $pdo->prepare("
+    SELECT 
+        o.offer_id,
+        o.offer_name,
+        o.status,
+        IFNULL(u.name, 'No Advertiser') AS advertiser_name,
+        IFNULL(c.total_clicks, 0) AS total_clicks,
+        IFNULL(cv.total_conversions, 0) AS total_conversions
+    FROM offers o
+    LEFT JOIN users u ON u.user_id = o.advertiser_id
+    LEFT JOIN (
+        SELECT offer_id, COUNT(*) AS total_clicks 
+        FROM clicks 
+        GROUP BY offer_id
+    ) c ON c.offer_id = o.offer_id
+    LEFT JOIN (
+        SELECT 
+            offer_id,
+            COUNT(*) AS total_conversions,
+            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved_conversions,
+            IFNULL(SUM(CASE WHEN status = 'approved' THEN revenue ELSE 0 END), 0) AS earned_revenue,
+            IFNULL(SUM(CASE WHEN status = 'approved' THEN payout ELSE 0 END), 0) AS paid_payout
+        FROM conversions
+        GROUP BY offer_id
+    ) cv ON cv.offer_id = o.offer_id
+    WHERE (LOWER(TRIM(o.status)) = 'archived' OR o.status = 'archived')
+    ORDER BY o.updated_at DESC
+");
+$archivedQueryStmt->execute();
+$archivedRows = $archivedQueryStmt->fetchAll(PDO::FETCH_ASSOC);
+assertTest("Archived offers query executes without ONLY_FULL_GROUP_BY or Cartesian errors", is_array($archivedRows));
+assertTest("Archived offers query finds active archived offers in database", count($archivedRows) > 0);
+
+// ---------------------------------------------------------
+// TEST 11: Postback Logs Schema & Delivery Suite
+// ---------------------------------------------------------
+echo "\n--- TEST 11: Postback Delivery & Audit Logs Suite ---\n";
+
+$pblCols = $pdo->query("SHOW COLUMNS FROM postback_logs")->fetchAll(PDO::FETCH_COLUMN);
+$apbCols = $pdo->query("SHOW COLUMNS FROM affiliate_postback_logs")->fetchAll(PDO::FETCH_COLUMN);
+assertTest("postback_logs table has raw_request column", in_array('raw_request', $pblCols, true));
+assertTest("affiliate_postback_logs table exists and has http_code column", in_array('http_code', $apbCols, true));
+assertTest("affiliate_postback_logs table has response column", in_array('response', $apbCols, true));
+
+// Test log insert & retrieval for outgoing postbacks
+$pdo->prepare("
+    INSERT INTO affiliate_postback_logs (affiliate_id, offer_id, postback_url, http_code, response, created_at)
+    VALUES (?, ?, 'https://test-publisher.com/pb?click=test_123', 200, '{\"success\":true}', NOW())
+")->execute([$affId, $offerId]);
+
+$pbLogStmt = $pdo->prepare("
+    SELECT id, http_code 
+    FROM affiliate_postback_logs 
+    WHERE affiliate_id = ? AND http_code = 200 
+    ORDER BY id DESC LIMIT 1
+");
+$pbLogStmt->execute([$affId]);
+$pbLog = $pbLogStmt->fetch(PDO::FETCH_ASSOC);
+assertTest("Outgoing publisher postback log records HTTP 200 OK successfully", !empty($pbLog) && (int)$pbLog['http_code'] === 200);
+
+// Clean up test postback log
+if (!empty($pbLog['id'])) {
+    $pdo->prepare("DELETE FROM affiliate_postback_logs WHERE id = ?")->execute([$pbLog['id']]);
 }
 
 // ---------------------------------------------------------

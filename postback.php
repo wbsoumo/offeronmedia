@@ -19,13 +19,13 @@ function logAdvertiserPostback(PDO $pdo, $raw, $ip, $clickId, $status)
         $stmt = $pdo->prepare("
             INSERT INTO postback_logs
             (raw_request, ip_address, click_id, status, created_at)
-            VALUES (:raw, INET6_ATON(:ip), :click_id, :status, NOW())
+            VALUES (:raw, :ip, :click_id, :status, NOW())
         ");
         $stmt->execute([
-            'raw'      => $raw,
-            'ip'       => $ip,
-            'click_id' => $clickId,
-            'status'   => $status
+            'raw'      => (string)$raw,
+            'ip'       => (string)$ip,
+            'click_id' => (string)$clickId,
+            'status'   => (string)$status
         ]);
     } catch (Throwable $e) {
         // Do not break main flow if logging fails

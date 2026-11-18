@@ -1,0 +1,542 @@
+<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+define('APP_INIT', true);
+require_once __DIR__ . '/../app/core/auth.php';
+require_once __DIR__ . '/../app/config/database.php';
+
+require_role('manager');
+
+$managerId   = auth_user_id();
+$managerName = $_SESSION['user_name'] ?? 'Account Manager';
+$activeTab   = $_GET['tab'] ?? 'outgoing';
+
+$search     = trim($_GET['search'] ?? '');
+$dateFrom   = $_GET['from'] ?? date('Y-m-d', strtotime('-30 days'));
+$dateTo     = $_GET['to']   ?? date('Y-m-d');
+$httpFilter = $_GET['http_code'] ?? 'all';
+
+/* =====================================================
+   1. FETCH OUTGOING PUBLISHER POSTBACK LOGS (Scoped to Manager)
+===================================================== */
+$outWhere = [
+    "u.account_manager_id = :mgr_id",
+    "DATE(apl.created_at) >= :dfrom",
+    "DATE(apl.created_at) <= :dto"
+];
+$outParams = [
+    ':mgr_id' => $managerId,
+    ':dfrom'  => $dateFrom,
+    ':dto'    => $dateTo
+];
+
+if ($search !== '') {
+    $outWhere[] = "(u.name LIKE :s1 OR u.email LIKE :s2 OR o.offer_name LIKE :s3 OR apl.postback_url LIKE :s4)";
+    $outParams[':s1'] = "%$search%";
+    $outParams[':s2'] = "%$search%";
+    $outParams[':s3'] = "%$search%";
+    $outParams[':s4'] = "%$search%";
+}
+
+if ($httpFilter === '200') {
+    $outWhere[] = "apl.http_code = 200";
+} elseif ($httpFilter === 'errors') {
+    $outWhere[] = "(apl.http_code != 200 OR apl.http_code IS NULL)";
+}
+
+$outWhereSql = 'WHERE ' . implode(' AND ', $outWhere);
+
+$outStmt = $pdo->prepare("
+    SELECT 
+        apl.id,
+        apl.affiliate_id,
+        apl.offer_id,
+        apl.conversion_id,
+        apl.postback_url,
+        apl.http_code,
+        apl.response,
+        apl.created_at,
+        u.name AS publisher_name,
+        u.email AS publisher_email,
+        o.offer_name
+    FROM affiliate_postback_logs apl
+    INNER JOIN users u ON u.user_id = apl.affiliate_id
+    LEFT JOIN offers o ON o.offer_id = apl.offer_id
+    $outWhereSql
+    ORDER BY apl.id DESC
+    LIMIT 250
+");
+$outStmt->execute($outParams);
+$outgoingLogs = $outStmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* =====================================================
+   2. FETCH INCOMING ADVERTISER POSTBACK LOGS (Scoped to Manager)
+===================================================== */
+$inWhere = [
+    "u.account_manager_id = :imgr_id",
+    "DATE(pl.created_at) >= :idfrom",
+    "DATE(pl.created_at) <= :idto"
+];
+$inParams = [
+    ':imgr_id' => $managerId,
+    ':idfrom'  => $dateFrom,
+    ':idto'    => $dateTo
+];
+
+if ($search !== '') {
+    $inWhere[] = "(pl.click_id LIKE :is1 OR pl.raw_request LIKE :is2 OR u.name LIKE :is3)";
+    $inParams[':is1'] = "%$search%";
+    $inParams[':is2'] = "%$search%";
+    $inParams[':is3'] = "%$search%";
+}
+
+$inWhereSql = 'WHERE ' . implode(' AND ', $inWhere);
+
+$inStmt = $pdo->prepare("
+    SELECT 
+        pl.id,
+        pl.click_id,
+        pl.status,
+        pl.raw_request,
+        pl.ip_address,
+        pl.created_at,
+        c.offer_id,
+        c.affiliate_id,
+        u.name AS publisher_name,
+        o.offer_name
+    FROM postback_logs pl
+    INNER JOIN clicks c ON c.click_id = pl.click_id
+    INNER JOIN users u ON u.user_id = c.affiliate_id
+    LEFT JOIN offers o ON o.offer_id = c.offer_id
+    $inWhereSql
+    ORDER BY pl.id DESC
+    LIMIT 250
+");
+$inStmt->execute($inParams);
+$incomingLogs = $inStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Counts
+$totalOutgoing   = count($outgoingLogs);
+$successOutgoing = count(array_filter($outgoingLogs, function($l) { return (int)($l['http_code'] ?? 0) === 200; }));
+$failedOutgoing  = $totalOutgoing - $successOutgoing;
+$totalIncoming   = count($incomingLogs);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Postback Delivery & Logs | Manager Portal</title>
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,600,700&display=fallback">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+
+    <style>
+        .stat-card-custom {
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px 20px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .stat-val { font-size: 26px; font-weight: 800; }
+        .stat-lbl { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; }
+        .url-cell {
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+            <li class="nav-item"><a class="nav-link" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="dashboard.php" class="nav-link">Dashboard</a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="reports.php" class="nav-link">Reports</a></li>
+            <li class="nav-item d-none d-sm-inline-block"><a href="reports_postbacks.php" class="nav-link active font-weight-bold">Postback Logs</a></li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+                <span class="nav-link text-muted"><i class="fas fa-user-tie mr-1 text-primary"></i> <?php echo htmlspecialchars($managerName); ?></span>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="dashboard.php" class="brand-link text-center">
+            <span class="brand-text font-weight-light" style="font-size: 1.4rem;">
+                <i class="fas fa-user-tie mr-2"></i><strong>Manager</strong>
+            </span>
+        </a>
+
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+                    <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard</p></a></li>
+                    <li class="nav-item"><a href="publishers.php" class="nav-link"><i class="nav-icon fas fa-user-friends"></i><p>My Publishers</p></a></li>
+                    <li class="nav-item"><a href="campaigns.php" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Campaigns</p></a></li>
+                    <li class="nav-item"><a href="campaign_access.php" class="nav-link"><i class="nav-icon fas fa-key"></i><p>Offer Approvals</p></a></li>
+                    <li class="nav-item"><a href="reports.php" class="nav-link"><i class="nav-icon fas fa-chart-bar"></i><p>Performance Reports</p></a></li>
+                    <li class="nav-item"><a href="reports_postbacks.php" class="nav-link active"><i class="nav-icon fas fa-exchange-alt"></i><p>Postback Logs</p></a></li>
+                    <?php if (manager_can('link_tester')): ?>
+                    <li class="nav-item"><a href="link_tester.php" class="nav-link"><i class="nav-icon fas fa-vial"></i><p>Link Tester</p></a></li>
+                    <?php endif; ?>
+                    <li class="nav-item"><a href="profile.php" class="nav-link"><i class="nav-icon fas fa-user-cog"></i><p>My Profile</p></a></li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0 font-weight-bold"><i class="fas fa-exchange-alt text-primary mr-2"></i>Postback Delivery Logs & Debugger</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="dashboard.php">Home</a></li>
+                            <li class="breadcrumb-item"><a href="reports.php">Reports</a></li>
+                            <li class="breadcrumb-item active">Postback Logs</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="container-fluid">
+
+                <!-- Stats Overview -->
+                <div class="row mb-4">
+                    <div class="col-md-3 col-6 mb-2">
+                        <div class="stat-card-custom">
+                            <div class="stat-val text-primary"><?php echo number_format($totalOutgoing); ?></div>
+                            <div class="stat-lbl">Publisher S2S Postbacks</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-2">
+                        <div class="stat-card-custom">
+                            <div class="stat-val text-success"><?php echo number_format($successOutgoing); ?></div>
+                            <div class="stat-lbl">Delivered (200 OK)</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-2">
+                        <div class="stat-card-custom">
+                            <div class="stat-val text-danger"><?php echo number_format($failedOutgoing); ?></div>
+                            <div class="stat-lbl">Failed / Timeouts</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-2">
+                        <div class="stat-card-custom">
+                            <div class="stat-val text-info"><?php echo number_format($totalIncoming); ?></div>
+                            <div class="stat-lbl">Incoming Conversions</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search & Filters -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <form method="get" class="row align-items-end">
+                            <input type="hidden" name="tab" value="<?php echo htmlspecialchars($activeTab); ?>">
+                            <div class="col-md-4 mb-2 mb-md-0">
+                                <label class="font-weight-bold small text-muted text-uppercase">Keyword Search</label>
+                                <input type="text" name="search" class="form-control" placeholder="Search by Click ID, Publisher, Offer, URL..." value="<?php echo htmlspecialchars($search); ?>">
+                            </div>
+                            <div class="col-md-3 mb-2 mb-md-0">
+                                <label class="font-weight-bold small text-muted text-uppercase">Date Range</label>
+                                <div class="input-group">
+                                    <input type="date" name="from" class="form-control" value="<?php echo htmlspecialchars($dateFrom); ?>">
+                                    <input type="date" name="to" class="form-control" value="<?php echo htmlspecialchars($dateTo); ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-2 mb-md-0">
+                                <label class="font-weight-bold small text-muted text-uppercase">Delivery Status</label>
+                                <select name="http_code" class="form-control">
+                                    <option value="all" <?php echo $httpFilter === 'all' ? 'selected' : ''; ?>>All Status Codes</option>
+                                    <option value="200" <?php echo $httpFilter === '200' ? 'selected' : ''; ?>>HTTP 200 OK Only</option>
+                                    <option value="errors" <?php echo $httpFilter === 'errors' ? 'selected' : ''; ?>>Errors & Timeouts Only</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary btn-block font-weight-bold">
+                                    <i class="fas fa-filter mr-1"></i> Filter
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-pills mb-3">
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeTab === 'outgoing' ? 'active font-weight-bold' : ''; ?>" href="?tab=outgoing&<?php echo http_build_query(['search' => $search, 'from' => $dateFrom, 'to' => $dateTo]); ?>">
+                            <i class="fas fa-paper-plane mr-1"></i> Outgoing Publisher S2S Postbacks (<?php echo count($outgoingLogs); ?>)
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeTab === 'incoming' ? 'active font-weight-bold' : ''; ?>" href="?tab=incoming&<?php echo http_build_query(['search' => $search, 'from' => $dateFrom, 'to' => $dateTo]); ?>">
+                            <i class="fas fa-inbox mr-1"></i> Incoming Advertiser Postbacks (<?php echo count($incomingLogs); ?>)
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- TAB 1: OUTGOING S2S POSTBACKS -->
+                <?php if ($activeTab === 'outgoing'): ?>
+                <div class="card shadow-sm p-4" style="border-radius: 12px;">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mgrPostbackTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ID / Time</th>
+                                    <th>Publisher</th>
+                                    <th>Campaign Offer</th>
+                                    <th>HTTP Code</th>
+                                    <th>Fired S2S URL</th>
+                                    <th>Response Body</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($outgoingLogs as $log): 
+                                    $code = (int)($log['http_code'] ?? 0);
+                                    $isSuccess = ($code >= 200 && $code < 300);
+                                    $badgeClass = $isSuccess ? 'success' : ($code === 0 ? 'secondary' : 'danger');
+                                ?>
+                                <tr>
+                                    <td>
+                                        <strong>#<?php echo $log['id']; ?></strong>
+                                        <small class="d-block text-muted"><?php echo date('M d, H:i:s', strtotime($log['created_at'])); ?></small>
+                                    </td>
+                                    <td>
+                                        <strong class="text-dark">#<?php echo $log['affiliate_id']; ?> - <?php echo htmlspecialchars($log['publisher_name']); ?></strong>
+                                        <small class="d-block text-muted"><?php echo htmlspecialchars($log['publisher_email'] ?: ''); ?></small>
+                                    </td>
+                                    <td>
+                                        <strong class="text-primary">#<?php echo $log['offer_id']; ?> - <?php echo htmlspecialchars($log['offer_name'] ?: 'Campaign'); ?></strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-<?php echo $badgeClass; ?> p-2 font-weight-bold">
+                                            <?php echo $code > 0 ? "HTTP $code" : "Timeout / 0"; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="url-cell" title="<?php echo htmlspecialchars($log['postback_url']); ?>">
+                                            <?php echo htmlspecialchars($log['postback_url']); ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="url-cell text-muted" title="<?php echo htmlspecialchars($log['response'] ?: 'No response'); ?>">
+                                            <?php echo htmlspecialchars($log['response'] ? substr($log['response'], 0, 80) : 'None'); ?>
+                                        </div>
+                                    </td>
+                                    <td class="text-right">
+                                        <button type="button" class="btn btn-sm btn-outline-info font-weight-bold btn-view-payload"
+                                                data-url="<?php echo htmlspecialchars($log['postback_url'], ENT_QUOTES); ?>"
+                                                data-code="<?php echo $code; ?>"
+                                                data-response="<?php echo htmlspecialchars($log['response'] ?: '(Empty response)', ENT_QUOTES); ?>">
+                                            <i class="fas fa-eye mr-1"></i> Inspect
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <!-- TAB 2: INCOMING ADVERTISER POSTBACKS -->
+                <?php if ($activeTab === 'incoming'): ?>
+                <div class="card shadow-sm p-4" style="border-radius: 12px;">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mgrPostbackTable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ID / Time</th>
+                                    <th>Click ID</th>
+                                    <th>Campaign Offer</th>
+                                    <th>Publisher</th>
+                                    <th>Status</th>
+                                    <th>Remote IP</th>
+                                    <th>Raw Request</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($incomingLogs as $inLog): 
+                                    $st = strtolower($inLog['status'] ?? 'accepted');
+                                    $stBadge = ($st === 'accepted' || $st === 'approved') ? 'success' : (($st === 'duplicate') ? 'warning' : 'danger');
+                                ?>
+                                <tr>
+                                    <td>
+                                        <strong>#<?php echo $inLog['id']; ?></strong>
+                                        <small class="d-block text-muted"><?php echo date('M d, H:i:s', strtotime($inLog['created_at'])); ?></small>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-secondary px-2 py-1 font-monospace"><?php echo htmlspecialchars(substr($inLog['click_id'] ?: '', 0, 16)); ?>...</span>
+                                    </td>
+                                    <td>
+                                        <strong class="text-primary"><?php echo htmlspecialchars($inLog['offer_name'] ?: 'N/A'); ?></strong>
+                                    </td>
+                                    <td>
+                                        <strong class="text-dark"><?php echo htmlspecialchars($inLog['publisher_name'] ?: 'N/A'); ?></strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-<?php echo $stBadge; ?> p-2 font-weight-bold"><?php echo ucfirst($st); ?></span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted"><?php echo htmlspecialchars($inLog['ip_address'] ?: '-'); ?></small>
+                                    </td>
+                                    <td>
+                                        <div class="url-cell" title="<?php echo htmlspecialchars($inLog['raw_request'] ?: ''); ?>">
+                                            <?php echo htmlspecialchars($inLog['raw_request'] ?: '-'); ?>
+                                        </div>
+                                    </td>
+                                    <td class="text-right">
+                                        <button type="button" class="btn btn-sm btn-outline-primary font-weight-bold btn-view-raw"
+                                                data-raw="<?php echo htmlspecialchars($inLog['raw_request'] ?: 'N/A', ENT_QUOTES); ?>"
+                                                data-click="<?php echo htmlspecialchars($inLog['click_id'] ?: '', ENT_QUOTES); ?>"
+                                                data-ip="<?php echo htmlspecialchars($inLog['ip_address'] ?: '', ENT_QUOTES); ?>">
+                                            <i class="fas fa-search mr-1"></i> Details
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Payload Inspect Modal -->
+    <div class="modal fade" id="payloadModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-terminal mr-2"></i>Postback Delivery Details</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold small text-uppercase text-muted">HTTP Response Status</label>
+                        <div><span id="modalHttpBadge" class="badge p-2 font-weight-bold" style="font-size: 14px;"></span></div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold small text-uppercase text-muted">Fired S2S URL</label>
+                        <textarea id="modalFiredUrl" class="form-control font-monospace" rows="3" readonly style="font-size: 12.5px; background: #fff;"></textarea>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="font-weight-bold small text-uppercase text-muted">Publisher Server Response Body</label>
+                        <textarea id="modalResponseBody" class="form-control font-monospace" rows="5" readonly style="font-size: 12.5px; background: #fff;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white">
+                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw Request Modal -->
+    <div class="modal fade" id="rawModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-code mr-2"></i>Advertiser Postback Request Payload</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold small text-uppercase text-muted">Click ID</label>
+                        <input type="text" id="rawModalClick" class="form-control font-monospace font-weight-bold" readonly style="background: #fff;">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="font-weight-bold small text-uppercase text-muted">Remote IP Address</label>
+                        <input type="text" id="rawModalIp" class="form-control font-monospace" readonly style="background: #fff;">
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="font-weight-bold small text-uppercase text-muted">Full Incoming Request Query String / URI</label>
+                        <textarea id="rawModalPayload" class="form-control font-monospace" rows="4" readonly style="font-size: 12.5px; background: #fff;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white">
+                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="main-footer">
+        <div class="float-right d-none d-sm-inline"><strong>Manager Portal v3.0</strong></div>
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+    </footer>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('.mgrPostbackTable').DataTable({
+        pageLength: 20,
+        responsive: true,
+        order: [[0, 'desc']]
+    });
+
+    $(document).on('click', '.btn-view-payload', function() {
+        var url = $(this).data('url');
+        var code = parseInt($(this).data('code')) || 0;
+        var response = $(this).data('response');
+
+        $('#modalFiredUrl').val(url);
+        $('#modalResponseBody').val(response);
+
+        var badge = $('#modalHttpBadge');
+        if (code >= 200 && code < 300) {
+            badge.removeClass().addClass('badge badge-success p-2 font-weight-bold').text('HTTP ' + code + ' OK');
+        } else if (code > 0) {
+            badge.removeClass().addClass('badge badge-danger p-2 font-weight-bold').text('HTTP ' + code + ' Error');
+        } else {
+            badge.removeClass().addClass('badge badge-secondary p-2 font-weight-bold').text('HTTP 0 - Connection Timeout');
+        }
+
+        $('#payloadModal').modal('show');
+    });
+
+    $(document).on('click', '.btn-view-raw', function() {
+        var click = $(this).data('click');
+        var ip = $(this).data('ip');
+        var raw = $(this).data('raw');
+
+        $('#rawModalClick').val(click);
+        $('#rawModalIp').val(ip);
+        $('#rawModalPayload').val(raw);
+
+        $('#rawModal').modal('show');
+    });
+});
+</script>
+</body>
+</html>
