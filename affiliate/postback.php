@@ -134,8 +134,28 @@ $offerPostbacks = $offerPBsStmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- AdminLTE 3 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <!-- Select2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
 
     <style>
+        /* Select2 bootstrap4 theme fixes */
+        .select2-container--bootstrap4 .select2-selection--single {
+            height: calc(1.5em + .75rem + 2px) !important;
+            border: 1px solid #ced4da;
+            border-radius: .25rem;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+            line-height: calc(1.5em + .75rem) !important;
+            padding-left: .75rem;
+        }
+        .select2-container {
+            z-index: 1060 !important;
+        }
+        .select2-dropdown {
+            z-index: 1065 !important;
+        }
+
         .card-custom {
             border-radius: 12px;
             border: none;
@@ -406,7 +426,7 @@ $offerPostbacks = $offerPBsStmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div class="modal-body p-4">
                                     <div class="form-group mb-3">
                                         <label class="font-weight-bold small">Select Approved Campaign Offer *</label>
-                                        <select name="offer_id" class="form-control" required>
+                                        <select name="offer_id" id="affOfferSelect" class="form-control select2" required style="width: 100%;">
                                             <option value="">-- Choose Campaign Offer --</option>
                                             <?php foreach ($approvedOffers as $ao): ?>
                                                 <option value="<?php echo $ao['offer_id']; ?>">
@@ -450,5 +470,21 @@ $offerPostbacks = $offerPBsStmt->fetchAll(PDO::FETCH_ASSOC);
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#affOfferSelect').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        dropdownParent: $('#addOfferPbModal'),
+        placeholder: '-- Choose Campaign Offer --'
+    });
+
+    $('[data-target="#addOfferPbModal"]').on('click', function() {
+        $('#affOfferSelect').val('').trigger('change');
+    });
+});
+</script>
 </body>
 </html>

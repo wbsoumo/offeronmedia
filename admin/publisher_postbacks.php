@@ -214,8 +214,30 @@ $stats = [
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
     <!-- Select2 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
 
     <style>
+        /* Select2 bootstrap4 theme fixes */
+        .select2-container--bootstrap4 .select2-selection--single {
+            height: calc(1.5em + .75rem + 2px) !important;
+            border: 1px solid #ced4da;
+            border-radius: .25rem;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+            line-height: calc(1.5em + .75rem) !important;
+            padding-left: .75rem;
+        }
+        .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+            top: 50% !important;
+            transform: translateY(-50%);
+        }
+        .select2-container {
+            z-index: 1060 !important;
+        }
+        .select2-dropdown {
+            z-index: 1065 !important;
+        }
+
         .card-custom {
             border-radius: 12px;
             border: none;
@@ -581,7 +603,7 @@ $stats = [
                                 <div class="modal-body p-4">
                                     <div class="form-group mb-3">
                                         <label class="font-weight-bold small">Select Publisher *</label>
-                                        <select name="affiliate_id" id="modalAffiliateId" class="form-control" required>
+                                        <select name="affiliate_id" id="modalAffiliateId" class="form-control select2" required style="width: 100%;">
                                             <option value="">-- Choose Publisher --</option>
                                             <?php foreach ($allPublishers as $pub): ?>
                                                 <option value="<?php echo $pub['user_id']; ?>">
@@ -647,7 +669,7 @@ $stats = [
                                 <div class="modal-body p-4">
                                     <div class="form-group mb-3">
                                         <label class="font-weight-bold small">Select Publisher *</label>
-                                        <select name="affiliate_id" class="form-control" required>
+                                        <select name="affiliate_id" id="adminOfferAffSelect" class="form-control select2" required style="width: 100%;">
                                             <option value="">-- Choose Publisher --</option>
                                             <?php foreach ($allPublishers as $pub): ?>
                                                 <option value="<?php echo $pub['user_id']; ?>">
@@ -658,7 +680,7 @@ $stats = [
                                     </div>
                                     <div class="form-group mb-3">
                                         <label class="font-weight-bold small">Select Campaign Offer *</label>
-                                        <select name="offer_id" class="form-control" required>
+                                        <select name="offer_id" id="adminOfferSelect" class="form-control select2" required style="width: 100%;">
                                             <option value="">-- Choose Campaign Offer --</option>
                                             <?php foreach ($allOffers as $ao): ?>
                                                 <option value="<?php echo $ao['offer_id']; ?>">
@@ -713,6 +735,7 @@ $stats = [
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
 $(document).ready(function() {
@@ -731,12 +754,40 @@ $(document).ready(function() {
         });
     }
 
+    // Initialize Select2 with Live Search on Modals
+    $('#modalAffiliateId').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        dropdownParent: $('#addGlobalPbModal'),
+        placeholder: '-- Choose Publisher --'
+    });
+
+    $('#adminOfferAffSelect').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        dropdownParent: $('#adminAddOfferPbModal'),
+        placeholder: '-- Choose Publisher --'
+    });
+
+    $('#adminOfferSelect').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        dropdownParent: $('#adminAddOfferPbModal'),
+        placeholder: '-- Choose Campaign Offer --'
+    });
+
     // Reset Global Postback modal for new entry
     $('#btnOpenAddGlobal').on('click', function() {
         $('#globalPbForm')[0].reset();
         $('#modalPostbackId').val('');
         $('#modalGlobalTitle').html('<i class="fas fa-globe mr-2"></i>Add Global S2S Postback');
-        $('#modalAffiliateId').val('');
+        $('#modalAffiliateId').val('').trigger('change');
+    });
+
+    // Reset Offer Postback modal when opened
+    $('[data-target="#adminAddOfferPbModal"]').on('click', function() {
+        $('#adminOfferAffSelect').val('').trigger('change');
+        $('#adminOfferSelect').val('').trigger('change');
     });
 
     // Populate Global Postback modal for editing
@@ -750,7 +801,7 @@ $(document).ready(function() {
         var status = $(this).data('status') || 'active';
 
         $('#modalPostbackId').val(id);
-        $('#modalAffiliateId').val(aff);
+        $('#modalAffiliateId').val(aff).trigger('change');
         $('#modalPostbackUrl').val(url);
         $('#modalPostbackName').val(name);
         $('#modalPostbackType').val(type);
