@@ -21,11 +21,111 @@ if (isset($_GET['approved'])) {
 } elseif (isset($_GET['activated'])) {
     $success = 'Offer activated';
 } elseif (isset($_GET['archived']) || isset($_GET['deleted'])) {
-    $success = 'Offer archived successfully. Historical tracking and reporting records are preserved.';
+    $success = 'Offer archived successfully and moved to Archive. Historical records preserved.';
 } elseif (isset($_GET['restored'])) {
     $success = 'Offer restored to paused status successfully.';
+} elseif (isset($_GET['success'])) {
+    $success = $_GET['success'];
 } elseif (isset($_GET['error'])) {
     $error = $_GET['error'];
+}
+
+/* ===============================
+   BULK ACTIONS (Execute at Top)
+================================ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
+    $action = $_POST['bulk_action'];
+    $selectedOffers = $_POST['selected_offers'] ?? [];
+    
+    if (empty($selectedOffers)) {
+        $error = 'Please select at least one offer';
+    } else {
+        $placeholders = implode(',', array_fill(0, count($selectedOffers), '?'));
+        $redirectUrl = 'offers.php';
+        
+        switch ($action) {
+            case 'approve':
+                $sql = "UPDATE offers SET status = 'approved', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been approved';
+                $redirectUrl = "offers.php?success=" . urlencode(count($selectedOffers) . ' ' . $message);
+                break;
+            case 'activate':
+                $sql = "UPDATE offers SET status = 'active', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been activated';
+                $redirectUrl = "offers.php?success=" . urlencode(count($selectedOffers) . ' ' . $message);
+                break;
+            case 'pause':
+                $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been paused';
+                $redirectUrl = "offers.php?success=" . urlencode(count($selectedOffers) . ' ' . $message);
+                break;
+            case 'reject':
+                $sql = "UPDATE offers SET status = 'rejected', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been rejected';
+                $redirectUrl = "offers.php?success=" . urlencode(count($selectedOffers) . ' ' . $message);
+                break;
+            case 'archive':
+            case 'delete':
+                $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $redirectUrl = "archived_offers.php?bulk_archived=" . count($selectedOffers);
+                break;
+            case 'restore':
+                $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders)";
+                $message = 'selected offers have been restored to paused status';
+                $redirectUrl = "offers.php?success=" . urlencode(count($selectedOffers) . ' ' . $message);
+                break;
+            default:
+                $error = 'Invalid action selected';
+                break;
+        }
+        
+        if (!$error && isset($sql)) {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($selectedOffers);
+            admin_log_action('offers_bulk_' . $action, 'offers', null, count($selectedOffers) . " offers $action");
+            header("Location: " . $redirectUrl);
+            exit;
+        }
+    }
+}
+
+/* ===============================
+   SINGLE OFFER ACTIONS (Execute at Top)
+================================ */
+if (isset($_GET['action']) && isset($_GET['id'])) {
+    $offerId = (int)$_GET['id'];
+    $action = $_GET['action'];
+    
+    $validActions = ['approve', 'reject', 'activate', 'pause', 'archive', 'delete', 'restore'];
+    
+    if (in_array($action, $validActions)) {
+        if ($action === 'delete' || $action === 'archive') {
+            $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$offerId]);
+            admin_log_action('offer_archive', 'offer', $offerId, 'Offer moved to archived status');
+            header("Location: archived_offers.php?archived=1&id=" . $offerId);
+            exit;
+        } elseif ($action === 'restore') {
+            $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$offerId]);
+            admin_log_action('offer_restore', 'offer', $offerId, 'Offer restored from archive to paused');
+            header("Location: offers.php?restored=1");
+            exit;
+        } else {
+            $status = ($action === 'approve') ? 'approved' : 
+                     (($action === 'activate') ? 'active' : 
+                     (($action === 'pause') ? 'paused' : 
+                     (($action === 'reject') ? 'rejected' : $action)));
+            $sql = "UPDATE offers SET status = ?, updated_at = NOW() WHERE offer_id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$status, $offerId]);
+            admin_log_action('offer_status_' . $status, 'offer', $offerId, "Offer status changed to $status");
+            header("Location: offers.php?" . $action . "=1");
+            exit;
+        }
+    }
 }
 
 /* ===============================
@@ -53,11 +153,11 @@ if ($search) {
 }
 
 if ($statusFilter !== 'all') {
-    $where[] = 'o.status = :status';
-    $params['status'] = $statusFilter;
+    $where[] = 'LOWER(TRIM(o.status)) = :status';
+    $params['status'] = strtolower(trim($statusFilter));
 } else {
     // Exclude archived offers from active listing by default
-    $where[] = "o.status != 'archived'";
+    $where[] = "LOWER(TRIM(o.status)) != 'archived'";
 }
 
 if ($advertiserFilter !== 'all') {
@@ -261,108 +361,13 @@ foreach ($revBreakdown as $rb) {
         $totalPaidUSD += (float)$rb['paid_payout'];
     }
 }
-
-/* ===============================
-   BULK ACTIONS
-================================ */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
-    $action = $_POST['bulk_action'];
-    $selectedOffers = $_POST['selected_offers'] ?? [];
-    
-    if (empty($selectedOffers)) {
-        $error = 'Please select at least one offer';
-    } else {
-        $placeholders = implode(',', array_fill(0, count($selectedOffers), '?'));
-        
-        switch ($action) {
-            case 'approve':
-                $sql = "UPDATE offers SET status = 'approved', updated_at = NOW() WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been approved';
-                break;
-            case 'activate':
-                $sql = "UPDATE offers SET status = 'active', updated_at = NOW() WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been activated';
-                break;
-            case 'pause':
-                $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been paused';
-                break;
-            case 'reject':
-                $sql = "UPDATE offers SET status = 'rejected', updated_at = NOW() WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been rejected';
-                break;
-            case 'archive':
-            case 'delete':
-                $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been archived (historical records preserved)';
-                break;
-            case 'restore':
-                $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders)";
-                $message = 'selected offers have been restored to paused status';
-                break;
-            default:
-                $error = 'Invalid action selected';
-                break;
-        }
-        
-        if (!$error) {
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($selectedOffers);
-            admin_log_action('offers_bulk_' . $action, 'offers', null, count($selectedOffers) . " offers $action");
-            $success = count($selectedOffers) . ' ' . $message;
-            
-            // Refresh page
-            header("Location: offers.php?success=" . urlencode($success));
-            exit;
-        }
-    }
-}
-
-/* ===============================
-   SINGLE OFFER ACTIONS
-================================ */
-if (isset($_GET['action']) && isset($_GET['id'])) {
-    $offerId = (int)$_GET['id'];
-    $action = $_GET['action'];
-    
-    $validActions = ['approve', 'reject', 'activate', 'pause', 'archive', 'delete', 'restore'];
-    
-    if (in_array($action, $validActions)) {
-        if ($action === 'delete' || $action === 'archive') {
-            $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id = ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$offerId]);
-            admin_log_action('offer_archive', 'offer', $offerId, 'Offer moved to archived status');
-            header("Location: offers.php?archived=1");
-            exit;
-        } elseif ($action === 'restore') {
-            $sql = "UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$offerId]);
-            admin_log_action('offer_restore', 'offer', $offerId, 'Offer restored from archive to paused');
-            header("Location: offers.php?restored=1");
-            exit;
-        } else {
-            $status = ($action === 'approve') ? 'approved' : 
-                     (($action === 'activate') ? 'active' : 
-                     (($action === 'pause') ? 'paused' : 
-                     (($action === 'reject') ? 'rejected' : $action)));
-            $sql = "UPDATE offers SET status = ?, updated_at = NOW() WHERE offer_id = ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$status, $offerId]);
-            admin_log_action('offer_status_' . $status, 'offer', $offerId, "Offer status changed to $status");
-            header("Location: offers.php?" . $action . "=1");
-            exit;
-        }
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Manage Campaigns | Admin Panel | GVS Offer on Media</title>
+    <title>Manage Campaigns | Admin Panel | Offer on Media</title>
     
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -829,17 +834,28 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
             font-weight: 600;
         }
         
-        .offer-avatar {
-            width: 45px;
-            height: 45px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-            font-weight: 600;
+        .offer-title-link {
+            color: #0f172a !important;
+            font-size: 1.05rem;
+            font-weight: 700;
+            line-height: 1.35;
+            text-decoration: none;
+            transition: color 0.15s ease-in-out;
+            display: inline-block;
+        }
+        .offer-title-link:hover {
+            color: #2563eb !important;
+            text-decoration: underline !important;
+        }
+        .offer-checkbox, #checkAll, #selectAll {
+            position: static !important;
+            margin: 0 auto !important;
+            width: 18px !important;
+            height: 18px !important;
+            display: inline-block !important;
+            cursor: pointer !important;
+            accent-color: #2563eb !important;
+            vertical-align: middle !important;
         }
         
         .alert {
@@ -1102,10 +1118,10 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                         <div class="metric-value paused-value"><?php echo number_format($summary['paused_offers'] ?? 0); ?></div>
                         <div class="metric-label">Paused</div>
                     </div>
-                    <div class="metric-card">
+                    <a href="archived_offers.php" class="metric-card text-decoration-none" title="View Archived Campaigns">
                         <div class="metric-value text-secondary"><?php echo number_format($summary['archived_offers'] ?? 0); ?></div>
-                        <div class="metric-label">Archived</div>
-                    </div>
+                        <div class="metric-label"><i class="fas fa-archive mr-1"></i> Archived &rarr;</div>
+                    </a>
                     <div class="metric-card">
                         <div class="metric-value revenue-value" style="font-size: 1.15rem;"><?php echo format_dual_currency($totalEarnedUSD, $totalEarnedINR); ?></div>
                         <div class="metric-label">Approved Revenue</div>
@@ -1192,13 +1208,13 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
 
                 <!-- Bulk Actions -->
                 <form method="post" id="bulkForm">
-                    <div class="bulk-actions">
-                        <div class="form-check select-all-checkbox">
-                            <input type="checkbox" class="form-check-input" id="selectAll">
-                            <label class="form-check-label" for="selectAll">Select All</label>
+                    <div class="bulk-actions d-flex align-items-center flex-wrap">
+                        <div class="d-inline-flex align-items-center mr-3 select-all-checkbox" style="cursor: pointer;">
+                            <input type="checkbox" id="selectAll" class="mr-2" style="width: 18px; height: 18px; cursor: pointer; margin: 0; vertical-align: middle;">
+                            <label class="mb-0 font-weight-bold text-dark" for="selectAll" style="cursor: pointer; user-select: none;">Select All</label>
                         </div>
                         
-                        <select name="bulk_action" class="filter-control" style="width: auto;" required>
+                        <select name="bulk_action" class="filter-control mr-2" style="width: auto;" required>
                             <option value="">Bulk Actions</option>
                             <option value="approve">Approve Selected</option>
                             <option value="activate">Activate Selected</option>
@@ -1212,7 +1228,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                             <i class="fas fa-play mr-1"></i> Apply
                         </button>
                         
-                        <span class="text-muted ml-2">
+                        <span class="text-muted ml-3">
                             <?php echo $totalOffers; ?> campaign<?php echo $totalOffers != 1 ? 's' : ''; ?> found
                         </span>
                     </div>
@@ -1246,8 +1262,8 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                     <table class="table table-dashboard" id="offersTable">
                                         <thead>
                                             <tr>
-                                                <th style="width: 40px;">
-                                                    <input type="checkbox" class="form-check-input" id="checkAll">
+                                                <th style="width: 44px; text-align: center; vertical-align: middle;">
+                                                    <input type="checkbox" id="checkAll" style="width: 18px; height: 18px; cursor: pointer; margin: 0; vertical-align: middle;" title="Select All Campaigns">
                                                 </th>
                                                 <th>Campaign</th>
                                                 <th>Advertiser</th>
@@ -1266,33 +1282,31 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
                                                 $profit = $offer['profit'] ?? 0;
                                             ?>
                                             <tr>
-                                                <td>
+                                                <td style="width: 44px; text-align: center; vertical-align: middle;">
                                                     <input type="checkbox" 
                                                            name="selected_offers[]" 
                                                            value="<?php echo $offer['offer_id']; ?>" 
-                                                           class="form-check-input offer-checkbox">
+                                                           class="offer-checkbox"
+                                                           style="width: 18px; height: 18px; cursor: pointer; margin: 0; vertical-align: middle;">
                                                 </td>
                                                 <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="offer-avatar mr-3">
-                                                            <?php echo strtoupper(substr($offer['offer_name'], 0, 1)); ?>
-                                                        </div>
-                                                        <div>
-                                                            <strong><?php echo htmlspecialchars($offer['offer_name']); ?></strong>
-                                                            <div class="text-muted small">
-                                                                ID: #<?php echo $offer['offer_id']; ?>
-                                                                <?php if ($offer['category']): ?>
-                                                                <span class="ml-2"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($offer['category']); ?></span>
-                                                                <?php endif; ?>
-                                                            </div>
-                                                            <?php if ($offer['offer_description']): ?>
-                                                            <div class="text-muted small truncate-text" style="max-width: 200px;">
-                                                                <?php echo htmlspecialchars(substr($offer['offer_description'], 0, 50)) . '...'; ?>
-                                                            </div>
+                                                    <div>
+                                                        <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>" class="offer-title-link" title="Click to view details for Campaign #<?php echo $offer['offer_id']; ?>">
+                                                            <?php echo htmlspecialchars($offer['offer_name']); ?>
+                                                        </a>
+                                                        <div class="text-muted small mt-1">
+                                                            <span class="badge badge-light border mr-1 font-weight-normal">ID: #<?php echo $offer['offer_id']; ?></span>
+                                                            <?php if ($offer['category']): ?>
+                                                            <span class="text-secondary"><i class="fas fa-tag mr-1"></i><?php echo htmlspecialchars($offer['category']); ?></span>
                                                             <?php endif; ?>
-                                                            <div class="text-muted small">
-                                                                <i class="far fa-calendar-alt"></i> <?php echo date('M d, Y', strtotime($offer['created_at'])); ?>
-                                                            </div>
+                                                        </div>
+                                                        <?php if ($offer['offer_description']): ?>
+                                                        <div class="text-muted small truncate-text mt-1" style="max-width: 280px; color: #64748b;">
+                                                            <?php echo htmlspecialchars(substr($offer['offer_description'], 0, 75)) . (strlen($offer['offer_description']) > 75 ? '...' : ''); ?>
+                                                        </div>
+                                                        <?php endif; ?>
+                                                        <div class="text-muted small mt-1">
+                                                            <i class="far fa-calendar-alt mr-1"></i><?php echo date('M d, Y', strtotime($offer['created_at'])); ?>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1485,7 +1499,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
         <div class="float-right d-none d-sm-inline">
             <strong>Admin Panel v3.0</strong>
         </div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 
@@ -1582,8 +1596,17 @@ $(document).ready(function() {
             case 'reject':
                 message = `Reject ${selectedCount} campaign(s)?`;
                 break;
+            case 'archive':
+                message = `Archive ${selectedCount} campaign(s)? They will be moved to the Archived section and all tracking links will be blocked.`;
+                break;
+            case 'restore':
+                message = `Restore ${selectedCount} campaign(s) to paused status?`;
+                break;
             case 'delete':
                 message = `Delete ${selectedCount} campaign(s)? This action cannot be undone.`;
+                break;
+            default:
+                message = `Apply ${action} to ${selectedCount} campaign(s)?`;
                 break;
         }
         

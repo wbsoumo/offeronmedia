@@ -29,7 +29,7 @@ if (!isset($modalOffersList)) {
         $modalOffersList = $pdo->query("
             SELECT offer_id, offer_name, payout, revenue, currency, status 
             FROM offers 
-            WHERE status != 'archived' 
+            WHERE LOWER(TRIM(status)) != 'archived' 
             ORDER BY offer_name ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {

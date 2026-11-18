@@ -21,7 +21,8 @@ $offersStmt = $pdo->prepare("
     LEFT JOIN affiliate_offer_approval aoa 
       ON aoa.offer_id = o.offer_id 
      AND aoa.affiliate_id = ?
-    WHERE LOWER(o.status) IN ('approved', 'active', 'live')
+    WHERE LOWER(TRIM(o.status)) IN ('approved', 'active', 'live')
+      AND LOWER(TRIM(o.status)) != 'archived'
       AND (LOWER(o.visibility) = 'public' OR aoa.status = 'approved')
       AND (aoa.status IS NULL OR aoa.status NOT IN ('rejected', 'blocked', 'suspended'))
     ORDER BY o.offer_name ASC
@@ -34,6 +35,17 @@ $offers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
 -------------------------------------------------- */
 $generatedUrl = null;
 $selectedOfferId = $_GET['offer_id'] ?? ($offers[0]['offer_id'] ?? '');
+
+$selectedOfferExists = false;
+foreach ($offers as $offItem) {
+    if ((string)$offItem['offer_id'] === (string)$selectedOfferId) {
+        $selectedOfferExists = true;
+        break;
+    }
+}
+if (!$selectedOfferExists) {
+    $selectedOfferId = !empty($offers) ? $offers[0]['offer_id'] : '';
+}
 $sub_aff_id = $_GET['sub_aff_id'] ?? '';
 $sub1 = $_GET['sub1'] ?? '';
 $sub2 = $_GET['sub2'] ?? '';
@@ -285,7 +297,7 @@ if ($selectedOfferId) {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Affiliate Portal v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

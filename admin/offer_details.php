@@ -36,7 +36,7 @@ if (!empty($_GET['action'])) {
     } elseif ($act === 'archive') {
         $pdo->exec("UPDATE offers SET status='archived', updated_at=NOW() WHERE offer_id=$offerId");
         admin_log_action('offer_archive', 'offer', $offerId, 'Campaign moved to archived status');
-        header("Location: offer_details.php?id=$offerId&success=Campaign archived successfully. Historical tracking records preserved.");
+        header("Location: archived_offers.php?archived=1&id=$offerId");
         exit;
     } elseif ($act === 'restore') {
         $pdo->exec("UPDATE offers SET status='paused', updated_at=NOW() WHERE offer_id=$offerId");
@@ -200,7 +200,7 @@ $notes = [
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Campaign Details | Admin Panel | GVS Offer on Media</title>
+    <title>Campaign Details | Admin Panel | Offer on Media</title>
     
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -782,6 +782,19 @@ $notes = [
                         </div>
                     </div>
                 </div>
+
+                <?php if (strtolower(trim($offer['status'] ?? '')) === 'archived'): ?>
+                <div class="alert alert-warning border-warning shadow-sm d-flex align-items-center justify-content-between p-3 mb-4" role="alert">
+                    <div>
+                        <i class="fas fa-archive mr-2 fa-lg text-secondary"></i>
+                        <strong>Campaign Archived:</strong> This campaign is currently archived. All tracking link redirects are blocked (HTTP 403), and affiliates cannot open or run traffic to this offer. Historical logs and statistics are preserved.
+                    </div>
+                    <a href="offer_details.php?id=<?php echo $offer['offer_id']; ?>&action=restore" class="btn btn-sm btn-success font-weight-bold" onclick="return confirm('Restore this archived campaign to Paused status?')">
+                        <i class="fas fa-undo mr-1"></i> Restore Campaign
+                    </a>
+                </div>
+                <?php endif; ?>
+
                 <div class="row mb-4 stat-boxes-row">
                     <div class="col-6 col-md-2">
                         <div class="stat-card-custom">
@@ -1340,7 +1353,7 @@ $notes = [
         <div class="float-right d-none d-sm-inline">
             <strong>Admin Panel v3.0</strong>
         </div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

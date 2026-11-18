@@ -80,9 +80,10 @@ if (!$offer) {
     exit('OFFER_NOT_FOUND');
 }
 
-if (strtolower($offer['status']) === 'archived' || !in_array(strtolower($offer['status']), ['approved', 'active', 'live'], true)) {
+$offerStatus = strtolower(trim((string)($offer['status'] ?? '')));
+if ($offerStatus === 'archived' || !in_array($offerStatus, ['approved', 'active', 'live'], true)) {
     http_response_code(403);
-    exit('OFFER_NOT_APPROVED');
+    exit('OFFER_NOT_APPROVED: Campaign offer is archived or inactive and no longer accepts traffic.');
 }
 
 if (empty($offer['offer_url'])) {

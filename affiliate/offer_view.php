@@ -44,8 +44,32 @@ $stmt = $pdo->prepare("
 $stmt->execute([$affiliateId, $offerId]);
 $offer = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$offer || !in_array(strtolower($offer['offer_status']), ['approved', 'active', 'live'], true)) {
-    die('<div style="font-family:sans-serif; text-align:center; padding:50px;"><h2>Campaign offer not found or inactive.</h2><a href="offers.php">Back to Offers</a></div>');
+$offerStatus = strtolower(trim((string)($offer['offer_status'] ?? '')));
+if (!$offer || $offerStatus === 'archived' || !in_array($offerStatus, ['approved', 'active', 'live'], true)) {
+    http_response_code(403);
+    die('
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Campaign Unavailable | Offer on Media</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </head>
+    <body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="card p-5 shadow text-center" style="max-width: 520px; border-radius: 16px; border: none;">
+            <div class="mb-4">
+                <span class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle" style="width: 72px; height: 72px; font-size: 32px;">
+                    <i class="fas fa-box-archive"></i>
+                </span>
+            </div>
+            <h3 class="font-weight-bold text-dark mb-2">Campaign Archived or Inactive</h3>
+            <p class="text-muted mb-4">This campaign offer has been archived or is inactive and cannot be opened. Affiliates cannot view or generate links for archived campaigns.</p>
+            <a href="offers.php" class="btn btn-primary font-weight-bold px-4 py-2"><i class="fas fa-arrow-left mr-2"></i>Back to Active Campaigns</a>
+        </div>
+    </body>
+    </html>
+    ');
 }
 
 $visibility = strtolower($offer['visibility'] ?? 'public');
@@ -440,7 +464,7 @@ $trackingUrl = "https://offeronmedia.com/click.php?offer_id={$offerId}&aff_id={$
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Affiliate Portal v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

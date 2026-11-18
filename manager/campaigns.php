@@ -155,6 +155,7 @@ $pendingOffersStmt = $pdo->prepare("
     INNER JOIN users u ON u.user_id = aoa.affiliate_id
     INNER JOIN offers o ON o.offer_id = aoa.offer_id
     WHERE u.account_manager_id = ? AND aoa.status = 'pending'
+      AND LOWER(TRIM(o.status)) != 'archived'
     ORDER BY aoa.created_at DESC
 ");
 $pendingOffersStmt->execute([$managerId]);
@@ -184,7 +185,7 @@ $offersStmt = $pdo->prepare("
     FROM offers o
     LEFT JOIN clicks c ON c.offer_id = o.offer_id
     LEFT JOIN conversions cv ON cv.offer_id = o.offer_id
-    WHERE o.status != 'archived'
+    WHERE LOWER(TRIM(o.status)) != 'archived'
     GROUP BY o.offer_id
     ORDER BY o.created_at DESC
 ");
@@ -744,7 +745,7 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Manager Portal v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

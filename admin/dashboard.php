@@ -127,7 +127,7 @@ $recentUsers = $pdo->query("
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Admin Executive Dashboard | GVS Offer on Media</title>
+    <title>Admin Executive Dashboard | Offer on Media</title>
     
     <!-- Google Font -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,600,700&display=fallback">
@@ -390,7 +390,7 @@ $recentUsers = $pdo->query("
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Console v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

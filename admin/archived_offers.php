@@ -11,6 +11,15 @@ require_role('admin');
 $adminName = $_SESSION['user_name'] ?? 'Admin';
 $success = $error = null;
 
+if (isset($_GET['archived'])) {
+    $archivedId = isset($_GET['id']) ? ' #' . (int)$_GET['id'] : '';
+    $success = "Campaign{$archivedId} archived successfully and moved to Archive. Historical click and conversion records are preserved.";
+}
+if (isset($_GET['bulk_archived'])) {
+    $count = (int)$_GET['bulk_archived'];
+    $success = "{$count} campaign(s) archived successfully and moved to Archive. Historical records preserved.";
+}
+
 /* ===============================
    HANDLE RESTORE ACTIONS
 ================================ */
@@ -341,7 +350,9 @@ $archiveStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                                     <table class="table table-hover table-custom mb-0">
                                         <thead>
                                             <tr>
-                                                <th style="width: 40px;"><input type="checkbox" id="checkAllArchived"></th>
+                                                <th style="width: 44px; text-align: center; vertical-align: middle;">
+                                                    <input type="checkbox" id="checkAllArchived" style="width: 18px; height: 18px; cursor: pointer; margin: 0; vertical-align: middle;">
+                                                </th>
                                                 <th>Campaign Details</th>
                                                 <th>Advertiser</th>
                                                 <th>Configured Pricing</th>
@@ -355,9 +366,13 @@ $archiveStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
                                         <tbody>
                                             <?php foreach ($archivedOffers as $ao): ?>
                                             <tr>
-                                                <td><input type="checkbox" name="selected_offers[]" value="<?php echo $ao['offer_id']; ?>" class="archive-checkbox"></td>
+                                                <td style="width: 44px; text-align: center; vertical-align: middle;">
+                                                    <input type="checkbox" name="selected_offers[]" value="<?php echo $ao['offer_id']; ?>" class="archive-checkbox" style="width: 18px; height: 18px; cursor: pointer; margin: 0; vertical-align: middle;">
+                                                </td>
                                                 <td>
-                                                    <strong>#<?php echo $ao['offer_id']; ?> - <?php echo htmlspecialchars($ao['offer_name']); ?></strong>
+                                                    <a href="offer_details.php?id=<?php echo $ao['offer_id']; ?>" class="text-dark font-weight-bold" style="text-decoration: underline;" title="View Details">
+                                                        #<?php echo $ao['offer_id']; ?> - <?php echo htmlspecialchars($ao['offer_name']); ?>
+                                                    </a>
                                                     <small class="d-block text-muted">Category: <?php echo htmlspecialchars($ao['category'] ?: 'General'); ?></small>
                                                 </td>
                                                 <td>

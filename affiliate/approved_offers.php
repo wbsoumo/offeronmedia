@@ -27,6 +27,8 @@ $stmt = $pdo->prepare("
     LEFT JOIN conversions cv ON cv.offer_id = o.offer_id AND cv.affiliate_id = ?
     WHERE a.affiliate_id = ?
       AND a.status = 'approved'
+      AND LOWER(TRIM(o.status)) NOT IN ('archived', 'deleted')
+      AND LOWER(TRIM(o.status)) IN ('approved', 'active', 'live')
     GROUP BY o.offer_id
     ORDER BY o.created_at DESC
 ");
@@ -195,7 +197,7 @@ $approvedOffers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Affiliate Portal v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

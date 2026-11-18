@@ -20,7 +20,7 @@ $affiliateName = $_SESSION['user_name'] ?? 'Affiliate';
 $where  = [];
 $params = ['aid' => $affiliateId];
 
-$where[] = "LOWER(o.status) IN ('approved', 'active', 'live')";
+$where[] = "LOWER(TRIM(o.status)) IN ('approved', 'active', 'live') AND LOWER(TRIM(o.status)) != 'archived'";
 // Private offers are only visible to affiliates who have been explicitly approved / assigned
 $where[] = "(LOWER(IFNULL(o.visibility, 'public')) = 'public' OR a.status = 'approved')";
 // Offers where affiliate has been explicitly rejected or blocked are excluded
@@ -418,7 +418,7 @@ $categories = $categoriesStmt->fetchAll(PDO::FETCH_COLUMN);
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Affiliate Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 

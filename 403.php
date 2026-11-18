@@ -31,7 +31,7 @@ $requestedUrl = $_SERVER['REQUEST_URI'] ?? '';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="favicon.png">
-    <title>403 - Access Forbidden | GVS Offer on Media</title>
+    <title>403 - Access Forbidden | Offer on Media</title>
     
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">

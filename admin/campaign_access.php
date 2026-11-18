@@ -193,7 +193,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
    FETCH AFFILIATES & OFFERS
 ================================ */
 $affiliates = $pdo->query("SELECT user_id, name, email, company FROM users WHERE role_id = 3 AND status = 'active' ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
-$offers = $pdo->query("SELECT offer_id, offer_name, payout, status FROM offers ORDER BY offer_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$offers = $pdo->query("SELECT offer_id, offer_name, payout, status FROM offers WHERE LOWER(TRIM(status)) != 'archived' ORDER BY offer_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 /* ===============================
    FETCH ALL ACCESS ASSIGNMENTS
@@ -659,7 +659,7 @@ foreach ($assignments as $as) {
 
     <footer class="main-footer">
         <div class="float-right d-none d-sm-inline"><strong>Admin Panel v3.0</strong></div>
-        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">GVS Offer on Media</a>.</strong> All rights reserved.
+        <strong>Copyright &copy; <?php echo date('Y'); ?> <a href="#">Offer on Media</a>.</strong> All rights reserved.
     </footer>
 </div>
 
