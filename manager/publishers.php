@@ -91,10 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_postback'])) {
             $exist = $pbChk->fetch(PDO::FETCH_ASSOC);
 
             if ($exist) {
-                $upd = $pdo->prepare("UPDATE affiliate_postbacks SET postback_url = ?, status = ?, postback_type = ?, name = ?, updated_at = NOW() WHERE id = ?");
+                $upd = $pdo->prepare("UPDATE affiliate_postbacks SET postback_url = ?, status = ?, postback_type = ?, postback_name = ?, updated_at = NOW() WHERE id = ?");
                 $upd->execute([$url, $status, $type, $pName, $exist['id']]);
             } else {
-                $ins = $pdo->prepare("INSERT INTO affiliate_postbacks (affiliate_id, postback_url, status, postback_type, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
+                $ins = $pdo->prepare("INSERT INTO affiliate_postbacks (affiliate_id, postback_url, status, postback_type, postback_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
                 $ins->execute([$affId, $url, $status, $type, $pName]);
             }
             $success = "Postback configuration saved for publisher #" . $affId . " (" . htmlspecialchars($targetPub['name']) . ")!";

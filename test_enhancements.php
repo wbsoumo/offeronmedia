@@ -560,6 +560,56 @@ if (!empty($pbLog['id'])) {
 }
 
 // ---------------------------------------------------------
+// TEST 12: Global vs Offer-Specific Postback Architecture
+// ---------------------------------------------------------
+echo "\n--- TEST 12: Global vs Offer-Specific Postback Architecture ---\n";
+
+$apCols = $pdo->query("SHOW COLUMNS FROM affiliate_postbacks")->fetchAll(PDO::FETCH_COLUMN);
+assertTest("affiliate_postbacks has fire_status column", in_array('fire_status', $apCols, true));
+assertTest("affiliate_postbacks has offer_id column", in_array('offer_id', $apCols, true));
+assertTest("affiliate_postbacks has postback_name column", in_array('postback_name', $apCols, true));
+
+$tables = $pdo->query("SHOW TABLES LIKE 'affiliate_offer_postbacks'")->fetchAll(PDO::FETCH_COLUMN);
+assertTest("affiliate_offer_postbacks table exists", in_array('affiliate_offer_postbacks', $tables, true));
+
+// Test Global Postback Save
+$pdo->prepare("
+    INSERT INTO affiliate_postbacks (affiliate_id, offer_id, postback_url, fire_status, status)
+    VALUES (?, NULL, 'https://global-tracker.com/pb?cid={sub1}&payout={payout}', 'approved', 'active')
+")->execute([$affId]);
+$globalPbId = $pdo->lastInsertId();
+
+// Test Offer-Specific Postback Override Save
+$pdo->prepare("
+    INSERT INTO affiliate_postbacks (affiliate_id, offer_id, postback_url, fire_status, status)
+    VALUES (?, ?, 'https://offer-tracker.com/pb?cid={sub1}&offer={offer_id}', 'approved', 'active')
+")->execute([$affId, $offerId]);
+$offerPbId = $pdo->lastInsertId();
+
+// Verify Offer-Specific Postback query finds specific postback first
+$chkStmt = $pdo->prepare("
+    SELECT postback_url FROM affiliate_postbacks 
+    WHERE affiliate_id = ? AND offer_id = ? AND status = 'active'
+    LIMIT 1
+");
+$chkStmt->execute([$affId, $offerId]);
+$foundUrl = $chkStmt->fetchColumn();
+assertTest("Offer-Specific postback resolves correctly for matching offer", strpos($foundUrl, 'offer-tracker.com') !== false);
+
+// Verify Global Postback resolves for non-matching offer
+$chkStmt2 = $pdo->prepare("
+    SELECT postback_url FROM affiliate_postbacks 
+    WHERE affiliate_id = ? AND (offer_id IS NULL OR offer_id = 0) AND status = 'active'
+    LIMIT 1
+");
+$chkStmt2->execute([$affId]);
+$foundGlobal = $chkStmt2->fetchColumn();
+assertTest("Global postback resolves correctly as default fallback", strpos($foundGlobal, 'global-tracker.com') !== false);
+
+// Clean up test postbacks
+$pdo->prepare("DELETE FROM affiliate_postbacks WHERE id IN (?, ?)")->execute([$globalPbId, $offerPbId]);
+
+// ---------------------------------------------------------
 // SUMMARY
 // ---------------------------------------------------------
 echo "\n========================================================\n";

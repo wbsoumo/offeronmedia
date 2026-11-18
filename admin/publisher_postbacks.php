@@ -21,14 +21,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $status = $_POST['status'] ?? 'active';
         $postbackType = $_POST['postback_type'] ?? 'global';
         $name = trim($_POST['postback_name'] ?? '');
+        $fireStatus = $_POST['fire_status'] ?? 'approved';
 
         if (!$affiliateId || empty($postbackUrl)) {
             $error = 'Publisher and Postback URL are required';
         } elseif (!filter_var($postbackUrl, FILTER_VALIDATE_URL)) {
             $error = 'Please enter a valid HTTP/HTTPS Postback URL';
         } else {
-            // Check if postback record already exists for this publisher
-            $checkStmt = $pdo->prepare("SELECT id FROM affiliate_postbacks WHERE affiliate_id = ? LIMIT 1");
+            // Check if global postback record already exists for this publisher
+            $checkStmt = $pdo->prepare("SELECT id FROM affiliate_postbacks WHERE affiliate_id = ? AND (offer_id IS NULL OR offer_id = 0) LIMIT 1");
             $checkStmt->execute([$affiliateId]);
             $existingPostback = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -37,6 +38,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $updateStmt = $pdo->prepare("
                     UPDATE affiliate_postbacks 
                     SET postback_url = :url,
+                        fire_status = :fire_status,
                         status = :status,
                         postback_type = :type,
                         postback_name = :name,
@@ -44,30 +46,82 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     WHERE id = :id
                 ");
                 $updateStmt->execute([
-                    'url'    => $postbackUrl,
-                    'status' => $status,
-                    'type'   => $postbackType,
-                    'name'   => $name,
-                    'id'     => $existingPostback['id']
+                    'url'         => $postbackUrl,
+                    'fire_status' => $fireStatus,
+                    'status'      => $status,
+                    'type'        => $postbackType,
+                    'name'        => $name,
+                    'id'          => $existingPostback['id']
                 ]);
             } else {
                 // Insert new record
                 $insertStmt = $pdo->prepare("
                     INSERT INTO affiliate_postbacks 
-                        (affiliate_id, postback_url, status, postback_type, postback_name, created_at, updated_at)
+                        (affiliate_id, offer_id, postback_url, fire_status, status, postback_type, postback_name, created_at, updated_at)
                     VALUES 
-                        (:aid, :url, :status, :type, :name, NOW(), NOW())
+                        (:aid, NULL, :url, :fire_status, :status, :type, :name, NOW(), NOW())
                 ");
                 $insertStmt->execute([
-                    'aid'    => $affiliateId,
-                    'url'    => $postbackUrl,
-                    'status' => $status,
-                    'type'   => $postbackType,
-                    'name'   => $name
+                    'aid'         => $affiliateId,
+                    'url'         => $postbackUrl,
+                    'fire_status' => $fireStatus,
+                    'status'      => $status,
+                    'type'        => $postbackType,
+                    'name'        => $name
                 ]);
             }
 
-            $success = 'Postback URL configuration saved successfully!';
+            $success = 'Global postback configuration saved successfully!';
+        }
+    } elseif (isset($_POST['save_offer_postback'])) {
+        $affiliateId = (int)($_POST['affiliate_id'] ?? 0);
+        $offerId = (int)($_POST['offer_id'] ?? 0);
+        $postbackUrl = trim($_POST['postback_url'] ?? '');
+        $status = $_POST['status'] ?? 'active';
+        $fireStatus = $_POST['fire_status'] ?? 'approved';
+
+        if (!$affiliateId || !$offerId || empty($postbackUrl)) {
+            $error = 'Publisher, Offer, and Postback URL are all required';
+        } elseif (!filter_var($postbackUrl, FILTER_VALIDATE_URL)) {
+            $error = 'Please enter a valid HTTP/HTTPS Postback URL';
+        } else {
+            $checkStmt = $pdo->prepare("SELECT id FROM affiliate_postbacks WHERE affiliate_id = ? AND offer_id = ? LIMIT 1");
+            $checkStmt->execute([$affiliateId, $offerId]);
+            $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                $up = $pdo->prepare("UPDATE affiliate_postbacks SET postback_url = ?, fire_status = ?, status = ?, updated_at = NOW() WHERE id = ?");
+                $up->execute([$postbackUrl, $fireStatus, $status, $existing['id']]);
+            } else {
+                $ins = $pdo->prepare("INSERT INTO affiliate_postbacks (affiliate_id, offer_id, postback_url, fire_status, status, postback_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'offer', NOW(), NOW())");
+                $ins->execute([$affiliateId, $offerId, $postbackUrl, $fireStatus, $status]);
+            }
+
+            // Sync with affiliate_offer_postbacks
+            try {
+                $pdo->prepare("
+                    INSERT INTO affiliate_offer_postbacks (affiliate_id, offer_id, postback_url, fire_status, status)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE postback_url = VALUES(postback_url), fire_status = VALUES(fire_status), status = VALUES(status)
+                ")->execute([$affiliateId, $offerId, $postbackUrl, $fireStatus, $status]);
+            } catch (Exception $e) {}
+
+            $success = 'Offer-specific postback override saved successfully!';
+        }
+    } elseif (isset($_POST['delete_offer_postback'])) {
+        $pbid = (int)($_POST['postback_id'] ?? 0);
+        if ($pbid > 0) {
+            $pRow = $pdo->prepare("SELECT affiliate_id, offer_id FROM affiliate_postbacks WHERE id = ?");
+            $pRow->execute([$pbid]);
+            $row = $pRow->fetch(PDO::FETCH_ASSOC);
+
+            $pdo->prepare("DELETE FROM affiliate_postbacks WHERE id = ?")->execute([$pbid]);
+            if ($row) {
+                try {
+                    $pdo->prepare("DELETE FROM affiliate_offer_postbacks WHERE affiliate_id = ? AND offer_id = ?")->execute([$row['affiliate_id'], $row['offer_id']]);
+                } catch (Exception $e) {}
+            }
+            $success = 'Offer-specific postback override deleted successfully!';
         }
     }
 }
@@ -83,22 +137,37 @@ $affiliatesQuery = $pdo->query("
         u.status as affiliate_status,
         ap.id as postback_id,
         ap.postback_url,
+        ap.fire_status,
         ap.status as postback_status,
         ap.postback_type,
         ap.postback_name,
         COALESCE(ap.updated_at, ap.created_at) as postback_updated
     FROM users u
-    LEFT JOIN affiliate_postbacks ap ON ap.affiliate_id = u.user_id
+    LEFT JOIN affiliate_postbacks ap ON ap.affiliate_id = u.user_id AND (ap.offer_id IS NULL OR ap.offer_id = 0)
     WHERE u.role_id = 3
     ORDER BY u.name ASC
 ");
 $affiliateData = $affiliatesQuery->fetchAll(PDO::FETCH_ASSOC);
 
+// Fetch all active offers for offer-specific postbacks
+$allOffers = $pdo->query("SELECT offer_id, offer_name, currency, payout FROM offers WHERE status = 'active' ORDER BY offer_name ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch all offer-specific postbacks
+$allOfferPostbacks = $pdo->query("
+    SELECT ap.*, u.name as publisher_name, u.email as publisher_email, o.offer_name, o.currency
+    FROM affiliate_postbacks ap
+    INNER JOIN users u ON u.user_id = ap.affiliate_id
+    INNER JOIN offers o ON o.offer_id = ap.offer_id
+    WHERE ap.offer_id IS NOT NULL AND ap.offer_id > 0
+    ORDER BY ap.id DESC
+")->fetchAll(PDO::FETCH_ASSOC);
+
 // Totals
 $stats = [
     'total_publishers' => count($affiliateData),
     'configured' => 0,
-    'active' => 0
+    'active' => 0,
+    'offer_overrides' => count($allOfferPostbacks)
 ];
 
 foreach ($affiliateData as $aff) {
@@ -235,24 +304,30 @@ foreach ($affiliateData as $aff) {
                 </div>
                 <?php endif; ?>
 
-                <!-- Summary Stat Cards (2x2 Mobile Responsive Grid) -->
+                <!-- Summary Stat Cards -->
                 <div class="row mb-4 stat-boxes-row">
-                    <div class="col-6 col-md-4">
+                    <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
                             <div class="stat-number text-primary"><?php echo number_format($stats['total_publishers']); ?></div>
                             <div class="stat-label">Total Publishers</div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-4">
+                    <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
                             <div class="stat-number text-success"><?php echo number_format($stats['configured']); ?></div>
-                            <div class="stat-label">Postbacks Configured</div>
+                            <div class="stat-label">Global Configured</div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-6 col-md-3">
                         <div class="stat-card-custom">
                             <div class="stat-number text-info"><?php echo number_format($stats['active']); ?></div>
-                            <div class="stat-label">Active Postback Triggers</div>
+                            <div class="stat-label">Active Triggers</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="stat-card-custom">
+                            <div class="stat-number text-warning"><?php echo number_format($stats['offer_overrides']); ?></div>
+                            <div class="stat-label">Offer Overrides</div>
                         </div>
                     </div>
                 </div>
@@ -269,70 +344,228 @@ foreach ($affiliateData as $aff) {
                         <span class="macro-tag">{transaction_id}</span>
                         <span class="macro-tag">{sub1}</span>
                         <span class="macro-tag">{sub2}</span>
+                        <span class="macro-tag">{sub3}</span>
+                        <span class="macro-tag">{sub4}</span>
+                        <span class="macro-tag">{sub5}</span>
                     </div>
                 </div>
 
-                <!-- Publisher Postback Directory -->
+                <!-- Postback Management Tabs -->
                 <div class="card card-custom p-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-network-wired mr-2"></i>Publisher Postback Configuration Directory</h4>
+                    <ul class="nav nav-tabs mb-4 font-weight-bold" id="postbackTabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" id="global-tab" data-toggle="tab" href="#tabGlobal" role="tab">
+                                <i class="fas fa-globe mr-2"></i>Publisher Global Postbacks (<?php echo count($affiliateData); ?>)
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="offers-tab" data-toggle="tab" href="#tabOffers" role="tab">
+                                <i class="fas fa-bullseye mr-2"></i>Offer-Specific Overrides (<?php echo count($allOfferPostbacks); ?>)
+                            </a>
+                        </li>
+                    </ul>
 
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle" id="postbacksTable">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Publisher</th>
-                                    <th>Postback Configuration & Target URL</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($affiliateData as $aff): ?>
-                                <tr>
-                                    <td style="width: 250px;">
-                                        <strong class="text-dark d-block"><?php echo htmlspecialchars($aff['name']); ?></strong>
-                                        <small class="text-muted d-block"><?php echo htmlspecialchars($aff['email']); ?></small>
-                                        <small class="badge badge-light border mt-1">ID: #<?php echo $aff['user_id']; ?></small>
-                                    </td>
-                                    <td>
-                                        <form method="post" class="postback-update-form">
-                                            <input type="hidden" name="affiliate_id" value="<?php echo $aff['user_id']; ?>">
-                                            <input type="hidden" name="save_postback" value="1">
-                                            
-                                            <div class="form-row">
-                                                <div class="col-md-4 mb-2">
-                                                    <input type="text" name="postback_name" class="form-control form-control-sm" placeholder="Label / Name (Optional)" value="<?php echo htmlspecialchars($aff['postback_name'] ?? ''); ?>">
-                                                </div>
-                                                <div class="col-md-8 mb-2">
-                                                    <input type="url" name="postback_url" class="form-control form-control-sm" placeholder="https://publisher-tracker.com/postback?cid={click_id}&payout={payout}" required value="<?php echo htmlspecialchars($aff['postback_url'] ?? ''); ?>">
-                                                </div>
-                                            </div>
-                                    </td>
-                                    <td style="width: 130px;">
-                                            <select name="postback_type" class="form-control form-control-sm">
-                                                <option value="global" <?php echo ($aff['postback_type'] ?? 'global') === 'global' ? 'selected' : ''; ?>>Global</option>
-                                                <option value="hasoffers" <?php echo ($aff['postback_type'] ?? '') === 'hasoffers' ? 'selected' : ''; ?>>HasOffers</option>
-                                                <option value="cake" <?php echo ($aff['postback_type'] ?? '') === 'cake' ? 'selected' : ''; ?>>CAKE</option>
-                                                <option value="custom" <?php echo ($aff['postback_type'] ?? '') === 'custom' ? 'selected' : ''; ?>>Custom</option>
+                    <div class="tab-content" id="postbackTabsContent">
+                        <!-- TAB 1: GLOBAL POSTBACKS DIRECTORY -->
+                        <div class="tab-pane fade show active" id="tabGlobal" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="font-weight-bold text-primary mb-0"><i class="fas fa-network-wired mr-2"></i>Publisher Postback Configuration Directory</h4>
+                                <small class="text-muted">Global S2S Postbacks applied to all campaigns per publisher</small>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle" id="postbacksTable">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Publisher</th>
+                                            <th>Postback Configuration & Target URL</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($affiliateData as $aff): ?>
+                                        <tr>
+                                            <td style="width: 250px;">
+                                                <strong class="text-dark d-block"><?php echo htmlspecialchars($aff['name']); ?></strong>
+                                                <small class="text-muted d-block"><?php echo htmlspecialchars($aff['email']); ?></small>
+                                                <small class="badge badge-light border mt-1">ID: #<?php echo $aff['user_id']; ?></small>
+                                            </td>
+                                            <td>
+                                                <form method="post" class="postback-update-form">
+                                                    <input type="hidden" name="affiliate_id" value="<?php echo $aff['user_id']; ?>">
+                                                    <input type="hidden" name="save_postback" value="1">
+                                                    
+                                                    <div class="form-row">
+                                                        <div class="col-md-4 mb-2">
+                                                            <input type="text" name="postback_name" class="form-control form-control-sm" placeholder="Label / Name (Optional)" value="<?php echo htmlspecialchars($aff['postback_name'] ?? ''); ?>">
+                                                        </div>
+                                                        <div class="col-md-8 mb-2">
+                                                            <input type="url" name="postback_url" class="form-control form-control-sm" placeholder="https://publisher-tracker.com/postback?cid={click_id}&payout={payout}" required value="<?php echo htmlspecialchars($aff['postback_url'] ?? ''); ?>">
+                                                        </div>
+                                                    </div>
+                                            </td>
+                                            <td style="width: 130px;">
+                                                    <select name="postback_type" class="form-control form-control-sm">
+                                                        <option value="global" <?php echo ($aff['postback_type'] ?? 'global') === 'global' ? 'selected' : ''; ?>>Global</option>
+                                                        <option value="hasoffers" <?php echo ($aff['postback_type'] ?? '') === 'hasoffers' ? 'selected' : ''; ?>>HasOffers</option>
+                                                        <option value="cake" <?php echo ($aff['postback_type'] ?? '') === 'cake' ? 'selected' : ''; ?>>CAKE</option>
+                                                        <option value="custom" <?php echo ($aff['postback_type'] ?? '') === 'custom' ? 'selected' : ''; ?>>Custom</option>
+                                                    </select>
+                                            </td>
+                                            <td style="width: 120px;">
+                                                    <select name="status" class="form-control form-control-sm font-weight-bold text-<?php echo ($aff['postback_status'] ?? '') === 'active' ? 'success' : 'secondary'; ?>">
+                                                        <option value="active" <?php echo ($aff['postback_status'] ?? '') === 'active' ? 'selected' : ''; ?>>Active</option>
+                                                        <option value="inactive" <?php echo ($aff['postback_status'] ?? 'inactive') === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                                                    </select>
+                                            </td>
+                                            <td style="width: 100px;">
+                                                    <button type="submit" class="btn btn-sm btn-primary btn-block font-weight-bold shadow-sm">
+                                                        <i class="fas fa-save mr-1"></i> Save
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: OFFER-SPECIFIC OVERRIDES -->
+                        <div class="tab-pane fade" id="tabOffers" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h4 class="font-weight-bold text-warning mb-0"><i class="fas fa-bullseye mr-2"></i>Offer-Specific Postback Overrides</h4>
+                                    <small class="text-muted">Custom S2S Postbacks that take precedence over the Global Postback for specific campaigns</small>
+                                </div>
+                                <button type="button" class="btn btn-primary font-weight-bold shadow-sm" data-toggle="modal" data-target="#adminAddOfferPbModal">
+                                    <i class="fas fa-plus mr-1"></i> Add Offer Override
+                                </button>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle" id="offerPostbacksTable">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Publisher</th>
+                                            <th>Campaign Offer</th>
+                                            <th>Offer Postback URL</th>
+                                            <th>Trigger</th>
+                                            <th>Status</th>
+                                            <th class="text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($allOfferPostbacks)): ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-4 text-muted">
+                                                No offer-specific postback overrides configured.
+                                            </td>
+                                        </tr>
+                                        <?php else: ?>
+                                            <?php foreach ($allOfferPostbacks as $opb): ?>
+                                            <tr>
+                                                <td>
+                                                    <strong class="text-dark">#<?php echo $opb['affiliate_id']; ?> - <?php echo htmlspecialchars($opb['publisher_name']); ?></strong>
+                                                    <small class="d-block text-muted"><?php echo htmlspecialchars($opb['publisher_email']); ?></small>
+                                                </td>
+                                                <td>
+                                                    <strong class="text-primary">#<?php echo $opb['offer_id']; ?> - <?php echo htmlspecialchars($opb['offer_name']); ?></strong>
+                                                </td>
+                                                <td>
+                                                    <code class="small d-block text-truncate" style="max-width: 320px;" title="<?php echo htmlspecialchars($opb['postback_url']); ?>">
+                                                        <?php echo htmlspecialchars($opb['postback_url']); ?>
+                                                    </code>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-light border"><?php echo ucfirst($opb['fire_status'] ?? 'approved'); ?></span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-<?php echo ($opb['status'] === 'active') ? 'success' : 'secondary'; ?> p-2 font-weight-bold">
+                                                        <?php echo ucfirst($opb['status']); ?>
+                                                    </span>
+                                                </td>
+                                                <td class="text-right">
+                                                    <form method="post" style="display:inline-block;" onsubmit="return confirm('Delete this offer postback override?');">
+                                                        <input type="hidden" name="delete_offer_postback" value="1">
+                                                        <input type="hidden" name="postback_id" value="<?php echo $opb['id']; ?>">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger font-weight-bold">
+                                                            <i class="fas fa-trash-alt mr-1"></i> Delete
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal: Admin Add Offer Override -->
+                <div class="modal fade" id="adminAddOfferPbModal" tabindex="-1" role="dialog" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-content" style="border-radius: 12px;">
+                            <form method="post">
+                                <input type="hidden" name="save_offer_postback" value="1">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title font-weight-bold"><i class="fas fa-plus-circle mr-2"></i>Configure Offer Postback Override</h5>
+                                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div class="form-group mb-3">
+                                        <label class="font-weight-bold small">Select Publisher *</label>
+                                        <select name="affiliate_id" class="form-control" required>
+                                            <option value="">-- Choose Publisher --</option>
+                                            <?php foreach ($affiliateData as $aff): ?>
+                                                <option value="<?php echo $aff['user_id']; ?>">
+                                                    #<?php echo $aff['user_id']; ?> - <?php echo htmlspecialchars($aff['name']); ?> (<?php echo htmlspecialchars($aff['email']); ?>)
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="form-group mb-3">
+                                        <label class="font-weight-bold small">Select Campaign Offer *</label>
+                                        <select name="offer_id" class="form-control" required>
+                                            <option value="">-- Choose Campaign Offer --</option>
+                                            <?php foreach ($allOffers as $ao): ?>
+                                                <option value="<?php echo $ao['offer_id']; ?>">
+                                                    #<?php echo $ao['offer_id']; ?> - <?php echo htmlspecialchars($ao['offer_name']); ?> (<?php echo ($ao['currency'] ?? 'USD') . ' ' . number_format($ao['payout'], 2); ?>)
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="form-group mb-3">
+                                        <label class="font-weight-bold small">Offer-Specific Postback URL *</label>
+                                        <input type="url" name="postback_url" class="form-control" placeholder="https://tracker.com/postback?cid={sub1}&payout={payout}" required>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="font-weight-bold small">Conversion Trigger</label>
+                                            <select name="fire_status" class="form-control">
+                                                <option value="approved">Approved Only</option>
+                                                <option value="all">All (Approved + Pending)</option>
                                             </select>
-                                    </td>
-                                    <td style="width: 120px;">
-                                            <select name="status" class="form-control form-control-sm font-weight-bold text-<?php echo ($aff['postback_status'] ?? '') === 'active' ? 'success' : 'secondary'; ?>">
-                                                <option value="active" <?php echo ($aff['postback_status'] ?? '') === 'active' ? 'selected' : ''; ?>>Active</option>
-                                                <option value="inactive" <?php echo ($aff['postback_status'] ?? 'inactive') === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="font-weight-bold small">Status</label>
+                                            <select name="status" class="form-control">
+                                                <option value="active">Active</option>
+                                                <option value="inactive">Inactive</option>
                                             </select>
-                                    </td>
-                                    <td style="width: 100px;">
-                                            <button type="submit" class="btn btn-sm btn-primary btn-block font-weight-bold shadow-sm">
-                                                <i class="fas fa-save mr-1"></i> Save
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-primary font-weight-bold"><i class="fas fa-save mr-1"></i> Save Override</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
@@ -359,6 +592,12 @@ $(document).ready(function() {
         pageLength: 10,
         responsive: true
     });
+    if ($('#offerPostbacksTable tbody tr').length > 1 || $('#offerPostbacksTable tbody tr td[colspan]').length === 0) {
+        $('#offerPostbacksTable').DataTable({
+            pageLength: 10,
+            responsive: true
+        });
+    }
 });
 </script>
 </body>

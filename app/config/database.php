@@ -294,12 +294,36 @@ function auto_ensure_all_schema_tables($pdo)
 
         // 6. Ensure Columns in `affiliate_postbacks`
         $apCols = $pdo->query("SHOW COLUMNS FROM `affiliate_postbacks`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('offer_id', $apCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_postbacks` ADD COLUMN `offer_id` INT DEFAULT NULL AFTER `affiliate_id`"); } catch (Exception $e) {}
+        }
+        if (!in_array('fire_status', $apCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_postbacks` ADD COLUMN `fire_status` VARCHAR(20) DEFAULT 'approved' AFTER `postback_url`"); } catch (Exception $e) {}
+        }
         if (!in_array('postback_name', $apCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_postbacks` ADD COLUMN `postback_name` VARCHAR(100) DEFAULT NULL AFTER `postback_type`"); } catch (Exception $e) {}
         }
         if (!in_array('updated_at', $apCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_postbacks` ADD COLUMN `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `created_at`"); } catch (Exception $e) {}
         }
+
+        // 7. Ensure `affiliate_offer_postbacks` Table
+        try {
+            $pdo->exec("
+                CREATE TABLE IF NOT EXISTS `affiliate_offer_postbacks` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `affiliate_id` INT NOT NULL,
+                    `offer_id` INT NOT NULL,
+                    `postback_url` TEXT NOT NULL,
+                    `fire_status` VARCHAR(20) DEFAULT 'approved',
+                    `status` VARCHAR(20) DEFAULT 'active',
+                    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX `idx_aff_offer` (`affiliate_id`, `offer_id`),
+                    UNIQUE KEY `uniq_aff_offer_pb` (`affiliate_id`, `offer_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            ");
+        } catch (Exception $e) {}
 
         // 6. Ensure Columns in `account_managers`
         $amCols = $pdo->query("SHOW COLUMNS FROM `account_managers`")->fetchAll(PDO::FETCH_COLUMN);

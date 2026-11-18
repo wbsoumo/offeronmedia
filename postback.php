@@ -225,27 +225,46 @@ try {
     }
 
     /* -------------------------------------------------
-       Affiliate Postback Dispatch
+       Affiliate Postback Dispatch (Offer-Specific > Global)
     -------------------------------------------------- */
-    $pb = $pdo->prepare("
-        SELECT * FROM affiliate_offer_postbacks
-        WHERE affiliate_id = ? AND offer_id = ? AND status='active'
-        LIMIT 1
-    ");
-    $pb->execute([$click['affiliate_id'], $click['offer_id']]);
-    $postback = $pb->fetch(PDO::FETCH_ASSOC);
-
-    if (!$postback) {
+    $postback = null;
+    try {
+        // 1. Check Offer-Specific in affiliate_postbacks
         $pb = $pdo->prepare("
             SELECT * FROM affiliate_postbacks
-            WHERE affiliate_id = ? AND status='active'
+            WHERE affiliate_id = ? AND offer_id = ? AND status = 'active'
             LIMIT 1
         ");
-        $pb->execute([$click['affiliate_id']]);
+        $pb->execute([$click['affiliate_id'], $click['offer_id']]);
         $postback = $pb->fetch(PDO::FETCH_ASSOC);
+
+        // Fallback: check affiliate_offer_postbacks table if not found
+        if (!$postback) {
+            $pb = $pdo->prepare("
+                SELECT * FROM affiliate_offer_postbacks
+                WHERE affiliate_id = ? AND offer_id = ? AND status = 'active'
+                LIMIT 1
+            ");
+            $pb->execute([$click['affiliate_id'], $click['offer_id']]);
+            $postback = $pb->fetch(PDO::FETCH_ASSOC);
+        }
+
+        // 2. If no offer-specific postback configured, fallback to Global Postback
+        if (!$postback) {
+            $pb = $pdo->prepare("
+                SELECT * FROM affiliate_postbacks
+                WHERE affiliate_id = ? AND (offer_id IS NULL OR offer_id = 0) AND status = 'active'
+                LIMIT 1
+            ");
+            $pb->execute([$click['affiliate_id']]);
+            $postback = $pb->fetch(PDO::FETCH_ASSOC);
+        }
+    } catch (Throwable $e) {
+        $postback = null;
     }
 
-    if ($postback && in_array($postback['fire_status'], [$status, 'all'], true)) {
+    $fireTrigger = !empty($postback['fire_status']) ? strtolower($postback['fire_status']) : 'approved';
+    if ($postback && in_array($fireTrigger, [$status, 'all'], true)) {
 
         $tokens = [
             '{click_id}'      => $clickId,
