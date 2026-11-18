@@ -673,7 +673,24 @@ foreach ($assignments as $as) {
                                         ?>
                                         <span class="badge badge-<?php echo $stClass; ?> p-2"><?php echo ucfirst($as['status']); ?></span>
                                     </td>
-                                    <td>
+                                    <td style="white-space: nowrap;">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary mr-1 font-weight-bold" 
+                                                title="Edit Cap & Payout Rule"
+                                                onclick="openEditRuleModal(<?php echo htmlspecialchars(json_encode([
+                                                    'id' => (int)$as['id'],
+                                                    'affiliate_id' => (int)$as['affiliate_id'],
+                                                    'publisher_name' => $as['publisher_name'],
+                                                    'offer_id' => (int)$as['offer_id'],
+                                                    'offer_name' => $as['offer_name'],
+                                                    'payout' => $as['custom_payout'] ?? $as['original_payout'],
+                                                    'daily_cap' => $as['daily_cap'] ?? '',
+                                                    'cap_type' => $as['cap_type'] ?? 'conversions',
+                                                    'status' => $as['status'],
+                                                    'notes' => $as['notes'] ?? ''
+                                                ]), ENT_QUOTES); ?>)">
+                                            <i class="fas fa-sliders-h mr-1"></i> Edit Rule
+                                        </button>
                                         <form method="post" class="d-inline">
                                             <input type="hidden" name="approval_id" value="<?php echo $as['id']; ?>">
                                             <input type="hidden" name="update_access_status" value="1">
@@ -692,6 +709,87 @@ foreach ($assignments as $as) {
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Cap & Rule Modal -->
+    <div class="modal fade" id="editRuleModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 14px; border: none; overflow: hidden;">
+                <form method="post">
+                    <input type="hidden" name="update_access_status" value="1">
+                    <input type="hidden" name="approval_id" id="editRuleApprovalId" value="">
+                    
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title font-weight-bold">
+                            <i class="fas fa-sliders-h mr-2"></i>Edit Publisher Cap & Access Rule
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    
+                    <div class="modal-body p-4">
+                        <div class="mb-3 p-3 bg-light rounded border">
+                            <div class="mb-1"><small class="text-muted text-uppercase font-weight-bold">Publisher:</small> <strong id="editRulePubName" class="text-dark"></strong></div>
+                            <div><small class="text-muted text-uppercase font-weight-bold">Campaign:</small> <strong id="editRuleOfferName" class="text-primary"></strong></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Daily Cap Limit</label>
+                                    <input type="number" step="1" min="0" name="daily_cap" id="editRuleDailyCap" class="form-control" placeholder="Leave empty for unlimited">
+                                    <small class="text-muted">Max volume per day (empty/0 = unlimited)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Cap Rule Logic</label>
+                                    <select name="cap_type" id="editRuleCapType" class="custom-select font-weight-bold">
+                                        <option value="conversions">Leads / Conversions per Day</option>
+                                        <option value="clicks">Clicks / Traffic per Day</option>
+                                    </select>
+                                    <small class="text-muted">Choose what metric triggers the cap.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Custom Payout Override</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text font-weight-bold">$</span></div>
+                                        <input type="number" step="0.01" min="0" name="custom_payout" id="editRulePayout" class="form-control" placeholder="Default Payout">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Access Status</label>
+                                    <select name="status" id="editRuleStatus" class="custom-select font-weight-bold">
+                                        <option value="approved">Approved (Traffic Active)</option>
+                                        <option value="rejected">Blocked / Rejected</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold">Internal Note (Optional)</label>
+                            <input type="text" name="notes" id="editRuleNotes" class="form-control" placeholder="e.g. VIP cap increase, testing rule">
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success font-weight-bold px-4">
+                            <i class="fas fa-save mr-1"></i> Save Rule Changes
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -716,6 +814,18 @@ function copyMgrLink(elementId) {
     copyText.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(copyText.value);
     alert("Tracking link copied to clipboard:\n" + copyText.value);
+}
+
+function openEditRuleModal(rule) {
+    $('#editRuleApprovalId').val(rule.id);
+    $('#editRulePubName').text('#' + rule.affiliate_id + ' - ' + (rule.publisher_name || rule.affiliate_name));
+    $('#editRuleOfferName').text('#' + rule.offer_id + ' - ' + rule.offer_name);
+    $('#editRuleDailyCap').val(rule.daily_cap !== null && rule.daily_cap !== '' ? rule.daily_cap : '');
+    $('#editRuleCapType').val(rule.cap_type || 'conversions');
+    $('#editRulePayout').val(rule.payout || '');
+    $('#editRuleStatus').val(rule.status || 'approved');
+    $('#editRuleNotes').val(rule.notes || '');
+    $('#editRuleModal').modal('show');
 }
 
 $(document).ready(function() {

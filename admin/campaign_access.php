@@ -177,15 +177,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         }
     }
 
-    // Individual action (supports quick approval with custom payout and daily caps)
-    if (isset($_POST['update_status']) || isset($_POST['update_access_status'])) {
+    // Individual action / Edit Rule (supports custom payout, daily cap limit, cap type, and status)
+    if (isset($_POST['update_status']) || isset($_POST['update_access_status']) || isset($_POST['edit_rule'])) {
         $approvalId   = (int)($_POST['approval_id'] ?? 0);
-        $newStatus    = $_POST['status'] ?? '';
+        $newStatus    = $_POST['status'] ?? 'approved';
         $customPayout = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
         $dailyCap     = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
         $capType      = in_array($_POST['cap_type'] ?? '', ['conversions', 'clicks'], true) ? $_POST['cap_type'] : 'conversions';
+        $notes        = trim($_POST['notes'] ?? '');
 
-        if ($approvalId && in_array($newStatus, ['approved', 'rejected'], true)) {
+        if ($approvalId && in_array($newStatus, ['approved', 'rejected', 'pending'], true)) {
             $aoaCols = [];
             try {
                 $aoaCols = $pdo->query("SHOW COLUMNS FROM affiliate_offer_approval")->fetchAll(PDO::FETCH_COLUMN);
@@ -194,18 +195,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $updFields = ["status = :status"];
             $updParams = [':status' => $newStatus, ':id' => $approvalId];
 
-            if (in_array('approved_at', $aoaCols, true)) {
+            if ($newStatus === 'approved' && in_array('approved_at', $aoaCols, true)) {
                 $updFields[] = "approved_at = NOW()";
             }
             if (in_array('approved_by', $aoaCols, true)) {
                 $updFields[] = "approved_by = :approved_by";
                 $updParams[':approved_by'] = auth_user_id();
             }
-            if ($customPayout !== null && in_array('custom_payout', $aoaCols, true)) {
+            if (in_array('custom_payout', $aoaCols, true)) {
                 $updFields[] = "custom_payout = :custom_payout";
                 $updParams[':custom_payout'] = $customPayout;
             }
-            if ($dailyCap !== null && in_array('daily_cap', $aoaCols, true)) {
+            if (in_array('daily_cap', $aoaCols, true)) {
                 $updFields[] = "daily_cap = :daily_cap";
                 $updParams[':daily_cap'] = $dailyCap;
             }
@@ -213,10 +214,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $updFields[] = "cap_type = :cap_type";
                 $updParams[':cap_type'] = $capType;
             }
+            if (in_array('notes', $aoaCols, true) && $notes !== '') {
+                $updFields[] = "notes = :notes";
+                $updParams[':notes'] = $notes;
+            }
 
             $stmt = $pdo->prepare("UPDATE affiliate_offer_approval SET " . implode(', ', $updFields) . " WHERE id = :id");
             $stmt->execute($updParams);
-            $success = 'Offer access request updated to ' . ucfirst($newStatus) . ' successfully!';
+            $success = 'Offer access permission and cap logic updated successfully!';
         }
     }
 }
@@ -760,7 +765,24 @@ $pendingOfferCount = count($pendingRequests);
                                         ?>
                                         <span class="badge badge-<?php echo $stClass; ?> p-2"><?php echo ucfirst($as['status']); ?></span>
                                     </td>
-                                    <td>
+                                    <td style="white-space: nowrap;">
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary mr-1 font-weight-bold" 
+                                                title="Edit Cap & Payout Rule"
+                                                onclick="openEditRuleModal(<?php echo htmlspecialchars(json_encode([
+                                                    'id' => (int)$as['id'],
+                                                    'affiliate_id' => (int)$as['affiliate_id'],
+                                                    'affiliate_name' => $as['affiliate_name'],
+                                                    'offer_id' => (int)$as['offer_id'],
+                                                    'offer_name' => $as['offer_name'],
+                                                    'payout' => $as['custom_payout'] ?? $as['original_payout'],
+                                                    'daily_cap' => $as['daily_cap'] ?? '',
+                                                    'cap_type' => $as['cap_type'] ?? 'conversions',
+                                                    'status' => $as['status'],
+                                                    'notes' => $as['notes'] ?? ''
+                                                ]), ENT_QUOTES); ?>)">
+                                            <i class="fas fa-sliders-h mr-1"></i> Edit Rule
+                                        </button>
                                         <form method="post" class="d-inline">
                                             <input type="hidden" name="approval_id" value="<?php echo $as['id']; ?>">
                                             <input type="hidden" name="update_status" value="1">
@@ -768,7 +790,7 @@ $pendingOfferCount = count($pendingRequests);
                                             <button type="submit" name="status" value="approved" class="btn btn-sm btn-outline-success mr-1" title="Approve Access"><i class="fas fa-check"></i></button>
                                             <?php endif; ?>
                                             <?php if ($as['status'] !== 'rejected'): ?>
-                                            <button type="submit" name="status" value="rejected" class="btn btn-sm btn-outline-danger" title="Block Access"><i class="fas fa-ban"></i></button>
+                                            <button type="submit" name="status" value="rejected" class="btn btn-sm btn-outline-danger" title="Block Access" onclick="return confirm('Block access for this publisher?')"><i class="fas fa-ban"></i></button>
                                             <?php endif; ?>
                                         </form>
                                     </td>
@@ -779,6 +801,88 @@ $pendingOfferCount = count($pendingRequests);
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Cap & Rule Modal -->
+    <div class="modal fade" id="editRuleModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 14px; border: none; overflow: hidden;">
+                <form method="post">
+                    <input type="hidden" name="edit_rule" value="1">
+                    <input type="hidden" name="approval_id" id="editRuleApprovalId" value="">
+                    
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title font-weight-bold">
+                            <i class="fas fa-sliders-h mr-2"></i>Edit Cap & Access Rule
+                        </h5>
+                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    
+                    <div class="modal-body p-4">
+                        <div class="mb-3 p-3 bg-light rounded border">
+                            <div class="mb-1"><small class="text-muted text-uppercase font-weight-bold">Publisher:</small> <strong id="editRulePubName" class="text-dark"></strong></div>
+                            <div><small class="text-muted text-uppercase font-weight-bold">Campaign:</small> <strong id="editRuleOfferName" class="text-primary"></strong></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Daily Cap Limit</label>
+                                    <input type="number" step="1" min="0" name="daily_cap" id="editRuleDailyCap" class="form-control" placeholder="Leave empty for unlimited">
+                                    <small class="text-muted">Max volume per day (empty/0 = unlimited)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Cap Rule Logic</label>
+                                    <select name="cap_type" id="editRuleCapType" class="custom-select font-weight-bold">
+                                        <option value="conversions">Leads / Conversions per Day</option>
+                                        <option value="clicks">Clicks / Traffic per Day</option>
+                                    </select>
+                                    <small class="text-muted">Choose what metric triggers the cap.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Custom Payout Override</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend"><span class="input-group-text font-weight-bold">$</span></div>
+                                        <input type="number" step="0.01" min="0" name="custom_payout" id="editRulePayout" class="form-control" placeholder="Default Payout">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="font-weight-bold">Access Status</label>
+                                    <select name="status" id="editRuleStatus" class="custom-select font-weight-bold">
+                                        <option value="approved">Approved (Traffic Active)</option>
+                                        <option value="pending">Pending Review</option>
+                                        <option value="rejected">Blocked / Rejected</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-0">
+                            <label class="font-weight-bold">Admin Note (Optional)</label>
+                            <input type="text" name="notes" id="editRuleNotes" class="form-control" placeholder="e.g. VIP cap increase, traffic testing">
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success font-weight-bold px-4">
+                            <i class="fas fa-save mr-1"></i> Save Rule Changes
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -804,6 +908,18 @@ function copyLink(elementId) {
     copyText.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(copyText.value);
     alert("Tracking link copied to clipboard:\n" + copyText.value);
+}
+
+function openEditRuleModal(rule) {
+    $('#editRuleApprovalId').val(rule.id);
+    $('#editRulePubName').text('#' + rule.affiliate_id + ' - ' + rule.affiliate_name);
+    $('#editRuleOfferName').text('#' + rule.offer_id + ' - ' + rule.offer_name);
+    $('#editRuleDailyCap').val(rule.daily_cap !== null && rule.daily_cap !== '' ? rule.daily_cap : '');
+    $('#editRuleCapType').val(rule.cap_type || 'conversions');
+    $('#editRulePayout').val(rule.payout || '');
+    $('#editRuleStatus').val(rule.status || 'approved');
+    $('#editRuleNotes').val(rule.notes || '');
+    $('#editRuleModal').modal('show');
 }
 
 $(document).ready(function() {
