@@ -83,6 +83,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_offer'])) {
 }
 
 
+// Handle Offer Status Update (Approve / Reject Access)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_access_status'])) {
+    $approvalId = (int)($_POST['approval_id'] ?? 0);
+    $newStatus  = $_POST['status'] ?? '';
+
+    if ($approvalId > 0 && in_array($newStatus, ['approved', 'rejected'], true)) {
+        // Validate that this approval record belongs to a publisher assigned to this manager
+        $vStmt = $pdo->prepare("
+            SELECT aoa.id, u.name as publisher_name, o.offer_name 
+            FROM affiliate_offer_approval aoa
+            JOIN users u ON u.user_id = aoa.affiliate_id
+            JOIN offers o ON o.offer_id = aoa.offer_id
+            WHERE aoa.id = ? AND u.account_manager_id = ?
+            LIMIT 1
+        ");
+        $vStmt->execute([$approvalId, $managerId]);
+        $appItem = $vStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($appItem) {
+            $updStmt = $pdo->prepare("UPDATE affiliate_offer_approval SET status = ?, approved_at = NOW() WHERE id = ?");
+            $updStmt->execute([$newStatus, $approvalId]);
+            $actionLabel = ($newStatus === 'approved') ? 'Approved' : 'Rejected / Revoked';
+            $success = "Access for {$appItem['publisher_name']} on '{$appItem['offer_name']}' successfully {$actionLabel}!";
+        } else {
+            $error = "Access record not found or publisher is not in your assigned account portfolio.";
+        }
+    }
+}
+
 // Fetch All Campaigns (Public & Private) with Manager's Assigned Count
 $offersStmt = $pdo->prepare("
     SELECT 
@@ -113,6 +142,33 @@ $offersStmt = $pdo->prepare("
 ");
 $offersStmt->execute([$managerId]);
 $offers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch My Publishers' Campaign Permissions Registry
+$assignmentsStmt = $pdo->prepare("
+    SELECT 
+        aoa.id,
+        aoa.affiliate_id,
+        aoa.offer_id,
+        aoa.status,
+        aoa.custom_payout,
+        aoa.notes,
+        aoa.approved_at,
+        aoa.created_at,
+        u.name AS affiliate_name,
+        u.email AS affiliate_email,
+        u.company AS affiliate_company,
+        o.offer_name,
+        o.payout AS original_payout,
+        o.currency,
+        o.visibility
+    FROM affiliate_offer_approval aoa
+    INNER JOIN users u ON u.user_id = aoa.affiliate_id
+    INNER JOIN offers o ON o.offer_id = aoa.offer_id
+    WHERE u.account_manager_id = ?
+    ORDER BY aoa.id DESC
+");
+$assignmentsStmt->execute([$managerId]);
+$managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -304,6 +360,109 @@ $offers = $offersStmt->fetchAll(PDO::FETCH_ASSOC);
                         </table>
                     </div>
                 </div>
+
+                <!-- My Publishers Campaign Access & Permissions Registry -->
+                <div class="card card-custom p-4 mt-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-primary mb-2 mb-md-0">
+                            <i class="fas fa-key mr-2"></i>My Publishers Campaign Access & Permissions Registry
+                        </h4>
+                        <span class="small text-muted">
+                            <i class="fas fa-shield-alt text-success mr-1"></i> Full control to Approve or Reject campaign access for your assigned publishers
+                        </span>
+                    </div>
+
+                    <?php if (empty($managerAssignments)): ?>
+                        <div class="alert alert-light border text-center py-4 mb-0">
+                            <i class="fas fa-folder-open fa-2x text-muted mb-2 d-block"></i>
+                            <span class="text-muted font-weight-bold">No campaign permissions or requests registered for your publishers yet.</span>
+                            <p class="small text-muted mb-0">When you assign campaigns to publishers or they apply for private offers, their access records will appear here.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle" id="managerAccessTable">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Publisher</th>
+                                        <th>Campaign Offer</th>
+                                        <th>Payout Rate</th>
+                                        <th>Live Tracking Link</th>
+                                        <th>Status</th>
+                                        <th class="text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($managerAssignments as $aIdx => $ma): ?>
+                                    <?php 
+                                        $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || 
+                                                    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ? 'https' : 'https';
+                                        $host = $_SERVER['HTTP_HOST'] ?? 'offeronmedia.com';
+                                        $mgrTrackLink = "{$protocol}://{$host}/click.php?aff_id={$ma['affiliate_id']}&offer_id={$ma['offer_id']}"; 
+                                        
+                                        $badgeColor = 'secondary';
+                                        if ($ma['status'] === 'approved') $badgeColor = 'success';
+                                        elseif ($ma['status'] === 'pending') $badgeColor = 'warning';
+                                        elseif ($ma['status'] === 'rejected') $badgeColor = 'danger';
+                                    ?>
+                                    <tr>
+                                        <td><strong>#<?php echo $ma['id']; ?></strong></td>
+                                        <td>
+                                            <strong class="text-dark"><?php echo htmlspecialchars($ma['affiliate_name']); ?></strong>
+                                            <small class="d-block text-muted"><?php echo htmlspecialchars($ma['affiliate_email']); ?></small>
+                                        </td>
+                                        <td>
+                                            <strong class="text-primary">#<?php echo $ma['offer_id']; ?> - <?php echo htmlspecialchars($ma['offer_name']); ?></strong>
+                                            <div>
+                                                <?php if ($ma['visibility'] === 'private'): ?>
+                                                    <span class="badge badge-warning text-dark"><i class="fas fa-lock mr-1"></i>Private</span>
+                                                <?php else: ?>
+                                                    <span class="badge badge-success"><i class="fas fa-globe mr-1"></i>Public</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <strong class="text-success"><?php echo format_currency($ma['custom_payout'] ?? $ma['original_payout'], $ma['currency'] ?? 'USD'); ?></strong>
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm" style="min-width: 220px;">
+                                                <input type="text" id="mgrUrl_<?php echo $aIdx; ?>" class="form-control text-xs" value="<?php echo $mgrTrackLink; ?>" readonly>
+                                                <div class="input-group-append">
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="copyMgrLink('mgrUrl_<?php echo $aIdx; ?>')" title="Copy Link"><i class="fas fa-copy"></i></button>
+                                                    <a href="https://api.whatsapp.com/send?text=<?php echo urlencode("Tracking link for " . $ma['offer_name'] . ": " . $mgrTrackLink); ?>" target="_blank" class="btn btn-outline-success btn-sm" title="Share via WhatsApp"><i class="fab fa-whatsapp"></i></a>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-<?php echo $badgeColor; ?> p-2 font-weight-bold">
+                                                <?php echo ucfirst($ma['status']); ?>
+                                            </span>
+                                        </td>
+                                        <td class="text-right" style="white-space: nowrap;">
+                                            <form method="POST" class="d-inline">
+                                                <input type="hidden" name="update_access_status" value="1">
+                                                <input type="hidden" name="approval_id" value="<?php echo $ma['id']; ?>">
+                                                
+                                                <?php if ($ma['status'] !== 'approved'): ?>
+                                                <button type="submit" name="status" value="approved" class="btn btn-xs btn-success font-weight-bold mr-1" title="Approve Campaign Access">
+                                                    <i class="fas fa-check mr-1"></i> Approve
+                                                </button>
+                                                <?php endif; ?>
+
+                                                <?php if ($ma['status'] !== 'rejected'): ?>
+                                                <button type="submit" name="status" value="rejected" class="btn btn-xs btn-outline-danger font-weight-bold" title="Reject / Revoke Campaign Access" onclick="return confirm('Reject access for this publisher? Live link clicks will immediately be blocked.');">
+                                                    <i class="fas fa-ban mr-1"></i> Reject
+                                                </button>
+                                                <?php endif; ?>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -455,6 +614,24 @@ function toggleSelectAllPublishers() {
     var cbs = document.querySelectorAll('.pub-checkbox');
     cbs.forEach(function(cb) { cb.checked = allSelected; });
 }
+
+function copyMgrLink(elementId) {
+    var copyText = document.getElementById(elementId);
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(copyText.value);
+    alert("Tracking link copied to clipboard:\n" + copyText.value);
+}
+
+$(document).ready(function() {
+    if ($('#managerAccessTable').length) {
+        $('#managerAccessTable').DataTable({
+            pageLength: 10,
+            responsive: true,
+            order: [[0, 'desc']]
+        });
+    }
+});
 </script>
 
 </body>

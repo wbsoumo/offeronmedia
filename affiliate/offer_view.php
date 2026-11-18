@@ -49,10 +49,46 @@ if (!$offer || !in_array(strtolower($offer['offer_status']), ['approved', 'activ
 }
 
 $visibility = strtolower($offer['visibility'] ?? 'public');
-$isApproved = ($visibility === 'public' || ($offer['approval_status'] ?? '') === 'approved');
+$appStatus  = strtolower($offer['approval_status'] ?? '');
+
+// Rejection Gate: If affiliate is rejected or blocked for this offer, deny access
+if (in_array($appStatus, ['rejected', 'blocked', 'suspended'], true)) {
+    http_response_code(403);
+    die('
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Offer Access Denied | Affiliate Hub</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </head>
+    <body class="bg-light d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="card p-5 shadow text-center" style="max-width: 520px; border-radius: 16px; border: none;">
+            <div class="mb-4">
+                <span class="d-inline-flex align-items-center justify-content-center bg-danger text-white rounded-circle" style="width: 72px; height: 72px; font-size: 32px;">
+                    <i class="fas fa-ban"></i>
+                </span>
+            </div>
+            <h3 class="font-weight-bold text-dark mb-2">Campaign Access Rejected</h3>
+            <p class="text-muted mb-4">
+                Your permission to run this offer (#'.$offerId.' - '.htmlspecialchars($offer['offer_name']).') has been rejected or revoked by the network administrator. Live tracking links are deactivated.
+            </p>
+            <div>
+                <a href="offers.php" class="btn btn-primary font-weight-bold px-4 py-2">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to My Offers
+                </a>
+            </div>
+        </div>
+    </body>
+    </html>
+    ');
+}
+
+$isApproved = ($visibility === 'public' || $appStatus === 'approved');
 
 // Private Offer Gate: Unapproved affiliates cannot access or view private campaigns
-if ($visibility === 'private' && ($offer['approval_status'] ?? '') !== 'approved') {
+if ($visibility === 'private' && $appStatus !== 'approved') {
     http_response_code(403);
     die('
     <!DOCTYPE html>

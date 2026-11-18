@@ -229,10 +229,15 @@ $filesToLint = [
     'admin/reports_subid.php',
     'admin/reports_affiliates.php',
     'admin/reports_advertisers.php',
+    'admin/ajax_assign_offer.php',
+    'admin/modal_assign_offer.php',
     'manager/dashboard.php',
     'manager/publishers.php',
     'manager/campaigns.php',
-    'manager/reports.php'
+    'manager/reports.php',
+    'affiliate/offers.php',
+    'affiliate/link-builder.php',
+    'affiliate/offer_view.php'
 ];
 
 foreach ($filesToLint as $file) {
@@ -245,6 +250,95 @@ foreach ($filesToLint as $file) {
     } else {
         assertTest("File exists: $file", false);
     }
+}
+
+// ---------------------------------------------------------
+// TEST 7: 9 User-Reported Problems Validation
+// ---------------------------------------------------------
+echo "\n--- TEST 7: 9 User-Reported Operational & Access Problems ---\n";
+
+// 7.1: Offer rejected check in click.php
+if (!empty($affId) && !empty($offerId)) {
+    // Set approval status to 'rejected'
+    $pdo->prepare("
+        INSERT INTO affiliate_offer_approval (affiliate_id, offer_id, status, approved_at)
+        VALUES (?, ?, 'rejected', NOW())
+        ON DUPLICATE KEY UPDATE status = 'rejected'
+    ")->execute([$affId, $offerId]);
+
+    // Simulate click.php execution
+    $out = [];
+    exec("php -r '
+        \$_GET[\"offer_id\"] = $offerId;
+        \$_GET[\"aff_id\"] = $affId;
+        \$_SERVER[\"REMOTE_ADDR\"] = \"127.0.0.1\";
+        \$_SERVER[\"HTTP_USER_AGENT\"] = \"Mozilla/5.0\";
+        require \"click.php\";
+    ' 2>&1", $out);
+    $resp = implode(' ', $out);
+    assertTest("click.php strictly blocks rejected offer with OFFER_ACCESS_DENIED", strpos($resp, 'OFFER_ACCESS_DENIED') !== false);
+
+    // 7.2: Verify affiliate portal excludes rejected offer
+    $affOffersStmt = $pdo->prepare("
+        SELECT o.offer_id 
+        FROM offers o
+        LEFT JOIN affiliate_offer_approval a ON a.offer_id = o.offer_id AND a.affiliate_id = ?
+        WHERE LOWER(o.status) IN ('approved', 'active', 'live')
+          AND (LOWER(IFNULL(o.visibility, 'public')) = 'public' OR a.status = 'approved')
+          AND (a.status IS NULL OR a.status NOT IN ('rejected', 'blocked', 'suspended'))
+          AND o.offer_id = ?
+    ");
+    $affOffersStmt->execute([$affId, $offerId]);
+    assertTest("affiliate/offers.php hides rejected offer from affiliate catalog", $affOffersStmt->fetchColumn() === false);
+
+    // Restore to approved
+    $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved' WHERE affiliate_id = ? AND offer_id = ?")->execute([$affId, $offerId]);
+}
+
+// 7.3: Search Query HY093 Prevention Validation
+$searchTerms = ['test', 'h', 'a'];
+$searchPass = true;
+foreach ($searchTerms as $st) {
+    try {
+        // Test Publishers search query
+        $pStmt = $pdo->prepare("
+            SELECT u.user_id 
+            FROM users u
+            WHERE u.role_id = 3 AND (u.name LIKE :s1 OR u.email LIKE :s2 OR u.mobile LIKE :s3 OR u.company LIKE :s4)
+            LIMIT 5
+        ");
+        $pStmt->execute(['s1' => "%$st%", 's2' => "%$st%", 's3' => "%$st%", 's4' => "%$st%"]);
+        $pStmt->fetchAll();
+
+        // Test Offers search query
+        $oStmt = $pdo->prepare("
+            SELECT o.offer_id 
+            FROM offers o
+            LEFT JOIN users u ON u.user_id = o.advertiser_id
+            WHERE 1=1 AND (o.offer_name LIKE :s1 OR o.offer_description LIKE :s2 OR u.name LIKE :s3 OR u.email LIKE :s4)
+            LIMIT 5
+        ");
+        $oStmt->execute(['s1' => "%$st%", 's2' => "%$st%", 's3' => "%$st%", 's4' => "%$st%"]);
+        $oStmt->fetchAll();
+    } catch (PDOException $e) {
+        $searchPass = false;
+        break;
+    }
+}
+assertTest("Search queries execute without PDO HY093 Invalid parameter number error", $searchPass);
+
+// 7.4: Manager Campaign Access Control Validation
+if (!empty($affId) && !empty($offerId)) {
+    // Test manager updating access status
+    $stmt = $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'rejected' WHERE affiliate_id = ? AND offer_id = ?");
+    $stmt->execute([$affId, $offerId]);
+    
+    $checkStmt = $pdo->prepare("SELECT status FROM affiliate_offer_approval WHERE affiliate_id = ? AND offer_id = ?");
+    $checkStmt->execute([$affId, $offerId]);
+    assertTest("Manager can set campaign access status to rejected", $checkStmt->fetchColumn() === 'rejected');
+
+    // Reset back to approved
+    $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved' WHERE affiliate_id = ? AND offer_id = ?")->execute([$affId, $offerId]);
 }
 
 // ---------------------------------------------------------

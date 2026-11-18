@@ -90,27 +90,32 @@ if (empty($offer['offer_url'])) {
 }
 
 /* -------------------------------------------------
-   4. Check affiliate approval (if offer is non-public)
+   4. Check affiliate offer permission / approval status
 -------------------------------------------------- */
-$visibility = strtolower($offer['visibility'] ?? 'public');
-if ($visibility !== 'public') {
-    $approvalStmt = $pdo->prepare("
-        SELECT 1
-        FROM affiliate_offer_approval
-        WHERE affiliate_id = :aff
-          AND offer_id = :oid
-          AND status = 'approved'
-        LIMIT 1
-    ");
-    $approvalStmt->execute([
-        'aff' => $affiliateId,
-        'oid' => $offerId
-    ]);
+$approvalStmt = $pdo->prepare("
+    SELECT status
+    FROM affiliate_offer_approval
+    WHERE affiliate_id = :aff
+      AND offer_id = :oid
+    LIMIT 1
+");
+$approvalStmt->execute([
+    'aff' => $affiliateId,
+    'oid' => $offerId
+]);
+$approvalStatus = strtolower((string)$approvalStmt->fetchColumn());
 
-    if (!$approvalStmt->fetchColumn()) {
-        http_response_code(403);
-        exit('AFFILIATE_NOT_APPROVED');
-    }
+// 1. If explicitly rejected, blocked, or suspended for this offer, deny immediately regardless of visibility
+if (in_array($approvalStatus, ['rejected', 'blocked', 'suspended'], true)) {
+    http_response_code(403);
+    exit('OFFER_ACCESS_DENIED: Publisher access to this offer has been rejected or blocked.');
+}
+
+// 2. If offer is non-public (private or requires approval), it must have status = 'approved'
+$visibility = strtolower($offer['visibility'] ?? 'public');
+if ($visibility !== 'public' && $approvalStatus !== 'approved') {
+    http_response_code(403);
+    exit('AFFILIATE_NOT_APPROVED');
 }
 
 /* -------------------------------------------------

@@ -156,54 +156,77 @@ try {
         } catch (Exception $e) {}
     }
 
-    // Build dynamic query based on existing columns in affiliate_offer_approval
-    $insertCols = ['affiliate_id', 'offer_id', 'status'];
-    $insertVals = [':aff_id', ':offer_id', "'approved'"];
-    $updateCols = ["status = 'approved'"];
-    $bindParams = [
-        ':aff_id'   => $publisherId,
-        ':offer_id' => $offerId
-    ];
+    // Check if permission already exists
+    $chkStmt = $pdo->prepare("SELECT id FROM affiliate_offer_approval WHERE affiliate_id = ? AND offer_id = ? LIMIT 1");
+    $chkStmt->execute([$publisherId, $offerId]);
+    $existingRow = $chkStmt->fetch(PDO::FETCH_ASSOC);
 
-    if (in_array('custom_payout', $appCols, true)) {
-        $insertCols[] = 'custom_payout';
-        $insertVals[] = ':payout';
-        $updateCols[] = 'custom_payout = VALUES(custom_payout)';
-        $bindParams[':payout'] = $customPayout;
+    if ($existingRow) {
+        $updSets = ["status = 'approved'"];
+        $updParams = [':id' => $existingRow['id']];
+
+        if (in_array('custom_payout', $appCols, true) && $customPayout !== null) {
+            $updSets[] = "custom_payout = :payout";
+            $updParams[':payout'] = $customPayout;
+        }
+        if (in_array('notes', $appCols, true)) {
+            $updSets[] = "notes = :notes";
+            $updParams[':notes'] = $notes;
+        }
+        if (in_array('suspended_by_user_block', $appCols, true)) {
+            $updSets[] = "suspended_by_user_block = 0";
+        }
+        if (in_array('approved_at', $appCols, true)) {
+            $updSets[] = "approved_at = NOW()";
+        }
+
+        $updStmt = $pdo->prepare("UPDATE affiliate_offer_approval SET " . implode(', ', $updSets) . " WHERE id = :id");
+        $updStmt->execute($updParams);
+    } else {
+        $insertCols = ['affiliate_id', 'offer_id', 'status'];
+        $insertVals = [':aff_id', ':offer_id', "'approved'"];
+        $bindParams = [
+            ':aff_id'   => $publisherId,
+            ':offer_id' => $offerId
+        ];
+
+        if (in_array('custom_payout', $appCols, true)) {
+            $insertCols[] = 'custom_payout';
+            $insertVals[] = ':payout';
+            $bindParams[':payout'] = $customPayout;
+        }
+
+        if (in_array('notes', $appCols, true)) {
+            $insertCols[] = 'notes';
+            $insertVals[] = ':notes';
+            $bindParams[':notes'] = $notes;
+        }
+
+        if (in_array('suspended_by_user_block', $appCols, true)) {
+            $insertCols[] = 'suspended_by_user_block';
+            $insertVals[] = '0';
+        }
+
+        if (in_array('created_by', $appCols, true)) {
+            $insertCols[] = 'created_by';
+            $insertVals[] = ':created_by';
+            $bindParams[':created_by'] = $currentUserName;
+        }
+
+        if (in_array('approved_at', $appCols, true)) {
+            $insertCols[] = 'approved_at';
+            $insertVals[] = 'NOW()';
+        }
+
+        if (in_array('created_at', $appCols, true)) {
+            $insertCols[] = 'created_at';
+            $insertVals[] = 'NOW()';
+        }
+
+        $sql = "INSERT INTO affiliate_offer_approval (" . implode(', ', $insertCols) . ") VALUES (" . implode(', ', $insertVals) . ")";
+        $insStmt = $pdo->prepare($sql);
+        $insStmt->execute($bindParams);
     }
-
-    if (in_array('notes', $appCols, true)) {
-        $insertCols[] = 'notes';
-        $insertVals[] = ':notes';
-        $updateCols[] = 'notes = VALUES(notes)';
-        $bindParams[':notes'] = $notes;
-    }
-
-    if (in_array('suspended_by_user_block', $appCols, true)) {
-        $insertCols[] = 'suspended_by_user_block';
-        $insertVals[] = '0';
-        $updateCols[] = 'suspended_by_user_block = 0';
-    }
-
-    if (in_array('approved_at', $appCols, true)) {
-        $insertCols[] = 'approved_at';
-        $insertVals[] = 'NOW()';
-        $updateCols[] = 'approved_at = NOW()';
-    }
-
-    if (in_array('created_at', $appCols, true)) {
-        $insertCols[] = 'created_at';
-        $insertVals[] = 'NOW()';
-    }
-
-    $sql = "
-        INSERT INTO affiliate_offer_approval (" . implode(', ', $insertCols) . ") 
-        VALUES (" . implode(', ', $insertVals) . ")
-        ON DUPLICATE KEY UPDATE " . implode(', ', $updateCols) . "
-    ";
-
-    $insStmt = $pdo->prepare($sql);
-    $insStmt->execute($bindParams);
 
     // 4. Build Live Tracking URL
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || 

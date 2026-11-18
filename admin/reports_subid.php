@@ -112,8 +112,10 @@ if ($subFilter5 !== '') {
 }
 
 if ($search !== '') {
-    $where[] = "(cl.sub1 LIKE :search OR cl.sub2 LIKE :search OR cl.sub3 LIKE :search OR cl.sub4 LIKE :search OR cl.sub5 LIKE :search OR o.offer_name LIKE :search OR u.name LIKE :search)";
-    $params['search'] = "%$search%";
+    $where[] = "(cl.sub1 LIKE :s1 OR cl.sub2 LIKE :s2 OR cl.sub3 LIKE :s3 OR cl.sub4 LIKE :s4 OR cl.sub5 LIKE :s5 OR o.offer_name LIKE :s6 OR u.name LIKE :s7)";
+    for ($si = 1; $si <= 7; $si++) {
+        $params["s{$si}"] = "%$search%";
+    }
 }
 
 $whereSql = "WHERE " . implode(' AND ', $where);

@@ -352,7 +352,7 @@ if (!isset($modalOffersList)) {
             btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Generating Unique Link...');
 
             $.ajax({
-                url: 'ajax_assign_offer.php',
+                url: '/admin/ajax_assign_offer.php',
                 type: 'POST',
                 dataType: 'json',
                 data: {

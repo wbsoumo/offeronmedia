@@ -125,7 +125,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN conversions cv ON cv.click_id = c.click_id
     WHERE u.role_id = 3 AND u.account_manager_id = ?
     GROUP BY u.user_id
-    ORDER BY total_earned DESC
+    ORDER BY FIELD(u.status, 'pending') DESC, total_earned DESC, u.created_at DESC
 ");
 $stmt->execute([$managerId]);
 $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -280,14 +280,14 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </td>
                                     <td style="white-space: nowrap;">
                                         <!-- Status Controls if Allowed -->
-                                        <?php if ($p['status'] === 'pending' && manager_can('can_approve_affiliates')): ?>
+                                        <?php if ($p['status'] === 'pending'): ?>
                                             <a href="?action=approve&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-success font-weight-bold mr-1" title="Approve Affiliate">
-                                                <i class="fas fa-check"></i> Approve
+                                                <i class="fas fa-check mr-1"></i> Approve
                                             </a>
                                             <a href="?action=reject&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-danger font-weight-bold mr-1" onclick="return confirm('Reject this affiliate registration?')" title="Reject Affiliate">
-                                                <i class="fas fa-times"></i> Reject
+                                                <i class="fas fa-times mr-1"></i> Reject
                                             </a>
-                                        <?php elseif ($p['status'] === 'active' && manager_can('can_block_affiliates')): ?>
+                                        <?php elseif ($p['status'] === 'active' && (manager_can('can_block_affiliates') || manager_can('manage_affiliates'))): ?>
                                             <a href="?action=block&id=<?php echo $p['user_id']; ?>" class="btn btn-xs btn-outline-danger font-weight-bold mr-1" onclick="return confirm('Block this publisher? All assigned offers and tracking links will be immediately deactivated.')" title="Block Affiliate">
                                                 <i class="fas fa-ban"></i> Block
                                             </a>

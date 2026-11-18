@@ -37,6 +37,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $ofStmt->execute([$offerId]);
                 $targetOffer = $ofStmt->fetch(PDO::FETCH_ASSOC);
 
+                // Dynamic column inspection for safe schema handling
+                $aoaCols = [];
+                try {
+                    $aoaCols = $pdo->query("SHOW COLUMNS FROM affiliate_offer_approval")->fetchAll(PDO::FETCH_COLUMN);
+                } catch (Exception $e) {}
+
                 $grantedCount = 0;
 
                 foreach ($publisherIds as $pid) {
@@ -44,31 +50,70 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                     if (!$pid) continue;
 
                     // Check if permission exists
-                    $checkStmt = $pdo->prepare("SELECT id FROM affiliate_offer_approval WHERE affiliate_id = ? AND offer_id = ?");
+                    $checkStmt = $pdo->prepare("SELECT id FROM affiliate_offer_approval WHERE affiliate_id = ? AND offer_id = ? LIMIT 1");
                     $checkStmt->execute([$pid, $offerId]);
                     $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
                     if ($existing) {
                         // Update status to approved if already existed
-                        $upd = $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved', approved_at = NOW() WHERE id = ?");
-                        $upd->execute([$existing['id']]);
+                        $updFields = ["status = 'approved'"];
+                        $updParams = [':id' => $existing['id']];
+                        if (in_array('approved_at', $aoaCols, true)) {
+                            $updFields[] = "approved_at = NOW()";
+                        }
+                        if ($customPayout !== null && in_array('custom_payout', $aoaCols, true)) {
+                            $updFields[] = "custom_payout = :payout";
+                            $updParams[':payout'] = $customPayout;
+                        }
+                        if ($notes !== '' && in_array('notes', $aoaCols, true)) {
+                            $updFields[] = "notes = :notes";
+                            $updParams[':notes'] = $notes;
+                        }
+                        if (in_array('suspended_by_user_block', $aoaCols, true)) {
+                            $updFields[] = "suspended_by_user_block = 0";
+                        }
+                        $upd = $pdo->prepare("UPDATE affiliate_offer_approval SET " . implode(', ', $updFields) . " WHERE id = :id");
+                        $upd->execute($updParams);
                     } else {
-                        // Insert new access approval
-                        $ins = $pdo->prepare("
-                            INSERT INTO affiliate_offer_approval
-                                (affiliate_id, offer_id, status, payout_type, custom_payout, notes, created_by, approved_at)
-                            VALUES
-                                (:affiliate_id, :offer_id, 'approved', :payout_type, :custom_payout, :notes, :created_by, NOW())
-                        ");
+                        // Insert new access approval dynamically
+                        $insCols = ['affiliate_id', 'offer_id', 'status'];
+                        $insVals = [':affiliate_id', ':offer_id', "'approved'"];
+                        $insParams = [
+                            ':affiliate_id' => $pid,
+                            ':offer_id'     => $offerId
+                        ];
 
-                        $ins->execute([
-                            'affiliate_id'  => $pid,
-                            'offer_id'      => $offerId,
-                            'payout_type'   => $payoutType,
-                            'custom_payout' => $customPayout,
-                            'notes'         => $notes,
-                            'created_by'    => $adminId
-                        ]);
+                        if (in_array('payout_type', $aoaCols, true)) {
+                            $insCols[] = 'payout_type';
+                            $insVals[] = ':payout_type';
+                            $insParams[':payout_type'] = $payoutType;
+                        }
+                        if (in_array('custom_payout', $aoaCols, true) && $customPayout !== null) {
+                            $insCols[] = 'custom_payout';
+                            $insVals[] = ':custom_payout';
+                            $insParams[':custom_payout'] = $customPayout;
+                        }
+                        if (in_array('notes', $aoaCols, true)) {
+                            $insCols[] = 'notes';
+                            $insVals[] = ':notes';
+                            $insParams[':notes'] = $notes;
+                        }
+                        if (in_array('created_by', $aoaCols, true)) {
+                            $insCols[] = 'created_by';
+                            $insVals[] = ':created_by';
+                            $insParams[':created_by'] = $adminId;
+                        }
+                        if (in_array('approved_at', $aoaCols, true)) {
+                            $insCols[] = 'approved_at';
+                            $insVals[] = 'NOW()';
+                        }
+                        if (in_array('created_at', $aoaCols, true)) {
+                            $insCols[] = 'created_at';
+                            $insVals[] = 'NOW()';
+                        }
+
+                        $ins = $pdo->prepare("INSERT INTO affiliate_offer_approval (" . implode(', ', $insCols) . ") VALUES (" . implode(', ', $insVals) . ")");
+                        $ins->execute($insParams);
                     }
 
                     // Fetch publisher details for link display

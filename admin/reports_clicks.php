@@ -68,8 +68,10 @@ if ($dateFrom && $dateTo) {
 }
 
 if ($search !== '') {
-    $where[] = "(c.click_id LIKE :search OR u.name LIKE :search OR u.email LIKE :search OR o.offer_name LIKE :search OR c.sub1 LIKE :search OR c.sub2 LIKE :search OR c.sub3 LIKE :search OR c.sub4 LIKE :search OR c.sub5 LIKE :search OR INET6_NTOA(c.ip_address) LIKE :search)";
-    $params['search'] = "%$search%";
+    $where[] = "(c.click_id LIKE :s1 OR u.name LIKE :s2 OR u.email LIKE :s3 OR o.offer_name LIKE :s4 OR c.sub1 LIKE :s5 OR c.sub2 LIKE :s6 OR c.sub3 LIKE :s7 OR c.sub4 LIKE :s8 OR c.sub5 LIKE :s9 OR INET6_NTOA(c.ip_address) LIKE :s10)";
+    for ($si = 1; $si <= 10; $si++) {
+        $params["s{$si}"] = "%$search%";
+    }
 }
 
 if ($filterOffer !== 'all') {

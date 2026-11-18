@@ -44,8 +44,10 @@ if ($dateFrom && $dateTo) {
 
 // Search filter
 if ($search) {
-    $where[] = '(u.name LIKE :search OR u.email LIKE :search OR u.company LIKE :search)';
-    $params['search'] = "%$search%";
+    $where[] = '(u.name LIKE :s1 OR u.email LIKE :s2 OR u.company LIKE :s3)';
+    $params['s1'] = "%$search%";
+    $params['s2'] = "%$search%";
+    $params['s3'] = "%$search%";
 }
 
 // Advertiser filter

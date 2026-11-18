@@ -23,10 +23,13 @@ $params = ['aid' => $affiliateId];
 $where[] = "LOWER(o.status) IN ('approved', 'active', 'live')";
 // Private offers are only visible to affiliates who have been explicitly approved / assigned
 $where[] = "(LOWER(IFNULL(o.visibility, 'public')) = 'public' OR a.status = 'approved')";
+// Offers where affiliate has been explicitly rejected or blocked are excluded
+$where[] = "(a.status IS NULL OR a.status NOT IN ('rejected', 'blocked', 'suspended'))";
 
 if (!empty($_GET['search'])) {
-    $where[] = "(o.offer_name LIKE :search OR o.offer_description LIKE :search)";
-    $params['search'] = '%' . trim($_GET['search']) . '%';
+    $where[] = "(o.offer_name LIKE :s1 OR o.offer_description LIKE :s2)";
+    $params['s1'] = '%' . trim($_GET['search']) . '%';
+    $params['s2'] = '%' . trim($_GET['search']) . '%';
 }
 
 if (!empty($_GET['category'])) {

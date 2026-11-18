@@ -23,6 +23,7 @@ $offersStmt = $pdo->prepare("
      AND aoa.affiliate_id = ?
     WHERE LOWER(o.status) IN ('approved', 'active', 'live')
       AND (LOWER(o.visibility) = 'public' OR aoa.status = 'approved')
+      AND (aoa.status IS NULL OR aoa.status NOT IN ('rejected', 'blocked', 'suspended'))
     ORDER BY o.offer_name ASC
 ");
 $offersStmt->execute([$affiliateId]);

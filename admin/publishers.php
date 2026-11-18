@@ -42,8 +42,11 @@ $where  = ['u.role_id = 3'];
 $params = [];
 
 if ($search !== '') {
-    $where[] = '(u.name LIKE :search OR u.email LIKE :search OR u.mobile LIKE :search OR u.company LIKE :search)';
-    $params['search'] = "%{$search}%";
+    $where[] = '(u.name LIKE :s1 OR u.email LIKE :s2 OR u.mobile LIKE :s3 OR u.company LIKE :s4)';
+    $params['s1'] = "%{$search}%";
+    $params['s2'] = "%{$search}%";
+    $params['s3'] = "%{$search}%";
+    $params['s4'] = "%{$search}%";
 }
 
 if ($status !== 'all') {

@@ -140,8 +140,11 @@ if ($filterDevice !== 'all') {
 }
 
 if ($search !== '') {
-    $offerWhere[] = "(o.offer_name LIKE :search OR o.offer_id = :search_exact OR u.name LIKE :search OR u.company LIKE :search OR u.email LIKE :search)";
-    $offerParams[':search'] = "%{$search}%";
+    $offerWhere[] = "(o.offer_name LIKE :s1 OR o.offer_id = :search_exact OR u.name LIKE :s2 OR u.company LIKE :s3 OR u.email LIKE :s4)";
+    $offerParams[':s1'] = "%{$search}%";
+    $offerParams[':s2'] = "%{$search}%";
+    $offerParams[':s3'] = "%{$search}%";
+    $offerParams[':s4'] = "%{$search}%";
     $offerParams[':search_exact'] = is_numeric($search) ? (int)$search : 0;
 }
 

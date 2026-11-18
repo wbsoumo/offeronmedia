@@ -10,6 +10,55 @@ require_role('manager');
 
 $managerId = auth_user_id();
 $managerName = $_SESSION['user_name'] ?? 'Account Manager';
+$success = $error = null;
+
+/* ===============================
+   HANDLE PUBLISHER STATUS CHANGE
+================================ */
+if (!empty($_GET['action']) && !empty($_GET['id'])) {
+    $pubId = (int)$_GET['id'];
+    $act   = $_GET['action'];
+
+    // Verify publisher belongs to this manager
+    $check = $pdo->prepare("SELECT user_id, name FROM users WHERE user_id = ? AND role_id = 3 AND account_manager_id = ? LIMIT 1");
+    $check->execute([$pubId, $managerId]);
+    $pubData = $check->fetch(PDO::FETCH_ASSOC);
+
+    if (!$pubData) {
+        $error = "Publisher not found or not assigned to your manager account.";
+    } else {
+        if ($act === 'approve') {
+            $pdo->prepare("UPDATE users SET status = 'active', updated_at = NOW() WHERE user_id = ?")->execute([$pubId]);
+            affiliate_unblock($pubId, 'Approved by Account Manager #' . $managerId);
+            $success = "Publisher #{$pubId} (" . htmlspecialchars($pubData['name']) . ") approved and activated successfully!";
+        } elseif ($act === 'reject') {
+            affiliate_block($pubId, 'Rejected by Account Manager #' . $managerId);
+            $pdo->prepare("UPDATE users SET status = 'rejected', updated_at = NOW() WHERE user_id = ?")->execute([$pubId]);
+            $success = "Publisher #{$pubId} (" . htmlspecialchars($pubData['name']) . ") application rejected.";
+        }
+    }
+}
+
+/* ===============================
+   FETCH PENDING PUBLISHERS
+================================ */
+$pendingStmt = $pdo->prepare("
+    SELECT 
+        u.user_id,
+        u.name,
+        u.email,
+        u.mobile,
+        u.company,
+        u.telegram_id,
+        u.created_at
+    FROM users u
+    WHERE u.role_id = 3 
+      AND u.account_manager_id = ? 
+      AND u.status = 'pending'
+    ORDER BY u.created_at DESC
+");
+$pendingStmt->execute([$managerId]);
+$pendingPublishers = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* ===============================
    FETCH MANAGER METRICS
@@ -81,7 +130,7 @@ $pubsListStmt = $pdo->prepare("
     LEFT JOIN conversions cv ON cv.click_id = c.click_id
     WHERE u.role_id = 3 AND u.account_manager_id = ?
     GROUP BY u.user_id
-    ORDER BY total_earned DESC
+    ORDER BY FIELD(u.status, 'pending') DESC, total_earned DESC, u.created_at DESC
 ");
 $pubsListStmt->execute([$managerId]);
 $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -250,6 +299,20 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="content">
             <div class="container-fluid">
 
+                <!-- Alert Messages -->
+                <?php if ($success): ?>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($success); ?>
+                        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                    </div>
+                <?php endif; ?>
+                <?php if ($error): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle mr-2"></i><?php echo htmlspecialchars($error); ?>
+                        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+                    </div>
+                <?php endif; ?>
+
                 <!-- Hero Banner -->
                 <div class="hero-banner">
                     <h2 class="font-weight-bold mb-1"><i class="fas fa-handshake mr-2"></i>Welcome back, <?php echo htmlspecialchars($managerName); ?>!</h2>
@@ -290,6 +353,61 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                 </div>
+
+                <!-- Pending Affiliate Approvals Card -->
+                <?php if (!empty($pendingPublishers)): ?>
+                <div class="card card-custom p-4 mb-4 border border-warning" style="background: #fffbeb;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-warning mb-0">
+                            <i class="fas fa-user-clock mr-2"></i>Pending Publisher Approvals 
+                            <span class="badge badge-warning text-dark ml-2"><?php echo count($pendingPublishers); ?> Awaiting Review</span>
+                        </h4>
+                        <span class="small text-muted">Publishers registered through your manager link requiring your approval</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle bg-white rounded shadow-sm">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Publisher Name</th>
+                                    <th>Email</th>
+                                    <th>Mobile / Telegram</th>
+                                    <th>Registered</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($pendingPublishers as $pen): ?>
+                                <tr>
+                                    <td><strong>#<?php echo $pen['user_id']; ?></strong></td>
+                                    <td>
+                                        <strong class="text-dark"><?php echo htmlspecialchars($pen['name']); ?></strong>
+                                        <small class="d-block text-muted"><?php echo htmlspecialchars($pen['company'] ?: 'Individual'); ?></small>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($pen['email']); ?></td>
+                                    <td>
+                                        <?php echo htmlspecialchars($pen['mobile'] ?: 'N/A'); ?>
+                                        <?php if ($pen['telegram_id']): ?>
+                                            <span class="badge badge-light border text-info ml-1"><i class="fab fa-telegram-plane"></i> <?php echo htmlspecialchars($pen['telegram_id']); ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><small class="text-muted"><?php echo date('M d, Y h:i A', strtotime($pen['created_at'])); ?></small></td>
+                                    <td class="text-right" style="white-space: nowrap;">
+                                        <a href="?action=approve&id=<?php echo $pen['user_id']; ?>" class="btn btn-sm btn-success font-weight-bold mr-1">
+                                            <i class="fas fa-check mr-1"></i> Approve
+                                        </a>
+                                        <a href="?action=reject&id=<?php echo $pen['user_id']; ?>" class="btn btn-sm btn-outline-danger font-weight-bold" onclick="return confirm('Reject this publisher registration?');">
+                                            <i class="fas fa-times mr-1"></i> Reject
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- 2x2 Mobile Stat Grid -->
                 <div class="row mb-4 stat-boxes-row">
@@ -337,6 +455,7 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <th>Approved Leads</th>
                                     <th>Payout Earned</th>
                                     <th>Status</th>
+                                    <th class="text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -356,7 +475,29 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                                             <span class="badge badge-light text-muted border"><i class="fas fa-lock mr-1"></i>Hidden</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><span class="badge badge-<?php echo $ap['status'] === 'active' ? 'success' : 'secondary'; ?> p-2"><?php echo ucfirst($ap['status']); ?></span></td>
+                                    <td>
+                                        <?php 
+                                            $stClass = 'secondary';
+                                            if ($ap['status'] === 'active') $stClass = 'success';
+                                            elseif ($ap['status'] === 'pending') $stClass = 'warning';
+                                            elseif ($ap['status'] === 'rejected' || $ap['status'] === 'blocked') $stClass = 'danger';
+                                        ?>
+                                        <span class="badge badge-<?php echo $stClass; ?> p-2"><?php echo ucfirst($ap['status']); ?></span>
+                                    </td>
+                                    <td class="text-right" style="white-space: nowrap;">
+                                        <?php if ($ap['status'] === 'pending'): ?>
+                                            <a href="?action=approve&id=<?php echo $ap['user_id']; ?>" class="btn btn-xs btn-success font-weight-bold mr-1" title="Approve Publisher">
+                                                <i class="fas fa-check mr-1"></i> Approve
+                                            </a>
+                                            <a href="?action=reject&id=<?php echo $ap['user_id']; ?>" class="btn btn-xs btn-outline-danger font-weight-bold" onclick="return confirm('Reject this publisher registration?');" title="Reject Publisher">
+                                                <i class="fas fa-times mr-1"></i> Reject
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="publishers.php" class="btn btn-xs btn-outline-primary font-weight-bold">
+                                                <i class="fas fa-cog mr-1"></i> Manage
+                                            </a>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

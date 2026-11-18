@@ -45,8 +45,11 @@ $where = ['1=1'];
 $params = [];
 
 if ($search) {
-    $where[] = '(o.offer_name LIKE :search OR o.offer_description LIKE :search OR u.name LIKE :search OR u.email LIKE :search)';
-    $params['search'] = "%$search%";
+    $where[] = '(o.offer_name LIKE :s1 OR o.offer_description LIKE :s2 OR u.name LIKE :s3 OR u.email LIKE :s4)';
+    $params['s1'] = "%$search%";
+    $params['s2'] = "%$search%";
+    $params['s3'] = "%$search%";
+    $params['s4'] = "%$search%";
 }
 
 if ($statusFilter !== 'all') {

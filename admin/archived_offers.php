@@ -57,8 +57,10 @@ $where = ["o.status = 'archived'"];
 $params = [];
 
 if ($search !== '') {
-    $where[] = "(o.offer_name LIKE :search OR o.offer_id = :exact_id OR u.name LIKE :search OR u.email LIKE :search)";
-    $params['search'] = "%$search%";
+    $where[] = "(o.offer_name LIKE :s1 OR o.offer_id = :exact_id OR u.name LIKE :s2 OR u.email LIKE :s3)";
+    $params['s1'] = "%$search%";
+    $params['s2'] = "%$search%";
+    $params['s3'] = "%$search%";
     $params['exact_id'] = is_numeric($search) ? (int)$search : 0;
 }
 
