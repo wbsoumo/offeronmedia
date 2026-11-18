@@ -67,54 +67,109 @@ $outStmt = $pdo->prepare("
     ORDER BY apl.id DESC
     LIMIT 250
 ");
-$outStmt->execute($outParams);
-$outgoingLogs = $outStmt->fetchAll(PDO::FETCH_ASSOC);
+$outgoingLogs = [];
+try {
+    $outStmt->execute($outParams);
+    $outgoingLogs = $outStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $outgoingLogs = [];
+}
 
 /* =====================================================
    2. FETCH INCOMING ADVERTISER POSTBACK LOGS (Scoped to Manager)
 ===================================================== */
-$inWhere = [
-    "u.account_manager_id = :imgr_id",
-    "DATE(pl.created_at) >= :idfrom",
-    "DATE(pl.created_at) <= :idto"
-];
-$inParams = [
-    ':imgr_id' => $managerId,
-    ':idfrom'  => $dateFrom,
-    ':idto'    => $dateTo
-];
+$incomingLogs = [];
+$pblCols = [];
+try {
+    $pblCols = $pdo->query("SHOW COLUMNS FROM `postback_logs`")->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    $pblCols = [];
+}
+
+$hasId        = in_array('id', $pblCols, true);
+$hasClickId   = in_array('click_id', $pblCols, true);
+$hasStatus    = in_array('status', $pblCols, true);
+$hasRaw       = in_array('raw_request', $pblCols, true);
+$hasIp        = in_array('ip_address', $pblCols, true);
+$hasCreatedAt = in_array('created_at', $pblCols, true);
+
+// Self-healing attempt if id column missing
+if (!$hasId && !empty($pblCols)) {
+    try {
+        $pk = $pdo->query("SHOW KEYS FROM `postback_logs` WHERE Key_name = 'PRIMARY'")->fetch();
+        if (empty($pk)) {
+            $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `id` INT AUTO_INCREMENT PRIMARY KEY FIRST");
+            $hasId = true;
+        } else {
+            $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `id` INT NOT NULL AUTO_INCREMENT UNIQUE FIRST");
+            $hasId = true;
+        }
+    } catch (Exception $e) {
+        $hasId = false;
+    }
+}
+
+$inWhere = ["u.account_manager_id = :imgr_id"];
+$inParams = [':imgr_id' => $managerId];
+
+if ($hasCreatedAt) {
+    $inWhere[] = "DATE(pl.created_at) >= :idfrom";
+    $inWhere[] = "DATE(pl.created_at) <= :idto";
+    $inParams[':idfrom'] = $dateFrom;
+    $inParams[':idto']   = $dateTo;
+}
 
 if ($search !== '') {
-    $inWhere[] = "(pl.click_id LIKE :is1 OR pl.raw_request LIKE :is2 OR u.name LIKE :is3)";
-    $inParams[':is1'] = "%$search%";
-    $inParams[':is2'] = "%$search%";
+    $searchConds = [];
+    if ($hasClickId) {
+        $searchConds[] = "pl.click_id LIKE :is1";
+        $inParams[':is1'] = "%$search%";
+    }
+    if ($hasRaw) {
+        $searchConds[] = "pl.raw_request LIKE :is2";
+        $inParams[':is2'] = "%$search%";
+    }
+    $searchConds[] = "u.name LIKE :is3";
     $inParams[':is3'] = "%$search%";
+    $inWhere[] = '(' . implode(' OR ', $searchConds) . ')';
 }
 
 $inWhereSql = 'WHERE ' . implode(' AND ', $inWhere);
 
-$inStmt = $pdo->prepare("
-    SELECT 
-        pl.id,
-        pl.click_id,
-        pl.status,
-        pl.raw_request,
-        pl.ip_address,
-        pl.created_at,
-        c.offer_id,
-        c.affiliate_id,
-        u.name AS publisher_name,
-        o.offer_name
-    FROM postback_logs pl
-    INNER JOIN clicks c ON c.click_id = pl.click_id
-    INNER JOIN users u ON u.user_id = c.affiliate_id
-    LEFT JOIN offers o ON o.offer_id = c.offer_id
-    $inWhereSql
-    ORDER BY pl.id DESC
-    LIMIT 250
-");
-$inStmt->execute($inParams);
-$incomingLogs = $inStmt->fetchAll(PDO::FETCH_ASSOC);
+$colIdSelect  = $hasId ? "pl.id" : "NULL AS id";
+$colClickId   = $hasClickId ? "pl.click_id" : "NULL AS click_id";
+$colStatus    = $hasStatus ? "pl.status" : "'success' AS status";
+$colRaw       = $hasRaw ? "pl.raw_request" : "NULL AS raw_request";
+$colIp        = $hasIp ? "pl.ip_address" : "NULL AS ip_address";
+$colCreatedAt = $hasCreatedAt ? "pl.created_at" : "NOW() AS created_at";
+$orderBy      = $hasId ? "ORDER BY pl.id DESC" : ($hasCreatedAt ? "ORDER BY pl.created_at DESC" : "");
+
+try {
+    $inStmt = $pdo->prepare("
+        SELECT 
+            $colIdSelect,
+            $colClickId,
+            $colStatus,
+            $colRaw,
+            $colIp,
+            $colCreatedAt,
+            c.offer_id,
+            c.affiliate_id,
+            u.name AS publisher_name,
+            o.offer_name
+        FROM postback_logs pl
+        INNER JOIN clicks c ON c.click_id = pl.click_id
+        INNER JOIN users u ON u.user_id = c.affiliate_id
+        LEFT JOIN offers o ON o.offer_id = c.offer_id
+        $inWhereSql
+        $orderBy
+        LIMIT 250
+    ");
+    $inStmt->execute($inParams);
+    $incomingLogs = $inStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $incomingLogs = [];
+}
 
 // Counts
 $totalOutgoing   = count($outgoingLogs);
@@ -384,8 +439,8 @@ $totalIncoming   = count($incomingLogs);
                                 ?>
                                 <tr>
                                     <td>
-                                        <strong>#<?php echo $inLog['id']; ?></strong>
-                                        <small class="d-block text-muted"><?php echo date('M d, H:i:s', strtotime($inLog['created_at'])); ?></small>
+                                        <strong><?php echo !empty($inLog['id']) ? '#' . $inLog['id'] : 'LOG'; ?></strong>
+                                        <small class="d-block text-muted"><?php echo !empty($inLog['created_at']) ? date('M d, H:i:s', strtotime($inLog['created_at'])) : '-'; ?></small>
                                     </td>
                                     <td>
                                         <span class="badge badge-secondary px-2 py-1 font-monospace"><?php echo htmlspecialchars(substr($inLog['click_id'] ?: '', 0, 16)); ?>...</span>

@@ -261,8 +261,35 @@ function auto_ensure_all_schema_tables($pdo)
 
         // 6. Ensure Columns in `postback_logs`
         $pblCols = $pdo->query("SHOW COLUMNS FROM `postback_logs`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('id', $pblCols, true)) {
+            $hasPk = false;
+            try {
+                $pk = $pdo->query("SHOW KEYS FROM `postback_logs` WHERE Key_name = 'PRIMARY'")->fetch();
+                if (!empty($pk)) {
+                    $hasPk = true;
+                }
+            } catch (Exception $e) {}
+
+            try {
+                if (!$hasPk) {
+                    $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `id` INT AUTO_INCREMENT PRIMARY KEY FIRST");
+                } else {
+                    $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `id` INT NOT NULL AUTO_INCREMENT UNIQUE FIRST");
+                }
+            } catch (Exception $e) {
+                try {
+                    $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `id` INT DEFAULT NULL FIRST");
+                } catch (Exception $e2) {}
+            }
+        }
         if (!in_array('raw_request', $pblCols, true)) {
             try { $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `raw_request` TEXT DEFAULT NULL AFTER `status`"); } catch (Exception $e) {}
+        }
+        if (!in_array('ip_address', $pblCols, true)) {
+            try { $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `ip_address` VARCHAR(45) DEFAULT NULL"); } catch (Exception $e) {}
+        }
+        if (!in_array('created_at', $pblCols, true)) {
+            try { $pdo->exec("ALTER TABLE `postback_logs` ADD COLUMN `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP"); } catch (Exception $e) {}
         }
 
         // 6. Ensure Columns in `affiliate_postbacks`
