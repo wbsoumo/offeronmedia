@@ -130,6 +130,18 @@ $stmt = $pdo->prepare("
 $stmt->execute([$managerId]);
 $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Pending Offer Requests count (Offer18 Feature)
+$pendingOfferCount = 0;
+try {
+    $pocStmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM affiliate_offer_approval aoa
+        JOIN users u ON u.user_id = aoa.affiliate_id
+        WHERE u.account_manager_id = ? AND aoa.status = 'pending'
+    ");
+    $pocStmt->execute([$managerId]);
+    $pendingOfferCount = (int)$pocStmt->fetchColumn();
+} catch (Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -173,7 +185,17 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
                     <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard</p></a></li>
                     <li class="nav-item"><a href="publishers.php" class="nav-link active"><i class="nav-icon fas fa-user-friends"></i><p>My Publishers</p></a></li>
-                    <li class="nav-item"><a href="campaigns.php" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Campaigns</p></a></li>
+                    <li class="nav-item">
+                        <a href="campaigns.php" class="nav-link">
+                            <i class="nav-icon fas fa-bullhorn"></i>
+                            <p>
+                                Campaigns
+                                <?php if ($pendingOfferCount > 0): ?>
+                                    <span class="badge badge-warning right font-weight-bold"><?php echo $pendingOfferCount; ?></span>
+                                <?php endif; ?>
+                            </p>
+                        </a>
+                    </li>
                     <?php if (manager_can('affiliate_reports') || manager_can('advertiser_reports') || manager_can('all_reports')): ?>
                     <li class="nav-item"><a href="reports.php" class="nav-link"><i class="nav-icon fas fa-chart-bar"></i><p>Performance Reports</p></a></li>
                     <?php endif; ?>
@@ -303,6 +325,11 @@ $publishers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <i class="fas fa-exchange-alt mr-1"></i> Postback
                                             </button>
                                         <?php endif; ?>
+
+                                        <!-- Login As Publisher (Impersonation) -->
+                                        <a href="impersonate.php?id=<?php echo $p['user_id']; ?>" target="_blank" class="btn btn-xs btn-outline-info font-weight-bold ml-1" title="Login as this publisher in a new tab">
+                                            <i class="fas fa-sign-in-alt mr-1"></i> Login As
+                                        </a>
 
                                         <?php if (!manager_can('manage_affiliates') && !manager_can('manage_postbacks')): ?>
                                             <span class="text-muted small">Read-only</span>

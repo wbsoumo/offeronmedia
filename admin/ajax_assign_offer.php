@@ -68,6 +68,7 @@ if ($action === 'get_publishers') {
 $offerId = isset($input['offer_id']) ? (int)$input['offer_id'] : 0;
 $publisherId = isset($input['publisher_id']) ? (int)$input['publisher_id'] : 0;
 $customPayout = isset($input['custom_payout']) && $input['custom_payout'] !== '' ? (float)$input['custom_payout'] : null;
+$dailyCap     = isset($input['daily_cap']) && $input['daily_cap'] !== '' ? (int)$input['daily_cap'] : null;
 $sub1 = trim($input['sub1'] ?? '');
 $sub2 = trim($input['sub2'] ?? '');
 $sub3 = trim($input['sub3'] ?? '');
@@ -169,6 +170,10 @@ try {
             $updSets[] = "custom_payout = :payout";
             $updParams[':payout'] = $customPayout;
         }
+        if (in_array('daily_cap', $appCols, true) && $dailyCap !== null) {
+            $updSets[] = "daily_cap = :daily_cap";
+            $updParams[':daily_cap'] = $dailyCap;
+        }
         if (in_array('notes', $appCols, true)) {
             $updSets[] = "notes = :notes";
             $updParams[':notes'] = $notes;
@@ -194,6 +199,12 @@ try {
             $insertCols[] = 'custom_payout';
             $insertVals[] = ':payout';
             $bindParams[':payout'] = $customPayout;
+        }
+
+        if (in_array('daily_cap', $appCols, true) && $dailyCap !== null) {
+            $insertCols[] = 'daily_cap';
+            $insertVals[] = ':daily_cap';
+            $bindParams[':daily_cap'] = $dailyCap;
         }
 
         if (in_array('notes', $appCols, true)) {

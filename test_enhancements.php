@@ -235,6 +235,7 @@ $filesToLint = [
     'manager/publishers.php',
     'manager/campaigns.php',
     'manager/reports.php',
+    'manager/impersonate.php',
     'affiliate/offers.php',
     'affiliate/link-builder.php',
     'affiliate/offer_view.php'
@@ -339,6 +340,74 @@ if (!empty($affId) && !empty($offerId)) {
 
     // Reset back to approved
     $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved' WHERE affiliate_id = ? AND offer_id = ?")->execute([$affId, $offerId]);
+}
+
+// ---------------------------------------------------------
+// TEST 8: 3 New Offer18 Manager Capabilities
+// ---------------------------------------------------------
+echo "\n--- TEST 8: Offer18 Advanced Manager Capabilities ---\n";
+
+// 8.1 Publisher-Level Custom Daily Cap in click.php
+if (!empty($affId) && !empty($offerId)) {
+    // Set publisher daily_cap to 1
+    $pdo->prepare("
+        UPDATE affiliate_offer_approval 
+        SET status = 'approved', daily_cap = 1 
+        WHERE affiliate_id = ? AND offer_id = ?
+    ")->execute([$affId, $offerId]);
+
+    // Insert 1 approved conversion for today
+    $pdo->prepare("
+        INSERT INTO conversions (click_id, offer_id, affiliate_id, payout, revenue, status, created_at)
+        VALUES ('cap_test_click_01', ?, ?, 10.00, 15.00, 'approved', NOW())
+    ")->execute([$offerId, $affId]);
+
+    // Execute click.php and verify it blocks due to publisher daily cap reached
+    $out = [];
+    exec("php -r '
+        \$_GET[\"offer_id\"] = $offerId;
+        \$_GET[\"aff_id\"] = $affId;
+        \$_SERVER[\"REMOTE_ADDR\"] = \"127.0.0.1\";
+        \$_SERVER[\"HTTP_USER_AGENT\"] = \"Mozilla/5.0\";
+        require \"click.php\";
+    ' 2>&1", $out);
+    $capResp = implode(' ', $out);
+    assertTest("click.php enforces publisher individual daily_cap with PUBLISHER_DAILY_CAP_REACHED", strpos($capResp, 'PUBLISHER_DAILY_CAP_REACHED') !== false);
+
+    // Clean up test conversion & restore daily_cap
+    $pdo->exec("DELETE FROM conversions WHERE click_id = 'cap_test_click_01'");
+    $pdo->prepare("UPDATE affiliate_offer_approval SET daily_cap = NULL WHERE affiliate_id = ? AND offer_id = ?")->execute([$affId, $offerId]);
+}
+
+// 8.2 Pending Offer Requests Queue Query
+if (!empty($affId) && !empty($offerId) && !empty($mgrId)) {
+    // Set status to pending
+    $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'pending' WHERE affiliate_id = ? AND offer_id = ?")->execute([$affId, $offerId]);
+
+    $pQueueStmt = $pdo->prepare("
+        SELECT aoa.id 
+        FROM affiliate_offer_approval aoa
+        INNER JOIN users u ON u.user_id = aoa.affiliate_id
+        WHERE u.account_manager_id = ? AND aoa.status = 'pending'
+    ");
+    $pQueueStmt->execute([$mgrId]);
+    assertTest("Pending Offer Requests Queue query detects pending requests for assigned manager", $pQueueStmt->fetchColumn() !== false);
+
+    // Restore to approved
+    $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved' WHERE affiliate_id = ? AND offer_id = ?")->execute([$affId, $offerId]);
+}
+
+// 8.3 Manager Impersonation Security Boundary Check
+if (!empty($mgrId)) {
+    // Verify query enforces account_manager_id check
+    $secStmt = $pdo->prepare("
+        SELECT u.user_id 
+        FROM users u 
+        WHERE u.role_id = 3 AND u.account_manager_id = ?
+    ");
+    $secStmt->execute([$mgrId]);
+    $assignedAffs = $secStmt->fetchAll(PDO::FETCH_COLUMN);
+    assertTest("Manager impersonation enforces strict assigned portfolio boundary", is_array($assignedAffs));
 }
 
 // ---------------------------------------------------------

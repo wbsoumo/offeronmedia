@@ -220,6 +220,9 @@ function auto_ensure_all_schema_tables($pdo)
         if (!in_array('custom_payout', $aoaCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `custom_payout` DECIMAL(10,2) DEFAULT NULL"); } catch (Exception $e) {}
         }
+        if (!in_array('daily_cap', $aoaCols, true)) {
+            try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `daily_cap` INT DEFAULT NULL AFTER `custom_payout`"); } catch (Exception $e) {}
+        }
         if (!in_array('notes', $aoaCols, true)) {
             try { $pdo->exec("ALTER TABLE `affiliate_offer_approval` ADD COLUMN `notes` TEXT DEFAULT NULL"); } catch (Exception $e) {}
         }

@@ -63,24 +63,32 @@ function auth_render_impersonation_banner($buffer)
     $userEmail = htmlspecialchars($_SESSION['user_email'] ?? '');
     $userId    = (int)($_SESSION['auth']['user_id'] ?? 0);
     $roleName  = ucfirst($_SESSION['auth']['role'] ?? 'affiliate');
+    $isManager = !empty($_SESSION['impersonated_by_manager']);
+    $badgeText = $isManager ? 'Manager Impersonation' : 'Admin Impersonation';
+    $badgeBg   = $isManager ? '#059669' : '#2563eb';
+    $returnUrl = $isManager ? '/manager/publishers.php' : '/admin/publishers.php';
+    $returnTxt = $isManager ? 'Go to Manager Portal &rarr;' : 'Go to Admin Panel &rarr;';
+    $noteText  = $isManager 
+        ? '&bull; Logged in via Account Manager: ' . htmlspecialchars($_SESSION['impersonator_manager_name'] ?? 'Manager') 
+        : '&bull; Your Admin account session is safely active in your admin tab.';
 
     $bannerHtml = '
-    <div id="impersonation-notification-bar" style="background: linear-gradient(90deg, #0f172a 0%, #1e293b 60%, #0f172a 100%); color: #ffffff; padding: 10px 20px; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; font-size: 13px; position: sticky; top: 0; z-index: 9999999; border-bottom: 2px solid #3b82f6; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+    <div id="impersonation-notification-bar" style="background: linear-gradient(90deg, #0f172a 0%, #1e293b 60%, #0f172a 100%); color: #ffffff; padding: 10px 20px; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; font-size: 13px; position: sticky; top: 0; z-index: 9999999; border-bottom: 2px solid ' . ($isManager ? '#10b981' : '#3b82f6') . '; box-shadow: 0 4px 14px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <span style="background: #2563eb; color: #ffffff; font-weight: 700; font-size: 11px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+            <span style="background: ' . $badgeBg . '; color: #ffffff; font-weight: 700; font-size: 11px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Admin Impersonation
+                ' . $badgeText . '
             </span>
             <span>
                 Logged in as <strong>' . $userName . '</strong> (' . $roleName . ' #' . $userId . ($userEmail ? ' &middot; ' . $userEmail : '') . ')
             </span>
             <span style="color: #94a3b8; font-size: 12px;">
-                &bull; Your Admin account session is safely active in your admin tab.
+                ' . $noteText . '
             </span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
-            <a href="/admin/publishers.php" target="_blank" style="background: rgba(255,255,255,0.08); color: #93c5fd; padding: 5px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 12px; border: 1px solid rgba(147,197,253,0.3); transition: all 0.2s ease;">
-                Go to Admin Panel &rarr;
+            <a href="' . $returnUrl . '" target="_blank" style="background: rgba(255,255,255,0.08); color: #93c5fd; padding: 5px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 12px; border: 1px solid rgba(147,197,253,0.3); transition: all 0.2s ease;">
+                ' . $returnTxt . '
             </a>
             <a href="/logout.php" style="background: #dc2626; color: #ffffff; padding: 5px 12px; border-radius: 4px; text-decoration: none; font-weight: 600; font-size: 12px; border: 1px solid #b91c1c; transition: all 0.2s ease;">
                 Exit Impersonation

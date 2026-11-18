@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_offer'])) {
         $offerId      = (int)($_POST['offer_id'] ?? 0);
         $publisherIds = $_POST['publisher_ids'] ?? [];
         $customPayout = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
+        $dailyCap     = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
         $notes        = trim($_POST['notes'] ?? '');
 
         if ($offerId <= 0 || empty($publisherIds)) {
@@ -55,43 +56,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_offer'])) {
                         continue;
                     }
 
+                    // Insert or update approval with custom payout and daily cap
+                    $chk = $pdo->prepare("SELECT id FROM affiliate_offer_approval WHERE affiliate_id = ? AND offer_id = ? LIMIT 1");
+                    $chk->execute([$pubId, $offerId]);
+                    $existing = $chk->fetch(PDO::FETCH_ASSOC);
 
-                // Insert or update approval
-                $chk = $pdo->prepare("SELECT id FROM affiliate_offer_approval WHERE affiliate_id = ? AND offer_id = ? LIMIT 1");
-                $chk->execute([$pubId, $offerId]);
-                $existing = $chk->fetch(PDO::FETCH_ASSOC);
-
-                if ($existing) {
-                    $upd = $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved', custom_payout = ?, notes = ?, approved_at = NOW() WHERE id = ?");
-                    $upd->execute([$customPayout, $notes, $existing['id']]);
-                } else {
-                    $ins = $pdo->prepare("
-                        INSERT INTO affiliate_offer_approval 
-                            (affiliate_id, offer_id, status, custom_payout, notes, created_by, approved_at)
-                        VALUES 
-                            (?, ?, 'approved', ?, ?, ?, NOW())
-                    ");
-                    $ins->execute([$pubId, $offerId, $customPayout, $notes, $managerName]);
+                    if ($existing) {
+                        $upd = $pdo->prepare("UPDATE affiliate_offer_approval SET status = 'approved', custom_payout = ?, daily_cap = ?, notes = ?, approved_at = NOW() WHERE id = ?");
+                        $upd->execute([$customPayout, $dailyCap, $notes, $existing['id']]);
+                    } else {
+                        $ins = $pdo->prepare("
+                            INSERT INTO affiliate_offer_approval 
+                                (affiliate_id, offer_id, status, custom_payout, daily_cap, notes, created_by, approved_at)
+                            VALUES 
+                                (?, ?, 'approved', ?, ?, ?, ?, NOW())
+                        ");
+                        $ins->execute([$pubId, $offerId, $customPayout, $dailyCap, $notes, $managerName]);
+                    }
+                    $assignedCount++;
                 }
-                $assignedCount++;
-            }
 
-            $success = "Successfully granted access to {$assignedCount} publisher(s)! This offer is now live in their offer list.";
+                $success = "Successfully granted access to {$assignedCount} publisher(s)! This offer is now live in their offer list.";
+            }
         }
-    }
     }
 }
 
-
-// Handle Offer Status Update (Approve / Reject Access)
+// Handle Offer Status Update (Approve / Reject Access with optional Payout & Cap)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_access_status'])) {
-    $approvalId = (int)($_POST['approval_id'] ?? 0);
-    $newStatus  = $_POST['status'] ?? '';
+    $approvalId   = (int)($_POST['approval_id'] ?? 0);
+    $newStatus    = $_POST['status'] ?? '';
+    $customPayout = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
+    $dailyCap     = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
 
     if ($approvalId > 0 && in_array($newStatus, ['approved', 'rejected'], true)) {
         // Validate that this approval record belongs to a publisher assigned to this manager
         $vStmt = $pdo->prepare("
-            SELECT aoa.id, u.name as publisher_name, o.offer_name 
+            SELECT aoa.id, u.name as publisher_name, o.offer_name, o.payout as default_payout 
             FROM affiliate_offer_approval aoa
             JOIN users u ON u.user_id = aoa.affiliate_id
             JOIN offers o ON o.offer_id = aoa.offer_id
@@ -102,8 +103,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_access_status'
         $appItem = $vStmt->fetch(PDO::FETCH_ASSOC);
 
         if ($appItem) {
-            $updStmt = $pdo->prepare("UPDATE affiliate_offer_approval SET status = ?, approved_at = NOW() WHERE id = ?");
-            $updStmt->execute([$newStatus, $approvalId]);
+            $updSets = ["status = ?", "approved_at = NOW()"];
+            $updParams = [$newStatus];
+
+            if ($customPayout !== null) {
+                $updSets[] = "custom_payout = ?";
+                $updParams[] = $customPayout;
+            }
+            if ($dailyCap !== null) {
+                $updSets[] = "daily_cap = ?";
+                $updParams[] = $dailyCap;
+            }
+
+            $updParams[] = $approvalId;
+            $updStmt = $pdo->prepare("UPDATE affiliate_offer_approval SET " . implode(', ', $updSets) . " WHERE id = ?");
+            $updStmt->execute($updParams);
+
             $actionLabel = ($newStatus === 'approved') ? 'Approved' : 'Rejected / Revoked';
             $success = "Access for {$appItem['publisher_name']} on '{$appItem['offer_name']}' successfully {$actionLabel}!";
         } else {
@@ -111,6 +126,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_access_status'
         }
     }
 }
+
+// Fetch Pending Offer Applications Queue (Offer18 Feature)
+$pendingOffersStmt = $pdo->prepare("
+    SELECT 
+        aoa.id,
+        aoa.affiliate_id,
+        aoa.offer_id,
+        aoa.status,
+        aoa.custom_payout,
+        aoa.daily_cap,
+        aoa.notes,
+        aoa.created_at,
+        u.name AS publisher_name,
+        u.email AS publisher_email,
+        u.company AS publisher_company,
+        u.mobile AS publisher_mobile,
+        o.offer_name,
+        o.payout AS default_payout,
+        o.currency,
+        o.visibility,
+        o.daily_cap AS global_daily_cap
+    FROM affiliate_offer_approval aoa
+    INNER JOIN users u ON u.user_id = aoa.affiliate_id
+    INNER JOIN offers o ON o.offer_id = aoa.offer_id
+    WHERE u.account_manager_id = ? AND aoa.status = 'pending'
+    ORDER BY aoa.created_at DESC
+");
+$pendingOffersStmt->execute([$managerId]);
+$pendingOfferRequests = $pendingOffersStmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch All Campaigns (Public & Private) with Manager's Assigned Count
 $offersStmt = $pdo->prepare("
@@ -151,6 +195,7 @@ $assignmentsStmt = $pdo->prepare("
         aoa.offer_id,
         aoa.status,
         aoa.custom_payout,
+        aoa.daily_cap,
         aoa.notes,
         aoa.approved_at,
         aoa.created_at,
@@ -216,7 +261,17 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
                     <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard</p></a></li>
                     <li class="nav-item"><a href="publishers.php" class="nav-link"><i class="nav-icon fas fa-user-friends"></i><p>My Publishers</p></a></li>
-                    <li class="nav-item"><a href="campaigns.php" class="nav-link active"><i class="nav-icon fas fa-bullhorn"></i><p>Campaigns</p></a></li>
+                    <li class="nav-item">
+                        <a href="campaigns.php" class="nav-link active">
+                            <i class="nav-icon fas fa-bullhorn"></i>
+                            <p>
+                                Campaigns
+                                <?php if (!empty($pendingOfferRequests)): ?>
+                                    <span class="badge badge-warning right font-weight-bold"><?php echo count($pendingOfferRequests); ?></span>
+                                <?php endif; ?>
+                            </p>
+                        </a>
+                    </li>
                     <?php if (manager_can('affiliate_reports') || manager_can('advertiser_reports') || manager_can('all_reports')): ?>
                     <li class="nav-item"><a href="reports.php" class="nav-link"><i class="nav-icon fas fa-chart-bar"></i><p>Performance Reports</p></a></li>
                     <?php endif; ?>
@@ -261,6 +316,79 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-exclamation-circle mr-2"></i><?php echo htmlspecialchars($error); ?>
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
+                <?php endif; ?>
+
+                <!-- Pending Offer Requests Queue (Offer18 Feature) -->
+                <?php if (!empty($pendingOfferRequests)): ?>
+                <div class="card card-custom p-4 mb-4 border border-warning shadow-sm" style="background: #fffdf5;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="font-weight-bold text-warning mb-1">
+                                <i class="fas fa-inbox mr-2"></i>Pending Offer Requests Queue
+                                <span class="badge badge-warning text-dark ml-2"><?php echo count($pendingOfferRequests); ?> Pending Applications</span>
+                            </h4>
+                            <p class="small text-muted mb-0">Affiliates who have applied for private campaigns and are awaiting your authorization.</p>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle bg-white rounded shadow-sm">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Application ID</th>
+                                    <th>Publisher</th>
+                                    <th>Campaign Offer</th>
+                                    <th>Default Payout</th>
+                                    <th>Custom Payout Override</th>
+                                    <th>Daily Cap Limit</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($pendingOfferRequests as $por): ?>
+                                <tr>
+                                    <td><strong>#<?php echo $por['id']; ?></strong></td>
+                                    <td>
+                                        <strong class="text-dark"><?php echo htmlspecialchars($por['publisher_name']); ?></strong>
+                                        <small class="d-block text-muted"><?php echo htmlspecialchars($por['publisher_email']); ?> <?php echo $por['publisher_company'] ? '• ' . htmlspecialchars($por['publisher_company']) : ''; ?></small>
+                                    </td>
+                                    <td>
+                                        <strong class="text-primary">#<?php echo $por['offer_id']; ?> - <?php echo htmlspecialchars($por['offer_name']); ?></strong>
+                                        <small class="d-block text-muted">Applied: <?php echo date('M d, Y h:i A', strtotime($por['created_at'])); ?></small>
+                                    </td>
+                                    <td>
+                                        <strong class="text-success"><?php echo format_currency($por['default_payout'], $por['currency'] ?? 'USD'); ?></strong>
+                                    </td>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="update_access_status" value="1">
+                                        <input type="hidden" name="approval_id" value="<?php echo $por['id']; ?>">
+                                        <td>
+                                            <div class="input-group input-group-sm" style="max-width: 140px;">
+                                                <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                                                <input type="number" step="0.01" min="0" name="custom_payout" class="form-control font-weight-bold" value="<?php echo htmlspecialchars($por['custom_payout'] ?? $por['default_payout']); ?>">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="input-group input-group-sm" style="max-width: 140px;">
+                                                <input type="number" step="1" min="1" name="daily_cap" class="form-control" placeholder="Unlimited" value="<?php echo htmlspecialchars($por['daily_cap'] ?? ''); ?>">
+                                                <div class="input-group-append"><span class="input-group-text text-xs">/day</span></div>
+                                            </div>
+                                        </td>
+                                        <td class="text-right" style="white-space: nowrap;">
+                                            <button type="submit" name="status" value="approved" class="btn btn-sm btn-success font-weight-bold mr-1" title="Approve Request & Activate Link">
+                                                <i class="fas fa-check mr-1"></i> Approve
+                                            </button>
+                                            <button type="submit" name="status" value="rejected" class="btn btn-sm btn-outline-danger font-weight-bold" onclick="return confirm('Reject this offer request?');" title="Reject Request">
+                                                <i class="fas fa-times mr-1"></i> Reject
+                                            </button>
+                                        </td>
+                                    </form>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <?php endif; ?>
 
                 <div class="card card-custom p-4">
@@ -387,6 +515,7 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                                         <th>Publisher</th>
                                         <th>Campaign Offer</th>
                                         <th>Payout Rate</th>
+                                        <th>Daily Cap</th>
                                         <th>Live Tracking Link</th>
                                         <th>Status</th>
                                         <th class="text-right">Action</th>
@@ -423,6 +552,13 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                                         </td>
                                         <td>
                                             <strong class="text-success"><?php echo format_currency($ma['custom_payout'] ?? $ma['original_payout'], $ma['currency'] ?? 'USD'); ?></strong>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($ma['daily_cap'])): ?>
+                                                <span class="badge badge-info px-2 py-1 font-weight-bold" title="Individual Publisher Daily Cap"><i class="fas fa-tachometer-alt mr-1"></i><?php echo number_format($ma['daily_cap']); ?> leads/day</span>
+                                            <?php else: ?>
+                                                <span class="badge badge-light border text-muted px-2 py-1" title="Inherits offer global daily cap">Global Cap</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <div class="input-group input-group-sm" style="min-width: 220px;">
@@ -527,6 +663,15 @@ $managerAssignments = $assignmentsStmt->fetchAll(PDO::FETCH_ASSOC);
                                     <input type="number" step="0.01" min="0" name="custom_payout" id="modalCustomPayout" class="form-control" placeholder="Leave empty for default payout">
                                 </div>
                                 <small class="text-muted">Overrides the default offer payout for the selected publishers.</small>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label class="font-weight-bold">Publisher Daily Cap (Optional)</label>
+                                <div class="input-group">
+                                    <input type="number" step="1" min="1" name="daily_cap" id="modalDailyCap" class="form-control" placeholder="Leave empty for unlimited">
+                                    <div class="input-group-append"><span class="input-group-text">leads / day</span></div>
+                                </div>
+                                <small class="text-muted">Maximum approved conversions per day for this publisher (Offer18 cap feature).</small>
                             </div>
 
                             <div class="form-group mb-0">

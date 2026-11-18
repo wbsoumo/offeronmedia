@@ -60,6 +60,19 @@ $pendingStmt = $pdo->prepare("
 $pendingStmt->execute([$managerId]);
 $pendingPublishers = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Pending Offer Requests count (Offer18 Feature)
+$pendingOfferCount = 0;
+try {
+    $pocStmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM affiliate_offer_approval aoa
+        JOIN users u ON u.user_id = aoa.affiliate_id
+        WHERE u.account_manager_id = ? AND aoa.status = 'pending'
+    ");
+    $pocStmt->execute([$managerId]);
+    $pendingOfferCount = (int)$pocStmt->fetchColumn();
+} catch (Exception $e) {}
+
 /* ===============================
    FETCH MANAGER METRICS
 ================================ */
@@ -246,7 +259,12 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                     <li class="nav-item">
                         <a href="campaigns.php" class="nav-link">
                             <i class="nav-icon fas fa-bullhorn"></i>
-                            <p>Campaigns</p>
+                            <p>
+                                Campaigns
+                                <?php if ($pendingOfferCount > 0): ?>
+                                    <span class="badge badge-warning right font-weight-bold"><?php echo $pendingOfferCount; ?></span>
+                                <?php endif; ?>
+                            </p>
                         </a>
                     </li>
                     <?php if (manager_can('affiliate_reports') || manager_can('advertiser_reports') || manager_can('all_reports')): ?>
@@ -409,6 +427,28 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <?php endif; ?>
 
+                <!-- Pending Offer Requests Alert (Offer18 Feature) -->
+                <?php if ($pendingOfferCount > 0): ?>
+                <div class="alert alert-warning border shadow-sm mb-4 d-flex align-items-center justify-content-between p-3" style="border-radius: 12px; background: #fffdf5; border-color: #f59e0b !important;">
+                    <div class="d-flex align-items-center">
+                        <div class="mr-3 text-warning" style="font-size: 24px;">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <div>
+                            <h6 class="font-weight-bold mb-0 text-dark">
+                                You have <?php echo $pendingOfferCount; ?> Pending Campaign Offer Application(s)
+                            </h6>
+                            <small class="text-muted">Publishers are waiting for private campaign authorization, custom payouts, or daily caps.</small>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="campaigns.php" class="btn btn-warning font-weight-bold text-dark shadow-sm">
+                            <i class="fas fa-arrow-right mr-1"></i> Review Requests
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <!-- 2x2 Mobile Stat Grid -->
                 <div class="row mb-4 stat-boxes-row">
                     <div class="col-6 col-md-3">
@@ -493,8 +533,11 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <i class="fas fa-times mr-1"></i> Reject
                                             </a>
                                         <?php else: ?>
-                                            <a href="publishers.php" class="btn btn-xs btn-outline-primary font-weight-bold">
+                                            <a href="publishers.php" class="btn btn-xs btn-outline-primary font-weight-bold mr-1">
                                                 <i class="fas fa-cog mr-1"></i> Manage
+                                            </a>
+                                            <a href="impersonate.php?id=<?php echo $ap['user_id']; ?>" target="_blank" class="btn btn-xs btn-outline-info font-weight-bold" title="Login as this publisher in a new tab">
+                                                <i class="fas fa-sign-in-alt mr-1"></i> Login As
                                             </a>
                                         <?php endif; ?>
                                     </td>

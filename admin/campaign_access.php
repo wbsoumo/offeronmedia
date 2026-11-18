@@ -26,6 +26,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $offerId       = (int)($_POST['offer_id'] ?? 0);
         $payoutType    = $_POST['payout_type'] ?? 'default';
         $customPayout  = isset($_POST['custom_payout']) && $_POST['custom_payout'] !== '' ? (float)$_POST['custom_payout'] : null;
+        $dailyCap      = isset($_POST['daily_cap']) && $_POST['daily_cap'] !== '' ? (int)$_POST['daily_cap'] : null;
         $notes         = trim($_POST['notes'] ?? '');
 
         if (empty($publisherIds) || !$offerId) {
@@ -65,6 +66,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                             $updFields[] = "custom_payout = :payout";
                             $updParams[':payout'] = $customPayout;
                         }
+                        if ($dailyCap !== null && in_array('daily_cap', $aoaCols, true)) {
+                            $updFields[] = "daily_cap = :daily_cap";
+                            $updParams[':daily_cap'] = $dailyCap;
+                        }
                         if ($notes !== '' && in_array('notes', $aoaCols, true)) {
                             $updFields[] = "notes = :notes";
                             $updParams[':notes'] = $notes;
@@ -92,6 +97,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                             $insCols[] = 'custom_payout';
                             $insVals[] = ':custom_payout';
                             $insParams[':custom_payout'] = $customPayout;
+                        }
+                        if (in_array('daily_cap', $aoaCols, true) && $dailyCap !== null) {
+                            $insCols[] = 'daily_cap';
+                            $insVals[] = ':daily_cap';
+                            $insParams[':daily_cap'] = $dailyCap;
                         }
                         if (in_array('notes', $aoaCols, true)) {
                             $insCols[] = 'notes';
