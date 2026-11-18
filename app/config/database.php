@@ -231,6 +231,12 @@ function auto_ensure_all_schema_tables($pdo)
         if (!in_array('cap_type', $offCols, true)) {
             try { $pdo->exec("ALTER TABLE `offers` ADD COLUMN `cap_type` VARCHAR(20) NOT NULL DEFAULT 'conversions' AFTER `daily_cap`"); } catch (Exception $e) {}
         }
+        try {
+            $pdo->exec("ALTER TABLE `offers` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'active'");
+        } catch (Exception $e) {}
+        try {
+            $pdo->exec("UPDATE `offers` SET `status` = 'archived' WHERE `status` = '' OR `status` IS NULL OR `status` = '0' OR LOWER(TRIM(`status`)) LIKE 'archiv%'");
+        } catch (Exception $e) {}
 
         // 5. Ensure Columns in `affiliate_offer_approval`
         $aoaCols = $pdo->query("SHOW COLUMNS FROM `affiliate_offer_approval`")->fetchAll(PDO::FETCH_COLUMN);

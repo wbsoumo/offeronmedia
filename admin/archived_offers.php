@@ -11,9 +11,26 @@ require_role('admin');
 $adminName = $_SESSION['user_name'] ?? 'Admin';
 $success = $error = null;
 
+// Self-healing: Ensure status column in offers supports 'archived' string
+try {
+    $pdo->exec("ALTER TABLE `offers` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'active'");
+} catch (Exception $e) {}
+
+// Self-healing: If any offer has status corrupted, truncated, or set to empty enum during archive, fix it
+try {
+    $pdo->exec("UPDATE `offers` SET `status` = 'archived' WHERE `status` = '' OR `status` IS NULL OR `status` = '0' OR LOWER(TRIM(`status`)) LIKE 'archiv%'");
+} catch (Exception $e) {}
+
 if (isset($_GET['archived'])) {
-    $archivedId = isset($_GET['id']) ? ' #' . (int)$_GET['id'] : '';
-    $success = "Campaign{$archivedId} archived successfully and moved to Archive. Historical click and conversion records are preserved.";
+    $archivedId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if ($archivedId > 0) {
+        // Enforce the archive status on this target offer
+        try {
+            $pdo->prepare("UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id = ?")->execute([$archivedId]);
+        } catch (Exception $e) {}
+    }
+    $dispId = $archivedId > 0 ? " #{$archivedId}" : '';
+    $success = "Campaign{$dispId} archived successfully and moved to Archive. Historical click and conversion records are preserved.";
 }
 if (isset($_GET['bulk_archived'])) {
     $count = (int)$_GET['bulk_archived'];
@@ -28,7 +45,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     $action = $_GET['action'];
     
     if ($action === 'restore') {
-        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ? AND LOWER(TRIM(status)) = 'archived'");
+        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id = ? AND (LOWER(TRIM(status)) LIKE 'archiv%' OR status = '' OR status IS NULL)");
         $stmt->execute([$offerId]);
         if ($stmt->rowCount() > 0) {
             admin_log_action('offer_restore', 'offer', $offerId, 'Campaign restored from archive to paused status');
@@ -47,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
         $error = 'Please select at least one campaign';
     } elseif ($action === 'restore') {
         $placeholders = implode(',', array_fill(0, count($selectedOffers), '?'));
-        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders) AND LOWER(TRIM(status)) = 'archived'");
+        $stmt = $pdo->prepare("UPDATE offers SET status = 'paused', updated_at = NOW() WHERE offer_id IN ($placeholders) AND (LOWER(TRIM(status)) LIKE 'archiv%' OR status = '' OR status IS NULL)");
         $stmt->execute($selectedOffers);
         $count = $stmt->rowCount();
         admin_log_action('offers_bulk_restore', 'offers', null, "Restored $count campaigns to paused");
@@ -62,7 +79,7 @@ $search = trim($_GET['search'] ?? '');
 $page = max(1, (int)($_GET['page'] ?? 1));
 $perPage = 20;
 
-$where = ["(LOWER(TRIM(o.status)) = 'archived' OR o.status = 'archived')"];
+$where = ["(LOWER(TRIM(o.status)) LIKE 'archiv%' OR o.status = '' OR o.status IS NULL)"];
 $params = [];
 
 if ($search !== '') {
@@ -142,10 +159,10 @@ $archivedOffers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $statsStmt = $pdo->query("
     SELECT 
         COUNT(*) as total_archived,
-        IFNULL((SELECT COUNT(*) FROM clicks c JOIN offers o ON o.offer_id = c.offer_id WHERE LOWER(TRIM(o.status)) = 'archived'), 0) as archived_clicks,
-        IFNULL((SELECT COUNT(*) FROM conversions cv JOIN offers o ON o.offer_id = cv.offer_id WHERE LOWER(TRIM(o.status)) = 'archived'), 0) as archived_conversions
+        IFNULL((SELECT COUNT(*) FROM clicks c JOIN offers o ON o.offer_id = c.offer_id WHERE LOWER(TRIM(o.status)) LIKE 'archiv%' OR o.status = '' OR o.status IS NULL), 0) as archived_clicks,
+        IFNULL((SELECT COUNT(*) FROM conversions cv JOIN offers o ON o.offer_id = cv.offer_id WHERE LOWER(TRIM(o.status)) LIKE 'archiv%' OR o.status = '' OR o.status IS NULL), 0) as archived_conversions
     FROM offers 
-    WHERE LOWER(TRIM(status)) = 'archived'
+    WHERE LOWER(TRIM(status)) LIKE 'archiv%' OR status = '' OR status IS NULL
 ");
 $archiveStats = $statsStmt->fetch(PDO::FETCH_ASSOC) ?: [];
 ?>

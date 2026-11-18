@@ -66,6 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'])) {
                 break;
             case 'archive':
             case 'delete':
+                try {
+                    $pdo->exec("ALTER TABLE `offers` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'active'");
+                } catch (Exception $e) {}
                 $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id IN ($placeholders)";
                 $redirectUrl = "archived_offers.php?bulk_archived=" . count($selectedOffers);
                 break;
@@ -100,6 +103,9 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     
     if (in_array($action, $validActions)) {
         if ($action === 'delete' || $action === 'archive') {
+            try {
+                $pdo->exec("ALTER TABLE `offers` MODIFY COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'active'");
+            } catch (Exception $e) {}
             $sql = "UPDATE offers SET status = 'archived', updated_at = NOW() WHERE offer_id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$offerId]);
@@ -157,7 +163,7 @@ if ($statusFilter !== 'all') {
     $params['status'] = strtolower(trim($statusFilter));
 } else {
     // Exclude archived offers from active listing by default
-    $where[] = "LOWER(TRIM(o.status)) != 'archived'";
+    $where[] = "LOWER(TRIM(o.status)) NOT IN ('archived', 'archive') AND LOWER(TRIM(o.status)) NOT LIKE 'archiv%' AND o.status != '' AND o.status IS NOT NULL";
 }
 
 if ($advertiserFilter !== 'all') {
