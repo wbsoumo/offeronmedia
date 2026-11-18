@@ -111,7 +111,7 @@ if ($hasAnyReportPermission) {
     if ($activeTab === 'subid' || $canAllReports) {
         $stmtSub = $pdo->prepare("
             SELECT 
-                c.sub1, c.sub2, c.sub3,
+                c.sub1, c.sub2, c.sub3, c.sub4, c.sub5,
                 o.offer_id,
                 o.offer_name,
                 o.currency,
@@ -124,10 +124,10 @@ if ($hasAnyReportPermission) {
             INNER JOIN offers o ON o.offer_id = c.offer_id
             LEFT JOIN conversions cv ON cv.click_id = c.click_id
             WHERE aff.role_id = 3 AND aff.account_manager_id = ? 
-              AND ((c.sub1 IS NOT NULL AND c.sub1 != '') OR (c.sub2 IS NOT NULL AND c.sub2 != ''))
-            GROUP BY c.sub1, c.sub2, o.offer_id, aff.user_id
+              AND ((c.sub1 IS NOT NULL AND c.sub1 != '') OR (c.sub2 IS NOT NULL AND c.sub2 != '') OR (c.sub3 IS NOT NULL AND c.sub3 != '') OR (c.sub4 IS NOT NULL AND c.sub4 != '') OR (c.sub5 IS NOT NULL AND c.sub5 != ''))
+            GROUP BY c.sub1, c.sub2, c.sub3, c.sub4, c.sub5, o.offer_id, aff.user_id
             ORDER BY clicks DESC
-            LIMIT 150
+            LIMIT 250
         ");
         $stmtSub->execute([$managerId]);
         $subIdReports = $stmtSub->fetchAll(PDO::FETCH_ASSOC);
@@ -191,30 +191,7 @@ if ($hasAnyReportPermission) {
     </nav>
 
     <!-- Sidebar -->
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="dashboard.php" class="brand-link text-center">
-            <span class="brand-text font-weight-light" style="font-size: 1.4rem;">
-                <i class="fas fa-user-tie mr-2"></i><strong>Manager</strong>
-            </span>
-        </a>
-
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                    <li class="nav-item"><a href="dashboard.php" class="nav-link"><i class="nav-icon fas fa-chart-line"></i><p>Dashboard</p></a></li>
-                    <li class="nav-item"><a href="publishers.php" class="nav-link"><i class="nav-icon fas fa-user-friends"></i><p>My Publishers</p></a></li>
-                    <li class="nav-item"><a href="campaigns.php" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Campaigns</p></a></li>
-                    <li class="nav-item"><a href="campaign_access.php" class="nav-link"><i class="nav-icon fas fa-key"></i><p>Offer Approvals</p></a></li>
-                    <li class="nav-item"><a href="reports.php" class="nav-link active"><i class="nav-icon fas fa-chart-bar"></i><p>Performance Reports</p></a></li>
-                    <li class="nav-item"><a href="reports_postbacks.php" class="nav-link"><i class="nav-icon fas fa-exchange-alt"></i><p>Postback Logs</p></a></li>
-                    <?php if (manager_can('link_tester')): ?>
-                    <li class="nav-item"><a href="link_tester.php" class="nav-link"><i class="nav-icon fas fa-vial"></i><p>Link Tester</p></a></li>
-                    <?php endif; ?>
-                    <li class="nav-item"><a href="profile.php" class="nav-link"><i class="nav-icon fas fa-user-cog"></i><p>My Profile</p></a></li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+    <?php include __DIR__ . '/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
@@ -275,6 +252,11 @@ if ($hasAnyReportPermission) {
                         </a>
                     </li>
                     <?php endif; ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="reports_postbacks.php">
+                            <i class="fas fa-exchange-alt mr-1"></i> Postback Logs
+                        </a>
+                    </li>
                 </ul>
 
                 <!-- Tab 1: Campaign Performance -->
@@ -450,19 +432,27 @@ if ($hasAnyReportPermission) {
                 <!-- Tab 4: SubID Breakdown Report -->
                 <?php if ($activeTab === 'subid'): ?>
                 <div class="card card-custom p-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-tags mr-2"></i>SubID (sub1 - sub5) Analytics Report</h4>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-primary mb-0"><i class="fas fa-tags mr-2"></i>SubID (sub1 - sub5) Analytics Report</h4>
+                        <a href="reports_subid.php" class="btn btn-sm btn-outline-warning font-weight-bold">
+                            <i class="fas fa-external-link-alt mr-1"></i> Open Advanced SubID Page & Export
+                        </a>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle reportTable">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>Sub ID 1</th>
-                                    <th>Sub ID 2</th>
                                     <th>Campaign Offer</th>
                                     <th>Publisher</th>
+                                    <th>Sub ID 1</th>
+                                    <th>Sub ID 2</th>
+                                    <th>Sub ID 3</th>
+                                    <th>Sub ID 4</th>
+                                    <th>Sub ID 5</th>
                                     <th class="text-center">Clicks</th>
                                     <th class="text-center">Conversions</th>
                                     <th class="text-center">CR %</th>
-                                    <th class="text-center">Total Payout</th>
+                                    <th class="text-right">Total Payout</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -470,14 +460,17 @@ if ($hasAnyReportPermission) {
                                     $cr = !empty($sub['clicks']) ? round(($sub['conversions'] / $sub['clicks']) * 100, 2) : 0;
                                 ?>
                                 <tr>
-                                    <td><span class="badge badge-secondary px-2 py-1" style="font-family: monospace; font-size: 13px;"><?php echo htmlspecialchars($sub['sub1'] ?: '-'); ?></span></td>
-                                    <td><span class="badge badge-light border px-2 py-1" style="font-family: monospace; font-size: 12px;"><?php echo htmlspecialchars($sub['sub2'] ?: '-'); ?></span></td>
-                                    <td>#<?php echo (int)$sub['offer_id']; ?> ~ <?php echo htmlspecialchars($sub['offer_name']); ?></td>
+                                    <td><strong>#<?php echo (int)$sub['offer_id']; ?></strong> ~ <?php echo htmlspecialchars($sub['offer_name']); ?></td>
                                     <td><strong class="text-dark"><?php echo htmlspecialchars($sub['affiliate_name']); ?></strong></td>
+                                    <td><span class="badge badge-info px-2 py-1 font-monospace" style="font-size: 11.5px;"><?php echo htmlspecialchars($sub['sub1'] ?: '-'); ?></span></td>
+                                    <td><span class="badge badge-light border px-2 py-1 font-monospace" style="font-size: 11.5px;"><?php echo htmlspecialchars($sub['sub2'] ?: '-'); ?></span></td>
+                                    <td><span class="badge badge-light border px-2 py-1 font-monospace" style="font-size: 11.5px;"><?php echo htmlspecialchars($sub['sub3'] ?: '-'); ?></span></td>
+                                    <td><span class="badge badge-light border px-2 py-1 font-monospace" style="font-size: 11.5px;"><?php echo htmlspecialchars($sub['sub4'] ?: '-'); ?></span></td>
+                                    <td><span class="badge badge-light border px-2 py-1 font-monospace" style="font-size: 11.5px;"><?php echo htmlspecialchars($sub['sub5'] ?: '-'); ?></span></td>
                                     <td class="text-center font-weight-bold"><?php echo number_format((int)$sub['clicks']); ?></td>
                                     <td class="text-center font-weight-bold text-success"><?php echo number_format((int)$sub['conversions']); ?></td>
                                     <td class="text-center font-weight-bold text-muted"><?php echo $cr; ?>%</td>
-                                    <td class="text-center font-weight-bold text-primary"><?php echo format_currency((float)$sub['total_payout'], $sub['currency'] ?? 'USD'); ?></td>
+                                    <td class="text-right font-weight-bold text-primary"><?php echo format_currency((float)$sub['total_payout'], $sub['currency'] ?? 'USD'); ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>

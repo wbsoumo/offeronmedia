@@ -610,6 +610,29 @@ assertTest("Global postback resolves correctly as default fallback", strpos($fou
 $pdo->prepare("DELETE FROM affiliate_postbacks WHERE id IN (?, ?)")->execute([$globalPbId, $offerPbId]);
 
 // ---------------------------------------------------------
+// 13. Manager Portal SubID-wise Report & Side Menu Tabs
+// ---------------------------------------------------------
+echo "\n--- TEST 13: Manager Portal SubID Report & Side Menu Tabs ---\n";
+
+$sidebarContent = file_get_contents(__DIR__ . '/manager/sidebar.php');
+assertTest("manager/sidebar.php includes Click Reports link", strpos($sidebarContent, 'reports_clicks.php') !== false);
+assertTest("manager/sidebar.php includes Campaign Reports link", strpos($sidebarContent, 'reports_campaigns.php') !== false);
+assertTest("manager/sidebar.php includes Publisher Reports link", strpos($sidebarContent, 'reports_affiliates.php') !== false);
+assertTest("manager/sidebar.php includes SubID Performance link", strpos($sidebarContent, 'reports_subid.php') !== false);
+assertTest("manager/sidebar.php includes Postback Logs link", strpos($sidebarContent, 'reports_postbacks.php') !== false);
+
+$subidFileContent = file_get_contents(__DIR__ . '/manager/reports_subid.php');
+assertTest("manager/reports_subid.php contains Sub ID 1 header column", strpos($subidFileContent, '<th>Sub ID 1</th>') !== false);
+assertTest("manager/reports_subid.php contains Sub ID 2 header column", strpos($subidFileContent, '<th>Sub ID 2</th>') !== false);
+assertTest("manager/reports_subid.php contains Sub ID 3 header column", strpos($subidFileContent, '<th>Sub ID 3</th>') !== false);
+assertTest("manager/reports_subid.php contains Sub ID 4 header column", strpos($subidFileContent, '<th>Sub ID 4</th>') !== false);
+assertTest("manager/reports_subid.php contains Sub ID 5 header column", strpos($subidFileContent, '<th>Sub ID 5</th>') !== false);
+assertTest("manager/reports_subid.php groups by all 5 sub IDs", strpos($subidFileContent, 'c.sub1, c.sub2, c.sub3, c.sub4, c.sub5') !== false);
+
+$mgrReportsContent = file_get_contents(__DIR__ . '/manager/reports.php');
+assertTest("manager/reports.php contains Sub ID 1-5 columns in subid tab", strpos($mgrReportsContent, '<th>Sub ID 5</th>') !== false);
+
+// ---------------------------------------------------------
 // SUMMARY
 // ---------------------------------------------------------
 echo "\n========================================================\n";

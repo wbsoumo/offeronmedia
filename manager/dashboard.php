@@ -234,78 +234,7 @@ $assignedPublishers = $pubsListStmt->fetchAll(PDO::FETCH_ASSOC);
     </nav>
 
     <!-- Sidebar -->
-    <aside class="main-sidebar sidebar-dark-primary elevation-4">
-        <a href="dashboard.php" class="brand-link text-center">
-            <span class="brand-text font-weight-light" style="font-size: 1.4rem;">
-                <i class="fas fa-user-tie mr-2"></i><strong>Manager</strong>
-            </span>
-        </a>
-
-        <div class="sidebar">
-            <nav class="mt-2">
-                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-                    <li class="nav-item">
-                        <a href="dashboard.php" class="nav-link active">
-                            <i class="nav-icon fas fa-chart-line"></i>
-                            <p>Dashboard</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="publishers.php" class="nav-link">
-                            <i class="nav-icon fas fa-user-friends"></i>
-                            <p>My Publishers</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="campaigns.php" class="nav-link">
-                            <i class="nav-icon fas fa-bullhorn"></i>
-                            <p>Campaigns</p>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="campaign_access.php" class="nav-link">
-                            <i class="nav-icon fas fa-key"></i>
-                            <p>
-                                Offer Approvals
-                                <?php if ($pendingOfferCount > 0): ?>
-                                    <span class="badge badge-warning right font-weight-bold"><?php echo $pendingOfferCount; ?></span>
-                                <?php endif; ?>
-                            </p>
-                        </a>
-                    </li>
-                    <?php if (manager_can('affiliate_reports') || manager_can('advertiser_reports') || manager_can('all_reports')): ?>
-                    <li class="nav-item">
-                        <a href="reports.php" class="nav-link">
-                            <i class="nav-icon fas fa-chart-bar"></i>
-                            <p>Performance Reports</p>
-                        </a>
-                    </li>
-                    <?php endif; ?>
-                    <li class="nav-item">
-                        <a href="reports_postbacks.php" class="nav-link">
-                            <i class="nav-icon fas fa-exchange-alt"></i>
-                            <p>Postback Logs</p>
-                        </a>
-                    </li>
-                    <?php if (manager_can('link_tester')): ?>
-                    <li class="nav-item">
-                        <a href="link_tester.php" class="nav-link">
-                            <i class="nav-icon fas fa-vial"></i>
-                            <p>Link Tester</p>
-                        </a>
-                    </li>
-                    <?php endif; ?>
-
-                    <li class="nav-item">
-                        <a href="profile.php" class="nav-link">
-                            <i class="nav-icon fas fa-user-cog"></i>
-                            <p>My Profile</p>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-    </aside>
+    <?php include __DIR__ . '/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
