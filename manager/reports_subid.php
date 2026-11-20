@@ -43,13 +43,8 @@ $perPage = max(1, $perPage);
 /* ===============================
    BUILD WHERE CLAUSE
 ================================ */
-$where = ["aff.role_id = 3"];
-$params = [];
-
-if (!$canAllScope) {
-    $where[] = "aff.account_manager_id = :mgr_id";
-    $params[':mgr_id'] = $managerId;
-}
+$where = ["aff.role_id = 3", "aff.account_manager_id = :mgr_id"];
+$params = [':mgr_id' => $managerId];
 
 if ($dateFrom && $dateTo) {
     $where[] = "DATE(c.created_at) BETWEEN :dfrom AND :dto";
@@ -169,7 +164,7 @@ if (isset($_GET['export'])) {
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         $out = fopen('php://output', 'w');
-        fputcsv($out, ['Campaign Offer', 'Publisher', 'Sub ID 1', 'Sub ID 2', 'Sub ID 3', 'Sub ID 4', 'Sub ID 5', 'Clicks', 'Total Leads', 'Approved Leads', 'Pending Leads', 'Rejected Leads', 'Total Payout', 'Gross Revenue', 'Net Profit', 'CR %']);
+        fputcsv($out, ['Campaign Offer', 'Publisher', 'Sub ID 1', 'Sub ID 2', 'Sub ID 3', 'Sub ID 4', 'Sub ID 5', 'Clicks', 'Total Leads', 'Approved Leads', 'Pending Leads', 'Rejected Leads', 'Total Payout', 'Gross Revenue', 'Net Profit', 'CR %'], ',', '"', "\\");
         foreach ($expRows as $r) {
             $rClicks = (int)$r['total_clicks'];
             $rConv   = (int)$r['approved_conversions'];
@@ -191,7 +186,7 @@ if (isset($_GET['export'])) {
                 number_format((float)$r['total_revenue'], 2),
                 number_format((float)$r['net_profit'], 2),
                 $rCr . '%'
-            ]);
+            ], ',', '"', "\\");
         }
         fclose($out);
         exit;
@@ -283,7 +278,7 @@ $reportRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ================================ */
 $offersList = $pdo->query("SELECT offer_id, offer_name FROM offers ORDER BY offer_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-$affScopeSql = !$canAllScope ? "WHERE role_id = 3 AND account_manager_id = " . (int)$managerId : "WHERE role_id = 3";
+$affScopeSql = "WHERE role_id = 3 AND account_manager_id = " . (int)$managerId;
 $affiliatesList = $pdo->query("SELECT user_id, name FROM users $affScopeSql ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
@@ -563,10 +558,10 @@ $affiliatesList = $pdo->query("SELECT user_id, name FROM users $affScopeSql ORDE
                             $xlsUrl = '?' . http_build_query($qParams);
                             ?>
                             <a href="<?php echo htmlspecialchars($csvUrl); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
-                                <i class="fas fa-file-csv mr-1"></i> Export CSV
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
                             </a>
                             <a href="<?php echo htmlspecialchars($xlsUrl); ?>" class="btn btn-sm btn-outline-primary font-weight-bold">
-                                <i class="fas fa-file-excel mr-1"></i> Export Excel
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
                             </a>
                         </div>
                     </div>

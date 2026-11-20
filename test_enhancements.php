@@ -685,6 +685,30 @@ $mgrCampaigns = file_get_contents(__DIR__ . '/manager/campaigns.php');
 assertTest("manager/campaigns.php provides direct Access Rules & Publisher Caps link", strpos($mgrCampaigns, 'campaign_access.php?offer_id=') !== false);
 
 // ---------------------------------------------------------
+// TEST 16: Strict Manager Portfolio Reports & CSV/Excel Exports
+// ---------------------------------------------------------
+echo "\n--- TEST 16: Strict Manager Portfolio Reports & CSV/Excel Exports ---\n";
+$mgrReportsCode = file_get_contents(__DIR__ . '/manager/reports.php');
+assertTest("manager/reports.php enforces mandatory manager filter on click logs", strpos($mgrReportsCode, '$clkWhere = ["u.role_id = 3", "u.account_manager_id = :mid"]') !== false);
+assertTest("manager/reports.php enforces mandatory manager filter on campaigns", strpos($mgrReportsCode, '$campWhere = ["aff.role_id = 3", "aff.account_manager_id = :mid"]') !== false);
+assertTest("manager/reports.php enforces mandatory manager filter on publishers", strpos($mgrReportsCode, '$affWhere = ["u.role_id = 3", "u.account_manager_id = :mid"]') !== false);
+assertTest("manager/reports.php scopes affiliate dropdown strictly to manager portfolio", strpos($mgrReportsCode, 'WHERE role_id = 3 AND account_manager_id = " . (int)$managerId') !== false);
+assertTest("manager/reports.php contains export handler for CSV and Excel", strpos($mgrReportsCode, "isset(\$_GET['export']) && in_array(strtolower(\$_GET['export']), ['csv', 'excel']") !== false);
+assertTest("manager/reports.php UI provides Download CSV button", strpos($mgrReportsCode, 'Download CSV') !== false);
+assertTest("manager/reports.php UI provides Download Excel button", strpos($mgrReportsCode, 'Download Excel') !== false);
+
+$mgrSubidCode = file_get_contents(__DIR__ . '/manager/reports_subid.php');
+assertTest("manager/reports_subid.php enforces mandatory manager filter", strpos($mgrSubidCode, '$where = ["aff.role_id = 3", "aff.account_manager_id = :mgr_id"]') !== false);
+assertTest("manager/reports_subid.php scopes publisher dropdown to manager", strpos($mgrSubidCode, 'WHERE role_id = 3 AND account_manager_id = " . (int)$managerId') !== false);
+assertTest("manager/reports_subid.php UI provides Download CSV button", strpos($mgrSubidCode, 'Download CSV') !== false);
+assertTest("manager/reports_subid.php UI provides Download Excel button", strpos($mgrSubidCode, 'Download Excel') !== false);
+
+$mgrPostbacksCode = file_get_contents(__DIR__ . '/manager/reports_postbacks.php');
+assertTest("manager/reports_postbacks.php contains export handler for CSV and Excel", strpos($mgrPostbacksCode, "isset(\$_GET['export']) && in_array(strtolower(\$_GET['export']), ['csv', 'excel']") !== false);
+assertTest("manager/reports_postbacks.php UI provides Download CSV button", strpos($mgrPostbacksCode, 'Download CSV') !== false);
+assertTest("manager/reports_postbacks.php UI provides Download Excel button", strpos($mgrPostbacksCode, 'Download Excel') !== false);
+
+// ---------------------------------------------------------
 // SUMMARY
 // ---------------------------------------------------------
 echo "\n========================================================\n";

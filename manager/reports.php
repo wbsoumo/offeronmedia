@@ -23,7 +23,7 @@ $hasAnyReportPermission = $canAffReports || $canCampReports || $canClickReports 
 $success = $error = null;
 
 // Conversion Status Update Handler (Approve / Reject / Pending)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_conversion_status') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_conversion_status') {
     $convId = (int)($_POST['conversion_id'] ?? 0);
     $newStatus = $_POST['status'] ?? '';
     if ($convId > 0 && in_array($newStatus, ['approved', 'pending', 'rejected'], true)) {
@@ -83,7 +83,7 @@ function build_filter_url($overrides = []) {
 // Fetch Dropdown options for filters
 $offersList = $pdo->query("SELECT offer_id, offer_name FROM offers ORDER BY offer_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-$affScopeSql = !$canAllReports ? "WHERE role_id = 3 AND account_manager_id = " . (int)$managerId : "WHERE role_id = 3";
+$affScopeSql = "WHERE role_id = 3 AND account_manager_id = " . (int)$managerId;
 $affiliatesList = $pdo->query("SELECT user_id, name, company FROM users $affScopeSql ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 $categoriesList = $pdo->query("SELECT DISTINCT category FROM offers WHERE category IS NOT NULL AND category != '' ORDER BY category ASC")->fetchAll(PDO::FETCH_COLUMN);
@@ -98,12 +98,8 @@ $clickReports      = [];
 
 if ($hasAnyReportPermission) {
     // 1. Fetch Campaign Performance Reports
-    $campWhere = ["aff.role_id = 3"];
-    $campParams = [];
-    if (!$canAllReports) {
-        $campWhere[] = "aff.account_manager_id = :mid";
-        $campParams[':mid'] = $managerId;
-    }
+    $campWhere = ["aff.role_id = 3", "aff.account_manager_id = :mid"];
+    $campParams = [':mid' => $managerId];
     if ($dateFrom) {
         $campWhere[] = "DATE(c.created_at) >= :dfrom";
         $campParams[':dfrom'] = $dateFrom;
@@ -153,12 +149,8 @@ if ($hasAnyReportPermission) {
     $campaignReports = $stmtCamp->fetchAll(PDO::FETCH_ASSOC);
 
     // 2. Fetch Affiliate / Publisher Reports
-    $affWhere = ["u.role_id = 3"];
-    $affParams = [];
-    if (!$canAllReports) {
-        $affWhere[] = "u.account_manager_id = :mid";
-        $affParams[':mid'] = $managerId;
-    }
+    $affWhere = ["u.role_id = 3", "u.account_manager_id = :mid"];
+    $affParams = [':mid' => $managerId];
     if ($dateFrom) {
         $affWhere[] = "DATE(c.created_at) >= :dfrom";
         $affParams[':dfrom'] = $dateFrom;
@@ -212,14 +204,10 @@ if ($hasAnyReportPermission) {
     $stmtAff->execute($affParams);
     $affiliateReports = $stmtAff->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Fetch Click Reports (Raw Click Logs scoped to manager)
+    // 3. Fetch Click Reports (Raw Click Logs scoped strictly to manager portfolio)
     if ($activeTab === 'clicks' || $canClickReports) {
-        $clkWhere = ["u.role_id = 3"];
-        $clkParams = [];
-        if (!$canAllReports) {
-            $clkWhere[] = "u.account_manager_id = :mid";
-            $clkParams[':mid'] = $managerId;
-        }
+        $clkWhere = ["u.role_id = 3", "u.account_manager_id = :mid"];
+        $clkParams = [':mid' => $managerId];
         if ($dateFrom) {
             $clkWhere[] = "DATE(c.created_at) >= :dfrom";
             $clkParams[':dfrom'] = $dateFrom;
@@ -285,14 +273,10 @@ if ($hasAnyReportPermission) {
         $clickReports = $clicksQuery->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // 4. Fetch SubID Reports (Breakdown of Sub1 through Sub5)
+    // 4. Fetch SubID Reports (Breakdown of Sub1 through Sub5 scoped to manager)
     if ($activeTab === 'subid' || $canAllReports) {
-        $subWhere = ["aff.role_id = 3"];
-        $subParams = [];
-        if (!$canAllReports) {
-            $subWhere[] = "aff.account_manager_id = :mid";
-            $subParams[':mid'] = $managerId;
-        }
+        $subWhere = ["aff.role_id = 3", "aff.account_manager_id = :mid"];
+        $subParams = [':mid' => $managerId];
         if ($dateFrom) {
             $subWhere[] = "DATE(c.created_at) >= :dfrom";
             $subParams[':dfrom'] = $dateFrom;
@@ -348,14 +332,10 @@ if ($hasAnyReportPermission) {
         $subIdReports = $stmtSub->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // 5. Fetch Advertiser Reports
+    // 5. Fetch Advertiser Reports (Scoped to manager's assigned publishers)
     if ($canAdvReports) {
-        $advWhere = ["aff.role_id = 3"];
-        $advParams = [];
-        if (!$canAllReports) {
-            $advWhere[] = "aff.account_manager_id = :mid";
-            $advParams[':mid'] = $managerId;
-        }
+        $advWhere = ["aff.role_id = 3", "aff.account_manager_id = :mid"];
+        $advParams = [':mid' => $managerId];
         if ($dateFrom) {
             $advWhere[] = "DATE(c.created_at) >= :dfrom";
             $advParams[':dfrom'] = $dateFrom;
@@ -398,6 +378,225 @@ if ($hasAnyReportPermission) {
         $stmtAdv->execute($advParams);
         $advertiserReports = $stmtAdv->fetchAll(PDO::FETCH_ASSOC);
     }
+}
+
+/* ==========================================================================
+   EXPORT HANDLER (CSV & EXCEL) SCOPED STRICTLY TO MANAGER PORTFOLIO
+   ========================================================================== */
+if (isset($_GET['export']) && in_array(strtolower($_GET['export']), ['csv', 'excel'], true)) {
+    $exportFormat = strtolower($_GET['export']);
+    $dateStamp = date('Y-m-d_His');
+    $filename = "manager_{$activeTab}_report_{$dateStamp}" . ($exportFormat === 'excel' ? '.xls' : '.csv');
+
+    // Clean any prior output buffer
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    if ($exportFormat === 'excel') {
+        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+    } else {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        $out = fopen('php://output', 'w');
+    }
+
+    $cleanStr = function($val) {
+        return str_replace(["\t", "\r", "\n"], ' ', (string)($val ?? ''));
+    };
+
+    if ($activeTab === 'clicks') {
+        $headers = ['Click ID', 'Timestamp', 'Offer ID', 'Offer Name', 'Currency', 'Publisher ID', 'Publisher Name', 'Sub ID 1', 'Sub ID 2', 'Sub ID 3', 'Sub ID 4', 'Sub ID 5', 'IP Address', 'Country', 'Device', 'Conversion Status', 'Publisher Payout', 'Advertiser Revenue'];
+        if ($exportFormat === 'excel') {
+            echo implode("\t", $headers) . "\n";
+        } else {
+            fputcsv($out, $headers, ',', '"', "\\");
+        }
+
+        $expClickQuery = $pdo->prepare("
+            SELECT 
+                c.click_id,
+                c.created_at,
+                INET6_NTOA(c.ip_address) AS ip_address,
+                COALESCE(NULLIF(c.country, ''), NULLIF(o.country, ''), 'IN') AS country,
+                c.device,
+                c.sub1, c.sub2, c.sub3, c.sub4, c.sub5,
+                o.offer_id,
+                o.offer_name,
+                o.currency,
+                u.user_id as affiliate_id,
+                u.name as affiliate_name,
+                cv.conversion_id,
+                cv.status as conversion_status,
+                cv.payout as conversion_payout,
+                cv.revenue as conversion_revenue
+            FROM clicks c
+            INNER JOIN users u ON u.user_id = c.affiliate_id
+            INNER JOIN offers o ON o.offer_id = c.offer_id
+            LEFT JOIN conversions cv ON cv.click_id = c.click_id
+            $clkWhereSql
+            ORDER BY c.created_at DESC
+            LIMIT 10000
+        ");
+        $expClickQuery->execute($clkParams);
+        while ($row = $expClickQuery->fetch(PDO::FETCH_ASSOC)) {
+            $formattedIp = format_click_ip($row['ip_address']);
+            $status = !empty($row['conversion_status']) ? ucfirst($row['conversion_status']) : 'Clicked';
+            $payout = $canViewFinancials ? number_format((float)($row['conversion_payout'] ?? 0), 2) : '0.00';
+            $revenue = $canViewFinancials ? number_format((float)($row['conversion_revenue'] ?? 0), 2) : '0.00';
+            $data = [
+                $row['click_id'],
+                $row['created_at'],
+                $row['offer_id'],
+                $row['offer_name'],
+                $row['currency'] ?: 'USD',
+                $row['affiliate_id'],
+                $row['affiliate_name'],
+                $row['sub1'] ?? '',
+                $row['sub2'] ?? '',
+                $row['sub3'] ?? '',
+                $row['sub4'] ?? '',
+                $row['sub5'] ?? '',
+                $formattedIp,
+                $row['country'] ?? 'IN',
+                $row['device'] ?? 'All',
+                $status,
+                $payout,
+                $revenue
+            ];
+            if ($exportFormat === 'excel') {
+                echo implode("\t", array_map($cleanStr, $data)) . "\n";
+            } else {
+                fputcsv($out, $data, ',', '"', "\\");
+            }
+        }
+    } elseif ($activeTab === 'campaigns') {
+        $headers = ['Offer ID', 'Campaign Name', 'Category', 'Clicks', 'Conversions', 'CR %', 'Total Revenue', 'Total Payout', 'Net Margin', 'Currency'];
+        if ($exportFormat === 'excel') {
+            echo implode("\t", $headers) . "\n";
+        } else {
+            fputcsv($out, $headers, ',', '"', "\\");
+        }
+        foreach ($campaignReports as $camp) {
+            $cr = !empty($camp['clicks']) ? round(($camp['conversions'] / $camp['clicks']) * 100, 2) : 0;
+            $campNet = (float)$camp['total_revenue'] - (float)$camp['total_payout'];
+            $data = [
+                $camp['offer_id'],
+                $camp['offer_name'],
+                $camp['category'] ?: 'General',
+                (int)$camp['clicks'],
+                (int)$camp['conversions'],
+                $cr . '%',
+                $canViewFinancials ? number_format((float)$camp['total_revenue'], 2) : '0.00',
+                $canViewFinancials ? number_format((float)$camp['total_payout'], 2) : '0.00',
+                $canViewFinancials ? number_format($campNet, 2) : '0.00',
+                $camp['currency'] ?: 'USD'
+            ];
+            if ($exportFormat === 'excel') {
+                echo implode("\t", array_map($cleanStr, $data)) . "\n";
+            } else {
+                fputcsv($out, $data, ',', '"', "\\");
+            }
+        }
+    } elseif ($activeTab === 'affiliates') {
+        $headers = ['Publisher ID', 'Publisher Name', 'Company', 'Offer ID', 'Campaign Name', 'Account Status', 'Clicks', 'Approved Conversions', 'CR %', 'Total Payout', 'Gross Revenue', 'Net Margin', 'Currency'];
+        if ($exportFormat === 'excel') {
+            echo implode("\t", $headers) . "\n";
+        } else {
+            fputcsv($out, $headers, ',', '"', "\\");
+        }
+        foreach ($affiliateReports as $r) {
+            $currency = !empty($r['currency']) ? strtoupper($r['currency']) : 'USD';
+            $cr = !empty($r['clicks']) ? round(($r['approved_conversions'] / $r['clicks']) * 100, 2) : 0;
+            $margin = (float)$r['total_revenue'] - (float)$r['total_payout'];
+            $data = [
+                $r['affiliate_id'],
+                $r['affiliate_name'],
+                $r['affiliate_company'] ?? '',
+                $r['offer_id'],
+                $r['offer_name'],
+                ucfirst($r['affiliate_status'] ?? 'Active'),
+                (int)$r['clicks'],
+                (int)$r['approved_conversions'],
+                $cr . '%',
+                $canViewFinancials ? number_format((float)$r['total_payout'], 2) : '0.00',
+                $canViewFinancials ? number_format((float)$r['total_revenue'], 2) : '0.00',
+                $canViewFinancials ? number_format($margin, 2) : '0.00',
+                $currency
+            ];
+            if ($exportFormat === 'excel') {
+                echo implode("\t", array_map($cleanStr, $data)) . "\n";
+            } else {
+                fputcsv($out, $data, ',', '"', "\\");
+            }
+        }
+    } elseif ($activeTab === 'subid') {
+        $headers = ['Offer ID', 'Campaign Name', 'Publisher', 'Sub ID 1', 'Sub ID 2', 'Sub ID 3', 'Sub ID 4', 'Sub ID 5', 'Clicks', 'Conversions', 'CR %', 'Total Payout', 'Currency'];
+        if ($exportFormat === 'excel') {
+            echo implode("\t", $headers) . "\n";
+        } else {
+            fputcsv($out, $headers, ',', '"', "\\");
+        }
+        foreach ($subIdReports as $sub) {
+            $cr = !empty($sub['clicks']) ? round(($sub['conversions'] / $sub['clicks']) * 100, 2) : 0;
+            $data = [
+                $sub['offer_id'],
+                $sub['offer_name'],
+                $sub['affiliate_name'],
+                $sub['sub1'] ?? '',
+                $sub['sub2'] ?? '',
+                $sub['sub3'] ?? '',
+                $sub['sub4'] ?? '',
+                $sub['sub5'] ?? '',
+                (int)$sub['clicks'],
+                (int)$sub['conversions'],
+                $cr . '%',
+                $canViewFinancials ? number_format((float)$sub['total_payout'], 2) : '0.00',
+                $sub['currency'] ?: 'USD'
+            ];
+            if ($exportFormat === 'excel') {
+                echo implode("\t", array_map($cleanStr, $data)) . "\n";
+            } else {
+                fputcsv($out, $data, ',', '"', "\\");
+            }
+        }
+    } elseif ($activeTab === 'advertisers') {
+        $headers = ['Advertiser ID', 'Advertiser Name', 'Company', 'Live Campaigns', 'Gross Clicks', 'Conversions', 'Total Revenue', 'Publisher Payout', 'Net Margin'];
+        if ($exportFormat === 'excel') {
+            echo implode("\t", $headers) . "\n";
+        } else {
+            fputcsv($out, $headers, ',', '"', "\\");
+        }
+        foreach ($advertiserReports as $adv) {
+            $net = (float)$adv['total_revenue'] - (float)$adv['total_payout'];
+            $data = [
+                $adv['advertiser_id'],
+                $adv['advertiser_name'],
+                $adv['advertiser_company'],
+                (int)$adv['total_offers'],
+                (int)$adv['clicks'],
+                (int)$adv['conversions'],
+                $canViewFinancials ? number_format((float)$adv['total_revenue'], 2) : '0.00',
+                $canViewFinancials ? number_format((float)$adv['total_payout'], 2) : '0.00',
+                $canViewFinancials ? number_format($net, 2) : '0.00'
+            ];
+            if ($exportFormat === 'excel') {
+                echo implode("\t", array_map($cleanStr, $data)) . "\n";
+            } else {
+                fputcsv($out, $data, ',', '"', "\\");
+            }
+        }
+    }
+
+    if ($exportFormat !== 'excel') {
+        fclose($out);
+    }
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -645,7 +844,17 @@ if ($hasAnyReportPermission) {
                 <!-- Tab 1: Campaign Performance -->
                 <?php if ($activeTab === 'campaigns'): ?>
                 <div class="card card-custom p-4 mb-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-bullhorn mr-2"></i>Campaign Performance Report</h4>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-primary mb-2 mb-md-0"><i class="fas fa-bullhorn mr-2"></i>Campaign Performance Report</h4>
+                        <div>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'csv'])); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
+                            </a>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'excel'])); ?>" class="btn btn-sm btn-outline-primary font-weight-bold">
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle reportTable">
                             <thead class="thead-light">
@@ -695,7 +904,17 @@ if ($hasAnyReportPermission) {
                 <!-- Tab 2: Affiliate Reports -->
                 <?php if ($activeTab === 'affiliates'): ?>
                 <div class="card card-custom p-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-chart-line mr-2"></i>Assigned Publishers Breakdown</h4>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-primary mb-2 mb-md-0"><i class="fas fa-chart-line mr-2"></i>Assigned Publishers Breakdown</h4>
+                        <div>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'csv'])); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
+                            </a>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'excel'])); ?>" class="btn btn-sm btn-outline-primary font-weight-bold">
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle reportTable">
                             <thead class="thead-light">
@@ -755,7 +974,17 @@ if ($hasAnyReportPermission) {
                 <!-- Tab 3: Click Reports -->
                 <?php if ($activeTab === 'clicks'): ?>
                 <div class="card card-custom p-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-mouse-pointer mr-2"></i>Live Click Reports (Recent Traffic)</h4>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-primary mb-2 mb-md-0"><i class="fas fa-mouse-pointer mr-2"></i>Live Click Reports (Recent Traffic)</h4>
+                        <div>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'csv'])); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
+                            </a>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'excel'])); ?>" class="btn btn-sm btn-outline-primary font-weight-bold">
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle reportTable">
                             <thead class="thead-light">
@@ -827,11 +1056,19 @@ if ($hasAnyReportPermission) {
                 <!-- Tab 4: SubID Breakdown Report -->
                 <?php if ($activeTab === 'subid'): ?>
                 <div class="card card-custom p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="font-weight-bold text-primary mb-0"><i class="fas fa-tags mr-2"></i>SubID (sub1 - sub5) Analytics Report</h4>
-                        <a href="reports_subid.php" class="btn btn-sm btn-outline-warning font-weight-bold">
-                            <i class="fas fa-external-link-alt mr-1"></i> Open Advanced SubID Page & Export
-                        </a>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-primary mb-2 mb-md-0"><i class="fas fa-tags mr-2"></i>SubID (sub1 - sub5) Analytics Report</h4>
+                        <div>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'csv'])); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
+                            </a>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'excel'])); ?>" class="btn btn-sm btn-outline-primary font-weight-bold mr-1">
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
+                            </a>
+                            <a href="reports_subid.php" class="btn btn-sm btn-outline-warning font-weight-bold">
+                                <i class="fas fa-external-link-alt mr-1"></i> Advanced SubID Page
+                            </a>
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle reportTable">
@@ -877,7 +1114,17 @@ if ($hasAnyReportPermission) {
                 <!-- Tab 5: Advertiser Reports -->
                 <?php if ($activeTab === 'advertisers' && $canAdvReports): ?>
                 <div class="card card-custom p-4">
-                    <h4 class="font-weight-bold text-primary mb-3"><i class="fas fa-briefcase mr-2"></i>Advertiser Performance Report</h4>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h4 class="font-weight-bold text-primary mb-2 mb-md-0"><i class="fas fa-briefcase mr-2"></i>Advertiser Performance Report</h4>
+                        <div>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'csv'])); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
+                            </a>
+                            <a href="<?php echo htmlspecialchars(build_filter_url(['export' => 'excel'])); ?>" class="btn btn-sm btn-outline-primary font-weight-bold">
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle reportTable">
                             <thead class="thead-light">

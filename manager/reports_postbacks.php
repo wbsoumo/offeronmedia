@@ -199,6 +199,96 @@ $totalOutgoing   = count($outgoingLogs);
 $successOutgoing = count(array_filter($outgoingLogs, function($l) { return (int)($l['http_code'] ?? 0) === 200; }));
 $failedOutgoing  = $totalOutgoing - $successOutgoing;
 $totalIncoming   = count($incomingLogs);
+
+/* ==========================================================================
+   EXPORT HANDLER FOR POSTBACK LOGS (CSV & EXCEL)
+   ========================================================================== */
+if (isset($_GET['export']) && in_array(strtolower($_GET['export']), ['csv', 'excel'], true)) {
+    $exportFormat = strtolower($_GET['export']);
+    $dateStamp = date('Y-m-d_His');
+    $filename = "manager_postbacks_{$activeTab}_{$dateStamp}" . ($exportFormat === 'excel' ? '.xls' : '.csv');
+
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    if ($exportFormat === 'excel') {
+        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+    } else {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+        $out = fopen('php://output', 'w');
+    }
+
+    $cleanStr = function($val) {
+        return str_replace(["\t", "\r", "\n"], ' ', (string)($val ?? ''));
+    };
+
+    if ($activeTab === 'outgoing') {
+        $headers = ['Log ID', 'Timestamp', 'Publisher ID', 'Publisher Name', 'Publisher Email', 'Offer ID', 'Campaign Name', 'HTTP Code', 'Status', 'Fired Postback URL', 'Response Body'];
+        if ($exportFormat === 'excel') {
+            echo implode("\t", $headers) . "\n";
+        } else {
+            fputcsv($out, $headers, ',', '"', "\\");
+        }
+        foreach ($outgoingLogs as $log) {
+            $code = (int)($log['http_code'] ?? 0);
+            $status = ($code >= 200 && $code < 300) ? 'Success' : ($code === 0 ? 'Timeout/Failed' : 'Error ' . $code);
+            $data = [
+                $log['id'],
+                $log['created_at'],
+                $log['affiliate_id'],
+                $log['publisher_name'],
+                $log['publisher_email'] ?: '',
+                $log['offer_id'],
+                $log['offer_name'] ?: 'Campaign',
+                $code,
+                $status,
+                $log['postback_url'],
+                $log['response'] ?? ''
+            ];
+            if ($exportFormat === 'excel') {
+                echo implode("\t", array_map($cleanStr, $data)) . "\n";
+            } else {
+                fputcsv($out, $data, ',', '"', "\\");
+            }
+        }
+    } else {
+        $headers = ['Log ID', 'Timestamp', 'Click ID', 'Publisher Name', 'Campaign Name', 'Status', 'IP Address', 'Raw Request'];
+        if ($exportFormat === 'excel') {
+            echo implode("\t", $headers) . "\n";
+        } else {
+            fputcsv($out, $headers, ',', '"', "\\");
+        }
+        foreach ($incomingLogs as $log) {
+            $data = [
+                $log['id'] ?? '-',
+                $log['created_at'] ?? '-',
+                $log['click_id'] ?? '-',
+                $log['publisher_name'] ?? '-',
+                $log['offer_name'] ?? '-',
+                ucfirst($log['status'] ?? 'Received'),
+                $log['ip_address'] ?? '-',
+                $log['raw_request'] ?? ''
+            ];
+            if ($exportFormat === 'excel') {
+                echo implode("\t", array_map($cleanStr, $data)) . "\n";
+            } else {
+                fputcsv($out, $data, ',', '"', "\\");
+            }
+        }
+    }
+
+    if ($exportFormat !== 'excel') {
+        fclose($out);
+    }
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -395,6 +485,25 @@ $totalIncoming   = count($incomingLogs);
                 <!-- TAB 1: OUTGOING S2S POSTBACKS -->
                 <?php if ($activeTab === 'outgoing'): ?>
                 <div class="card shadow-sm p-4" style="border-radius: 12px;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h5 class="font-weight-bold text-dark mb-2 mb-md-0"><i class="fas fa-paper-plane mr-2 text-primary"></i>Outgoing Publisher Postback Logs</h5>
+                        <div>
+                            <?php 
+                            $pbParams = $_GET;
+                            $pbParams['tab'] = 'outgoing';
+                            $pbParams['export'] = 'csv';
+                            $pbCsv = '?' . http_build_query($pbParams);
+                            $pbParams['export'] = 'excel';
+                            $pbXls = '?' . http_build_query($pbParams);
+                            ?>
+                            <a href="<?php echo htmlspecialchars($pbCsv); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
+                            </a>
+                            <a href="<?php echo htmlspecialchars($pbXls); ?>" class="btn btn-sm btn-outline-primary font-weight-bold">
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mgrPostbackTable">
                             <thead class="thead-light">
@@ -460,6 +569,25 @@ $totalIncoming   = count($incomingLogs);
                 <!-- TAB 2: INCOMING ADVERTISER POSTBACKS -->
                 <?php if ($activeTab === 'incoming'): ?>
                 <div class="card shadow-sm p-4" style="border-radius: 12px;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                        <h5 class="font-weight-bold text-dark mb-2 mb-md-0"><i class="fas fa-inbox mr-2 text-primary"></i>Incoming Advertiser Postbacks</h5>
+                        <div>
+                            <?php 
+                            $pbParams = $_GET;
+                            $pbParams['tab'] = 'incoming';
+                            $pbParams['export'] = 'csv';
+                            $pbCsv = '?' . http_build_query($pbParams);
+                            $pbParams['export'] = 'excel';
+                            $pbXls = '?' . http_build_query($pbParams);
+                            ?>
+                            <a href="<?php echo htmlspecialchars($pbCsv); ?>" class="btn btn-sm btn-outline-success font-weight-bold mr-1">
+                                <i class="fas fa-file-csv mr-1"></i> Download CSV
+                            </a>
+                            <a href="<?php echo htmlspecialchars($pbXls); ?>" class="btn btn-sm btn-outline-primary font-weight-bold">
+                                <i class="fas fa-file-excel mr-1"></i> Download Excel
+                            </a>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mgrPostbackTable">
                             <thead class="thead-light">
